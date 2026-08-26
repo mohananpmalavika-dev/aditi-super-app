@@ -26,7 +26,11 @@ import {
   Camera,
   Upload,
   RefreshCw,
-  Image as ImageIcon
+  Image as ImageIcon,
+  ScanFace,
+  Fingerprint,
+  Hash,
+  Delete
 } from 'lucide-react';
 import { useSuperApp } from '../../context/SuperAppContext';
 import { RegisterCredentials } from '../../types/superApp';
@@ -34,6 +38,8 @@ import { ZODIAC_SIGNS } from '../../services/astrologyEngine';
 import { searchLocations, LocationSuggestion } from '../../services/locationService';
 import { usePWAInstall } from '../../services/pwaService';
 import { PhotoCaptureModal } from './PhotoCaptureModal';
+import { FaceUnlockModal } from './FaceUnlockModal';
+import { FingerprintModal } from './FingerprintModal';
 import confetti from 'canvas-confetti';
 
 const PRESET_AVATARS = [
@@ -63,9 +69,47 @@ export const AuthPage: React.FC = () => {
   // High-Res Dynamic QR Code Image URL
   const qrCodeImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(appUrl)}&color=63-66-241&bgcolor=3-7-18&margin=1`;
 
-  // Sign In State
+  // Sign In State & Biometric Methods
+  const [signInMethod, setSignInMethod] = useState<'password' | 'pin'>('password');
   const [loginEmail, setLoginEmail] = useState('dhanya@omnilife.ai');
   const [loginPassword, setLoginPassword] = useState('superpass123');
+  const [pinInput, setPinInput] = useState('');
+  const [showFaceModal, setShowFaceModal] = useState(false);
+  const [showFingerprintModal, setShowFingerprintModal] = useState(false);
+
+  // Handle PIN Keypad entry
+  const handlePinDigit = (digit: string) => {
+    if (pinInput.length < 4) {
+      const nextPin = pinInput + digit;
+      setPinInput(nextPin);
+
+      if (nextPin.length === 4) {
+        // Complete 4-digit PIN entered -> auto login
+        setLoading(true);
+        setTimeout(async () => {
+          await login({ email: loginEmail, password: loginPassword });
+          setLoading(false);
+          confetti({ particleCount: 60, spread: 70 });
+          showToast('🔢 Mobile PIN verified! Welcome back.');
+        }, 500);
+      }
+    }
+  };
+
+  const handlePinBackspace = () => {
+    setPinInput((prev) => prev.slice(0, -1));
+  };
+
+  const handlePinClear = () => {
+    setPinInput('');
+  };
+
+  const handleBiometricSuccess = async (type: string) => {
+    setLoading(true);
+    await login({ email: loginEmail, password: loginPassword });
+    setLoading(false);
+    showToast(`✨ ${type} Authentication Successful!`);
+  };
 
   // Registration State
   const [regName, setRegName] = useState('');
@@ -330,66 +374,190 @@ export const AuthPage: React.FC = () => {
             </div>
 
             {/* ========================================================= */}
-            {/* MODE 1: SIGN IN */}
+            {/* MODE 1: SIGN IN (PASSWORD, PIN, FACE ID, FINGERPRINT) */}
             {/* ========================================================= */}
             {authMode === 'signin' && (
-              <form onSubmit={handleLoginSubmit} className="space-y-4">
+              <div className="space-y-4">
                 
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
-                    <Mail className="w-3.5 h-3.5 text-indigo-400" />
-                    <span>Email Address</span>
-                  </label>
-                  <input
-                    type="email"
-                    value={loginEmail}
-                    onChange={(e) => setLoginEmail(e.target.value)}
-                    placeholder="Enter your email"
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-colors"
-                    required
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
-                    <Lock className="w-3.5 h-3.5 text-indigo-400" />
+                {/* Method Switcher: Password vs Mobile PIN */}
+                <div className="grid grid-cols-2 gap-2 p-1 rounded-2xl bg-slate-950 border border-slate-800">
+                  <button
+                    type="button"
+                    onClick={() => setSignInMethod('password')}
+                    className={`py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                      signInMethod === 'password'
+                        ? 'bg-indigo-600 text-white shadow-md'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <KeyRound className="w-3.5 h-3.5" />
                     <span>Password</span>
-                  </label>
-                  <div className="relative">
-                    <input
-                      type={showPassword ? 'text' : 'password'}
-                      value={loginPassword}
-                      onChange={(e) => setLoginPassword(e.target.value)}
-                      placeholder="••••••••"
-                      className="w-full pl-3.5 pr-10 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-colors"
-                      required
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200"
-                    >
-                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
-                  </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setSignInMethod('pin')}
+                    className={`py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                      signInMethod === 'pin'
+                        ? 'bg-indigo-600 text-white shadow-md'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <Hash className="w-3.5 h-3.5" />
+                    <span>Mobile PIN</span>
+                  </button>
                 </div>
 
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full py-3 rounded-xl bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 hover:from-indigo-500 hover:to-pink-500 text-white text-xs font-extrabold flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/30 hover:scale-[1.02] active:scale-95 transition-all"
-                >
-                  {loading ? (
-                    <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  ) : (
-                    <>
-                      <span>Sign In to Aditi</span>
-                      <ArrowRight className="w-4 h-4" />
-                    </>
-                  )}
-                </button>
+                {/* Quick Biometrics Bar: Face ID & Fingerprint */}
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowFaceModal(true)}
+                    className="p-3 rounded-2xl bg-slate-950 hover:bg-slate-900 border border-indigo-500/40 hover:border-indigo-400 text-white text-xs font-bold flex items-center justify-center gap-2 shadow-md hover:scale-[1.02] transition-all group"
+                  >
+                    <ScanFace className="w-4 h-4 text-indigo-400 group-hover:scale-110 transition-transform" />
+                    <span>Face Look</span>
+                  </button>
 
-              </form>
+                  <button
+                    type="button"
+                    onClick={() => setShowFingerprintModal(true)}
+                    className="p-3 rounded-2xl bg-slate-950 hover:bg-slate-900 border border-purple-500/40 hover:border-purple-400 text-white text-xs font-bold flex items-center justify-center gap-2 shadow-md hover:scale-[1.02] transition-all group"
+                  >
+                    <Fingerprint className="w-4 h-4 text-purple-400 group-hover:scale-110 transition-transform" />
+                    <span>Fingerprint</span>
+                  </button>
+                </div>
+
+                {/* Sub-view 1: Email + Password */}
+                {signInMethod === 'password' && (
+                  <form onSubmit={handleLoginSubmit} className="space-y-4 pt-1">
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+                        <Mail className="w-3.5 h-3.5 text-indigo-400" />
+                        <span>Email Address</span>
+                      </label>
+                      <input
+                        type="email"
+                        value={loginEmail}
+                        onChange={(e) => setLoginEmail(e.target.value)}
+                        placeholder="Enter your email"
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-colors"
+                        required
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+                        <Lock className="w-3.5 h-3.5 text-indigo-400" />
+                        <span>Password</span>
+                      </label>
+                      <div className="relative">
+                        <input
+                          type={showPassword ? 'text' : 'password'}
+                          value={loginPassword}
+                          onChange={(e) => setLoginPassword(e.target.value)}
+                          placeholder="••••••••"
+                          className="w-full pl-3.5 pr-10 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-colors"
+                          required
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200"
+                        >
+                          {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      </div>
+                    </div>
+
+                    <button
+                      type="submit"
+                      disabled={loading}
+                      className="w-full py-3 rounded-xl bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 hover:from-indigo-500 hover:to-pink-500 text-white text-xs font-extrabold flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/30 hover:scale-[1.02] active:scale-95 transition-all"
+                    >
+                      {loading ? (
+                        <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      ) : (
+                        <>
+                          <span>Sign In to Aditi</span>
+                          <ArrowRight className="w-4 h-4" />
+                        </>
+                      )}
+                    </button>
+                  </form>
+                )}
+
+                {/* Sub-view 2: Mobile 4-Digit PIN Keypad */}
+                {signInMethod === 'pin' && (
+                  <div className="space-y-4 pt-1 text-center animate-in fade-in">
+                    
+                    {/* 4 PIN Dots */}
+                    <div className="space-y-2">
+                      <span className="text-xs font-bold text-slate-300">Enter 4-Digit Security PIN</span>
+                      <div className="flex items-center justify-center gap-3 py-2">
+                        {[0, 1, 2, 3].map((idx) => {
+                          const isFilled = pinInput.length > idx;
+                          return (
+                            <div
+                              key={idx}
+                              className={`w-4 h-4 rounded-full border-2 transition-all duration-200 ${
+                                isFilled
+                                  ? 'bg-indigo-500 border-indigo-400 shadow-[0_0_12px_rgba(99,102,241,0.8)] scale-110'
+                                  : 'bg-slate-950 border-slate-700'
+                              }`}
+                            />
+                          );
+                        })}
+                      </div>
+                      <p className="text-[10px] text-slate-400 font-mono">Demo Default PIN: 1 2 3 4</p>
+                    </div>
+
+                    {/* Numeric Keypad Grid */}
+                    <div className="grid grid-cols-3 gap-2 max-w-[260px] mx-auto">
+                      {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map((digit) => (
+                        <button
+                          key={digit}
+                          type="button"
+                          onClick={() => handlePinDigit(digit)}
+                          className="h-12 rounded-2xl bg-slate-950 hover:bg-slate-800 border border-slate-800 text-white font-extrabold text-base flex items-center justify-center shadow-md active:scale-90 transition-all"
+                        >
+                          {digit}
+                        </button>
+                      ))}
+
+                      {/* Clear Button */}
+                      <button
+                        type="button"
+                        onClick={handlePinClear}
+                        className="h-12 rounded-2xl bg-slate-950/60 hover:bg-rose-950/40 border border-slate-800 text-rose-400 font-bold text-xs flex items-center justify-center transition-colors"
+                      >
+                        Clear
+                      </button>
+
+                      {/* 0 Button */}
+                      <button
+                        type="button"
+                        onClick={() => handlePinDigit('0')}
+                        className="h-12 rounded-2xl bg-slate-950 hover:bg-slate-800 border border-slate-800 text-white font-extrabold text-base flex items-center justify-center shadow-md active:scale-90 transition-all"
+                      >
+                        0
+                      </button>
+
+                      {/* Backspace Button */}
+                      <button
+                        type="button"
+                        onClick={handlePinBackspace}
+                        className="h-12 rounded-2xl bg-slate-950/60 hover:bg-slate-800 border border-slate-800 text-slate-400 hover:text-white font-bold flex items-center justify-center transition-colors"
+                      >
+                        <Delete className="w-5 h-5" />
+                      </button>
+                    </div>
+
+                  </div>
+                )}
+
+              </div>
             )}
 
             {/* ========================================================= */}
@@ -784,6 +952,26 @@ export const AuthPage: React.FC = () => {
         onCapture={(photoDataUrl) => {
           setRegAvatar(photoDataUrl);
           showToast('📸 Live photo captured and set as profile picture!');
+        }}
+      />
+
+      {/* Biometric Face ID Unlock Modal */}
+      <FaceUnlockModal
+        isOpen={showFaceModal}
+        onClose={() => setShowFaceModal(false)}
+        onSuccess={() => {
+          setShowFaceModal(false);
+          handleBiometricSuccess('Face ID');
+        }}
+      />
+
+      {/* Biometric Touch ID & Fingerprint Modal */}
+      <FingerprintModal
+        isOpen={showFingerprintModal}
+        onClose={() => setShowFingerprintModal(false)}
+        onSuccess={() => {
+          setShowFingerprintModal(false);
+          handleBiometricSuccess('Fingerprint');
         }}
       />
 
