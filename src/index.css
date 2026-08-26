@@ -13,11 +13,14 @@
     --accent-hover: #4f46e5;
   }
 
-  body {
+  html, body {
     background-color: #030712;
     color: #f8fafc;
     font-family: 'Plus Jakarta Sans', 'Inter', system-ui, sans-serif;
     overflow-x: hidden;
+    min-height: 100vh;
+    min-height: 100dvh;
+    -webkit-tap-highlight-color: transparent;
   }
 }
 
@@ -40,9 +43,18 @@
   background: rgba(99, 102, 241, 0.8);
 }
 
+/* Hide Scrollbar */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
 /* Glassmorphism Classes */
 .glass {
-  background: rgba(15, 23, 42, 0.75);
+  background: rgba(15, 23, 42, 0.8);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   border: 1px solid rgba(255, 255, 255, 0.08);

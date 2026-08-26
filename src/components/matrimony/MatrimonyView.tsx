@@ -210,8 +210,8 @@ export const MatrimonyView: React.FC = () => {
 
       {/* Detailed Biodata Modal */}
       {selectedProfile && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in">
-          <div className="w-full max-w-2xl max-h-[90vh] rounded-3xl bg-slate-900 border border-slate-800 shadow-2xl overflow-y-auto p-6 space-y-6">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in overflow-y-auto">
+          <div className="w-full max-w-2xl max-h-[90dvh] rounded-3xl bg-slate-900 border border-slate-800 shadow-2xl p-6 overflow-y-auto space-y-6 my-auto">
             
             <div className="flex items-center justify-between pb-3 border-b border-slate-800">
               <div className="flex items-center gap-2">
