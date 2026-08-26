@@ -26,11 +26,16 @@ export const AstrologyView: React.FC = () => {
 
   /* ========== KUNDALI GENERATOR STATE ========== */
   const [birthName, setBirthName] = useState(user.name);
-  const [birthDate, setBirthDate] = useState('1998-08-15');
-  const [birthTime, setBirthTime] = useState('06:45');
-  const [birthPlace, setBirthPlace] = useState('San Francisco, USA');
+  const [birthDate, setBirthDate] = useState(user.dateOfBirth || '1998-08-15');
+  const [birthTime, setBirthTime] = useState(user.timeOfBirth || '10:30');
+  const [birthPlace, setBirthPlace] = useState(user.placeOfBirth || 'Kollam, Kerala, India');
   const [kundaliReport, setKundaliReport] = useState(() =>
-    calculateVedicKundali(user.name, '1998-08-15', '06:45', 'San Francisco')
+    calculateVedicKundali(
+      user.name, 
+      user.dateOfBirth || '1998-08-15', 
+      user.timeOfBirth || '10:30', 
+      user.placeOfBirth || 'Kollam, Kerala, India'
+    )
   );
 
   const handleComputeKundali = (e: React.FormEvent) => {

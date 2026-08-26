@@ -13,14 +13,18 @@ import {
 } from '../types/superApp';
 
 export const INITIAL_USER: UserProfile = {
-  id: 'usr-main-01',
+  id: 'usr-1',
   name: 'Dhanya Sharma',
   avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80',
   handle: '@dhanya.tech',
   email: 'dhanya@omnilife.ai',
   zodiacSign: 'Leo',
-  bio: 'Product Designer, Tech Enthusiast & Lifelong Learner 🚀',
+  bio: 'Product Architect & Creative Technologist 🚀 Exploring AI, real estate, and lifestyle integration.',
   location: 'San Francisco, CA',
+  dateOfBirth: '1998-08-15',
+  timeOfBirth: '10:30 AM',
+  placeOfBirth: 'Kollam, Kerala, India',
+  gender: 'Female',
   isVerified: true
 };
 

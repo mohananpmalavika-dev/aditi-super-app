@@ -23,6 +23,10 @@ export interface UserProfile {
   bio: string;
   location: string;
   isVerified: boolean;
+  dateOfBirth?: string;
+  timeOfBirth?: string;
+  placeOfBirth?: string;
+  gender?: 'Male' | 'Female' | 'Non-Binary' | 'Other' | 'Prefer not to say';
   createdAt?: string;
 }
 
@@ -35,6 +39,10 @@ export interface RegisterCredentials {
   avatar: string;
   bio?: string;
   location?: string;
+  dateOfBirth?: string;
+  timeOfBirth?: string;
+  placeOfBirth?: string;
+  gender?: 'Male' | 'Female' | 'Non-Binary' | 'Other' | 'Prefer not to say';
 }
 
 export interface LoginCredentials {

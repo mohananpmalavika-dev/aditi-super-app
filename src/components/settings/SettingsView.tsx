@@ -17,6 +17,8 @@ import { useTheme } from '../../context/ThemeContext';
 import { exportBackupJSON, importBackupJSON } from '../../services/storageService';
 import confetti from 'canvas-confetti';
 
+import { searchLocations, LocationSuggestion } from '../../services/locationService';
+
 export const SettingsView: React.FC = () => {
   const { user, updateUser, properties, matrimonyProfiles, tutors, bookings, posts, chats, walletBalance, transactions, tasks, habits, resetDefaults, showToast } = useSuperApp();
   const { theme, setTheme } = useTheme();
@@ -26,10 +28,64 @@ export const SettingsView: React.FC = () => {
   const [email, setEmail] = useState(user.email);
   const [bio, setBio] = useState(user.bio);
   const [zodiac, setZodiac] = useState(user.zodiacSign);
+  const [dob, setDob] = useState(user.dateOfBirth || '1998-08-15');
+  const [tob, setTob] = useState(user.timeOfBirth || '10:30');
+  const [pob, setPob] = useState(user.placeOfBirth || 'Kollam, Kerala, India');
+  const [gender, setGender] = useState(user.gender || 'Female');
+
+  const [placeSuggestions, setPlaceSuggestions] = useState<LocationSuggestion[]>([]);
+  const [showPlaceDropdown, setShowPlaceDropdown] = useState(false);
+
+  React.useEffect(() => {
+    if (pob.length >= 2 && !pob.includes(',')) {
+      searchLocations(pob).then((results) => {
+        setPlaceSuggestions(results);
+        setShowPlaceDropdown(results.length > 0);
+      });
+    } else {
+      setPlaceSuggestions([]);
+      setShowPlaceDropdown(false);
+    }
+  }, [pob]);
+
+  const handleDobChange = (dobString: string) => {
+    setDob(dobString);
+    if (!dobString) return;
+    const date = new Date(dobString);
+    const m = date.getMonth() + 1;
+    const d = date.getDate();
+
+    let calculatedSign = 'Aries';
+    if ((m === 3 && d >= 21) || (m === 4 && d <= 19)) calculatedSign = 'Aries';
+    else if ((m === 4 && d >= 20) || (m === 5 && d <= 20)) calculatedSign = 'Taurus';
+    else if ((m === 5 && d >= 21) || (m === 6 && d <= 20)) calculatedSign = 'Gemini';
+    else if ((m === 6 && d >= 21) || (m === 7 && d <= 22)) calculatedSign = 'Cancer';
+    else if ((m === 7 && d >= 23) || (m === 8 && d <= 22)) calculatedSign = 'Leo';
+    else if ((m === 8 && d >= 23) || (m === 9 && d <= 22)) calculatedSign = 'Virgo';
+    else if ((m === 9 && d >= 23) || (m === 10 && d <= 22)) calculatedSign = 'Libra';
+    else if ((m === 10 && d >= 23) || (m === 11 && d <= 21)) calculatedSign = 'Scorpio';
+    else if ((m === 11 && d >= 22) || (m === 12 && d <= 21)) calculatedSign = 'Sagittarius';
+    else if ((m === 12 && d >= 22) || (m === 1 && d <= 19)) calculatedSign = 'Capricorn';
+    else if ((m === 1 && d >= 20) || (m === 2 && d <= 18)) calculatedSign = 'Aquarius';
+    else if ((m === 2 && d >= 19) || (m === 3 && d <= 20)) calculatedSign = 'Pisces';
+
+    setZodiac(calculatedSign);
+  };
 
   const handleProfileSave = (e: React.FormEvent) => {
     e.preventDefault();
-    updateUser({ name, handle, email, bio, zodiacSign: zodiac });
+    updateUser({ 
+      name, 
+      handle, 
+      email, 
+      bio, 
+      zodiacSign: zodiac,
+      dateOfBirth: dob,
+      timeOfBirth: tob,
+      placeOfBirth: pob,
+      location: pob,
+      gender: gender as any
+    });
     confetti({ particleCount: 40, spread: 50 });
   };
 
@@ -150,7 +206,45 @@ export const SettingsView: React.FC = () => {
               </div>
 
               <div className="space-y-1">
-                <label className="font-bold text-slate-300">Primary Zodiac Sign</label>
+                <label className="font-bold text-slate-300">Gender</label>
+                <select
+                  value={gender}
+                  onChange={(e) => setGender(e.target.value as any)}
+                  className="w-full p-2.5 rounded-xl bg-slate-950 border border-slate-700 text-xs text-white"
+                >
+                  <option value="Female">Female</option>
+                  <option value="Male">Male</option>
+                  <option value="Non-Binary">Non-Binary</option>
+                  <option value="Other">Other</option>
+                  <option value="Prefer not to say">Prefer not to say</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Date of Birth, Time of Birth, Zodiac */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="space-y-1">
+                <label className="font-bold text-slate-300">Date of Birth</label>
+                <input
+                  type="date"
+                  value={dob}
+                  onChange={(e) => handleDobChange(e.target.value)}
+                  className="w-full p-2.5 rounded-xl bg-slate-950 border border-slate-700 text-xs text-white"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="font-bold text-slate-300">Time of Birth</label>
+                <input
+                  type="time"
+                  value={tob}
+                  onChange={(e) => setTob(e.target.value)}
+                  className="w-full p-2.5 rounded-xl bg-slate-950 border border-slate-700 text-xs text-white"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="font-bold text-slate-300">Zodiac Sign</label>
                 <select
                   value={zodiac}
                   onChange={(e) => setZodiac(e.target.value)}
@@ -161,6 +255,40 @@ export const SettingsView: React.FC = () => {
                   ))}
                 </select>
               </div>
+            </div>
+
+            {/* Place of Birth with Autofill */}
+            <div className="space-y-1 relative">
+              <label className="font-bold text-slate-300">Place of Birth (Autofill)</label>
+              <input
+                type="text"
+                value={pob}
+                onChange={(e) => setPob(e.target.value)}
+                placeholder="Type city (e.g. kollam, kochi)..."
+                className="w-full p-2.5 rounded-xl bg-slate-950 border border-slate-700 text-xs text-white placeholder-slate-500"
+              />
+
+              {showPlaceDropdown && placeSuggestions.length > 0 && (
+                <div className="absolute left-0 right-0 top-full mt-1 bg-slate-900 border border-indigo-500/40 rounded-xl shadow-2xl z-50 overflow-hidden">
+                  <div className="p-1.5 bg-slate-950/80 text-[10px] font-bold text-indigo-400 uppercase tracking-wider px-3 border-b border-slate-800">
+                    Suggested Locations
+                  </div>
+                  {placeSuggestions.map((place, idx) => (
+                    <button
+                      type="button"
+                      key={idx}
+                      onClick={() => {
+                        setPob(place.formatted);
+                        setShowPlaceDropdown(false);
+                      }}
+                      className="w-full text-left px-3 py-2 text-xs text-slate-200 hover:bg-indigo-600/30 hover:text-white transition-colors flex items-center justify-between border-b border-slate-800/50 last:border-0"
+                    >
+                      <span className="font-semibold">{place.formatted}</span>
+                      <span className="text-[10px] text-slate-400">{place.country}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div className="space-y-1">
