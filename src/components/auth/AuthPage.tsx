@@ -71,8 +71,8 @@ export const AuthPage: React.FC = () => {
 
   // Sign In State & Biometric Methods
   const [signInMethod, setSignInMethod] = useState<'password' | 'pin'>('password');
-  const [loginEmail, setLoginEmail] = useState('dhanya@omnilife.ai');
-  const [loginPassword, setLoginPassword] = useState('superpass123');
+  const [loginEmail, setLoginEmail] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
   const [pinInput, setPinInput] = useState('');
   const [showFaceModal, setShowFaceModal] = useState(false);
   const [showFingerprintModal, setShowFingerprintModal] = useState(false);
@@ -227,12 +227,6 @@ export const AuthPage: React.FC = () => {
     setLoading(false);
   };
 
-  const handleQuickDemoLogin = async () => {
-    setLoading(true);
-    await login({ email: 'dhanya@omnilife.ai', password: 'demo-access-pass' });
-    setLoading(false);
-  };
-
   const handleCopyLink = async () => {
     try {
       await navigator.clipboard.writeText(appUrl);
@@ -329,16 +323,6 @@ export const AuthPage: React.FC = () => {
           >
             <QrCode className="w-4 h-4 text-indigo-400" />
             <span>Scan / Share QR</span>
-          </button>
-
-          {/* Quick Demo Login */}
-          <button
-            onClick={handleQuickDemoLogin}
-            disabled={loading}
-            className="px-4 py-2.5 rounded-2xl bg-slate-900/90 hover:bg-slate-800 border border-slate-700 text-slate-300 hover:text-white font-bold text-xs flex items-center gap-1.5 transition-all"
-          >
-            <Zap className="w-3.5 h-3.5 text-yellow-400" />
-            <span>⚡ 1-Click Demo Entry</span>
           </button>
 
         </div>
