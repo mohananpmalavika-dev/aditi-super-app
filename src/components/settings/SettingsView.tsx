@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { 
   Settings, 
   Download, 
@@ -10,11 +10,13 @@ import {
   ShieldCheck, 
   Sparkles,
   Zap,
-  CheckCircle2
+  CheckCircle2,
+  Camera
 } from 'lucide-react';
 import { useSuperApp } from '../../context/SuperAppContext';
 import { useTheme } from '../../context/ThemeContext';
 import { exportBackupJSON, importBackupJSON } from '../../services/storageService';
+import { PhotoCaptureModal } from '../auth/PhotoCaptureModal';
 import confetti from 'canvas-confetti';
 
 import { searchLocations, LocationSuggestion } from '../../services/locationService';
@@ -26,12 +28,16 @@ export const SettingsView: React.FC = () => {
   const [name, setName] = useState(user.name);
   const [handle, setHandle] = useState(user.handle);
   const [email, setEmail] = useState(user.email);
+  const [avatar, setAvatar] = useState(user.avatar);
   const [bio, setBio] = useState(user.bio);
   const [zodiac, setZodiac] = useState(user.zodiacSign);
   const [dob, setDob] = useState(user.dateOfBirth || '1998-08-15');
   const [tob, setTob] = useState(user.timeOfBirth || '10:30');
   const [pob, setPob] = useState(user.placeOfBirth || 'Kollam, Kerala, India');
   const [gender, setGender] = useState(user.gender || 'Female');
+  const [showCameraModal, setShowCameraModal] = useState(false);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [placeSuggestions, setPlaceSuggestions] = useState<LocationSuggestion[]>([]);
   const [showPlaceDropdown, setShowPlaceDropdown] = useState(false);
@@ -78,6 +84,7 @@ export const SettingsView: React.FC = () => {
       name, 
       handle, 
       email, 
+      avatar,
       bio, 
       zodiacSign: zodiac,
       dateOfBirth: dob,
@@ -157,16 +164,63 @@ export const SettingsView: React.FC = () => {
           </div>
 
           <form onSubmit={handleProfileSave} className="space-y-4 text-xs">
-            <div className="flex items-center gap-4">
-              <img
-                src={user.avatar}
-                alt={user.name}
-                className="w-16 h-16 rounded-2xl object-cover ring-2 ring-indigo-500/50"
-              />
-              <div className="space-y-1">
-                <span className="font-bold text-white block">{user.name}</span>
-                <span className="text-[11px] text-indigo-400 font-mono">{user.handle}</span>
-                <p className="text-[10px] text-slate-500">Avatar linked to verified OmniLife ID</p>
+            <div className="flex flex-col sm:flex-row sm:items-center gap-4 p-3.5 rounded-2xl bg-slate-950 border border-slate-800">
+              <div className="relative flex-shrink-0">
+                <img
+                  src={avatar}
+                  alt={name}
+                  className="w-16 h-16 rounded-2xl object-cover ring-2 ring-indigo-500/60 shadow-lg"
+                />
+                <span className="absolute -bottom-1 -right-1 p-1 rounded-lg bg-indigo-600 text-white shadow">
+                  <Camera className="w-3.5 h-3.5" />
+                </span>
+              </div>
+
+              <div className="flex-1 space-y-2">
+                <div>
+                  <span className="font-bold text-white block">{name}</span>
+                  <span className="text-[11px] text-indigo-400 font-mono">{handle}</span>
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  {/* Live Camera Snapshot */}
+                  <button
+                    type="button"
+                    onClick={() => setShowCameraModal(true)}
+                    className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold flex items-center gap-1.5 shadow-md shadow-indigo-600/30 transition-all hover:scale-105"
+                  >
+                    <Camera className="w-3.5 h-3.5" />
+                    <span>Take Live Photo</span>
+                  </button>
+
+                  {/* Device Upload */}
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      const reader = new FileReader();
+                      reader.onload = (event) => {
+                        if (event.target?.result) {
+                          setAvatar(event.target.result as string);
+                          showToast('📸 Profile photo updated!');
+                        }
+                      };
+                      reader.readAsDataURL(file);
+                    }}
+                    className="hidden"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold flex items-center gap-1.5 transition-colors border border-slate-700"
+                  >
+                    <Upload className="w-3.5 h-3.5 text-indigo-400" />
+                    <span>Upload Image</span>
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -393,6 +447,17 @@ export const SettingsView: React.FC = () => {
         </div>
 
       </div>
+
+      {/* Real-time Live Camera Photo Capture Modal */}
+      <PhotoCaptureModal
+        isOpen={showCameraModal}
+        onClose={() => setShowCameraModal(false)}
+        onCapture={(photoDataUrl) => {
+          setAvatar(photoDataUrl);
+          updateUser({ avatar: photoDataUrl });
+          showToast('📸 Live photo captured and updated as profile picture!');
+        }}
+      />
 
     </div>
   );

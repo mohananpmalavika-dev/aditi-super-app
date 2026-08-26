@@ -22,13 +22,18 @@ import {
   QrCode,
   Smartphone,
   Monitor,
-  ExternalLink
+  ExternalLink,
+  Camera,
+  Upload,
+  RefreshCw,
+  Image as ImageIcon
 } from 'lucide-react';
 import { useSuperApp } from '../../context/SuperAppContext';
 import { RegisterCredentials } from '../../types/superApp';
 import { ZODIAC_SIGNS } from '../../services/astrologyEngine';
 import { searchLocations, LocationSuggestion } from '../../services/locationService';
 import { usePWAInstall } from '../../services/pwaService';
+import { PhotoCaptureModal } from './PhotoCaptureModal';
 import confetti from 'canvas-confetti';
 
 const PRESET_AVATARS = [
@@ -74,6 +79,29 @@ export const AuthPage: React.FC = () => {
   const [regZodiac, setRegZodiac] = useState('Leo');
   const [regAvatar, setRegAvatar] = useState(PRESET_AVATARS[0]);
   const [regBio, setRegBio] = useState('Aditi Explorer & Tech Innovator 🚀');
+  const [showCameraModal, setShowCameraModal] = useState(false);
+
+  const avatarFileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleAvatarFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Check size limit (max 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      showToast('⚠️ Image size exceeds 10MB limit');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      if (event.target?.result) {
+        setRegAvatar(event.target.result as string);
+        showToast('📸 Custom profile photo loaded successfully!');
+      }
+    };
+    reader.readAsDataURL(file);
+  };
 
   // Place of Birth Autocomplete State
   const [placeSuggestions, setPlaceSuggestions] = useState<LocationSuggestion[]>([]);
@@ -544,21 +572,81 @@ export const AuthPage: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Avatar Selection */}
-                <div className="space-y-1.5">
-                  <label className="text-[11px] font-bold text-slate-300">Select Profile Avatar</label>
-                  <div className="flex items-center gap-2 overflow-x-auto pb-1">
-                    {PRESET_AVATARS.map((av, idx) => (
+                {/* Profile Photo Options: Live Camera, File Upload, and Presets */}
+                <div className="space-y-2.5 p-3 rounded-2xl bg-slate-950 border border-slate-800">
+                  <label className="text-[11px] font-bold text-slate-300 flex items-center justify-between">
+                    <span>Profile Photo (Camera, Upload or Preset)</span>
+                    <span className="text-[10px] text-indigo-400 font-mono">Live Photo Supported</span>
+                  </label>
+
+                  <div className="flex items-center gap-3">
+                    {/* Active Selected Photo Preview */}
+                    <div className="relative flex-shrink-0">
                       <img
-                        key={idx}
-                        src={av}
-                        alt="Avatar"
-                        onClick={() => setRegAvatar(av)}
-                        className={`w-9 h-9 rounded-xl object-cover cursor-pointer border-2 transition-all ${
-                          regAvatar === av ? 'border-indigo-500 scale-110' : 'border-transparent opacity-60'
-                        }`}
+                        src={regAvatar}
+                        alt="Profile Preview"
+                        className="w-14 h-14 rounded-2xl object-cover ring-2 ring-indigo-500/60 shadow-lg"
                       />
-                    ))}
+                      <span className="absolute -bottom-1 -right-1 p-1 rounded-lg bg-indigo-600 text-white shadow">
+                        <Camera className="w-3 h-3" />
+                      </span>
+                    </div>
+
+                    {/* Action Buttons: Live Camera & Device Upload */}
+                    <div className="flex-1 space-y-1.5">
+                      <div className="grid grid-cols-2 gap-1.5">
+                        
+                        {/* Real-time Camera Capture */}
+                        <button
+                          type="button"
+                          onClick={() => setShowCameraModal(true)}
+                          className="p-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] font-bold flex items-center justify-center gap-1.5 shadow-md shadow-indigo-600/30 transition-all hover:scale-105"
+                        >
+                          <Camera className="w-3.5 h-3.5" />
+                          <span>Take Photo</span>
+                        </button>
+
+                        {/* File Upload */}
+                        <input
+                          type="file"
+                          ref={avatarFileInputRef}
+                          accept="image/*"
+                          onChange={handleAvatarFileUpload}
+                          className="hidden"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => avatarFileInputRef.current?.click()}
+                          className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-[11px] font-bold flex items-center justify-center gap-1.5 transition-colors border border-slate-700"
+                        >
+                          <Upload className="w-3.5 h-3.5 text-indigo-400" />
+                          <span>Upload File</span>
+                        </button>
+
+                      </div>
+
+                      <p className="text-[10px] text-slate-400 leading-tight">
+                        Snap a live portrait with your phone/PC camera or choose from gallery.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Preset Avatars Carousel */}
+                  <div className="space-y-1 pt-1 border-t border-slate-800/80">
+                    <span className="text-[10px] font-semibold text-slate-400">Or choose a preset avatar:</span>
+                    <div className="flex items-center gap-2 overflow-x-auto pb-1">
+                      {PRESET_AVATARS.map((av, idx) => (
+                        <img
+                          key={idx}
+                          src={av}
+                          alt="Avatar Option"
+                          onClick={() => setRegAvatar(av)}
+                          className={`w-8 h-8 rounded-xl object-cover cursor-pointer border-2 transition-all flex-shrink-0 ${
+                            regAvatar === av ? 'border-indigo-500 scale-110 shadow-md shadow-indigo-500/40' : 'border-transparent opacity-60 hover:opacity-100'
+                          }`}
+                        />
+                      ))}
+                    </div>
                   </div>
                 </div>
 
@@ -688,6 +776,16 @@ export const AuthPage: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Real-time Live Camera Photo Capture Modal */}
+      <PhotoCaptureModal
+        isOpen={showCameraModal}
+        onClose={() => setShowCameraModal(false)}
+        onCapture={(photoDataUrl) => {
+          setRegAvatar(photoDataUrl);
+          showToast('📸 Live photo captured and set as profile picture!');
+        }}
+      />
 
     </div>
   );
