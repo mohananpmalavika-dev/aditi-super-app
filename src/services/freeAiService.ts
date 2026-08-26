@@ -54,7 +54,6 @@ export async function queryOmniBrain(
   userQuery: string,
   appContext: {
     userName: string;
-    walletBalance: number;
     tasksCount: number;
     activePropertiesCount: number;
   }
@@ -153,34 +152,18 @@ export async function queryOmniBrain(
       'Create an anime illustration of a coffee shop in the rain',
       'Open the Video Editor timeline'
     ];
-  } else if (queryLower.includes('money') || queryLower.includes('wallet') || queryLower.includes('balance') || queryLower.includes('pay') || queryLower.includes('transfer')) {
-    thoughts.push({
-      step: 'Vertical Dispatch: Digital Wallet',
-      details: `Retrieved wallet status: $${appContext.walletBalance.toFixed(2)} available.`,
-      timestamp: new Date().toLocaleTimeString()
-    });
-    responseText = `Your current Digital Wallet balance is **$${appContext.walletBalance.toFixed(2)}**. You can send instant P2P payments, pay electricity or internet bills, or view your visual spending analytics.`;
-    dispatchedAction = {
-      vertical: 'wallet',
-      actionSummary: 'Retrieved Digital Wallet balance & payment dock'
-    };
-    suggestedPrompts = [
-      'Send $50 to Alex Rivera',
-      'Pay monthly electricity bill',
-      'View my monthly spend breakdown'
-    ];
   } else {
     thoughts.push({
       step: 'General LifeOS Assistant',
       details: 'Synthesized global assistant response with multi-vertical shortcuts.',
       timestamp: new Date().toLocaleTimeString()
     });
-    responseText = `Hello ${appContext.userName}! I am **Aditi Brain**, your personal AI Core. I have complete context across all 12 modules of Aditi. I can manage your tasks, find properties, search tutors, match matrimony profiles, generate AI images, read your horoscope, or handle your wallet. What shall we do first?`;
+    responseText = `Hello ${appContext.userName}! I am **Aditi Brain**, your personal AI Core. I have complete context across all modules of Aditi. I can manage your tasks, find properties, search tutors, match matrimony profiles, generate AI images, read your horoscope, or launch video calls. What shall we do first?`;
     suggestedPrompts = [
       'Generate a futuristic neon city wallpaper',
-      'Find me a coding tutor for React & TypeScript',
-      'Show 3BHK luxury apartments for rent',
-      'Give me today\'s Tarot reading'
+      'Show 3BHK villas for rent',
+      'What is my Vedic horoscope today?',
+      'Find me a coding tutor for React & TypeScript'
     ];
   }
 

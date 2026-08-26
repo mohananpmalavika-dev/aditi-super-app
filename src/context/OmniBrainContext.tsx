@@ -33,7 +33,7 @@ const INITIAL_BRAIN_MESSAGES: BrainMessage[] = [
 ];
 
 export const OmniBrainProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user, walletBalance, tasks, properties, showToast } = useSuperApp();
+  const { user, tasks, properties, showToast } = useSuperApp();
   const [messages, setMessages] = useState<BrainMessage[]>(INITIAL_BRAIN_MESSAGES);
   const [isThinking, setIsThinking] = useState(false);
   const [activeThoughtStream, setActiveThoughtStream] = useState<BrainThoughtTrace[]>([]);
@@ -66,7 +66,6 @@ export const OmniBrainProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     try {
       const response = await queryOmniBrain(query, {
         userName: user.name,
-        walletBalance,
         tasksCount: tasks.length,
         activePropertiesCount: properties.length
       });

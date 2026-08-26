@@ -26,7 +26,6 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({ onOpenLauncher }) =>
     { id: 'media_studio', label: 'Studio', icon: <Palette className="w-4 h-4 sm:w-5 sm:h-5" /> },
     { id: 'realestate', label: 'Property', icon: <Building2 className="w-4 h-4 sm:w-5 sm:h-5" /> },
     { id: 'matrimony', label: 'Match', icon: <Heart className="w-4 h-4 sm:w-5 sm:h-5" /> },
-    { id: 'wallet', label: 'Wallet', icon: <Wallet className="w-4 h-4 sm:w-5 sm:h-5" /> },
     { id: 'productivity', label: 'Tasks', icon: <CheckSquare className="w-4 h-4 sm:w-5 sm:h-5" /> },
     { id: 'launcher', label: 'All Apps', icon: <Grid className="w-4 h-4 sm:w-5 sm:h-5" /> },
   ];

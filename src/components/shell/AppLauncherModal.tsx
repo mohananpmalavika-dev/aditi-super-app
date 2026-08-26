@@ -112,14 +112,7 @@ const MINI_APPS: MiniAppMeta[] = [
     badge: 'Live',
     color: 'from-sky-500 to-indigo-600'
   },
-  {
-    id: 'wallet',
-    name: 'Digital Wallet',
-    category: 'daily',
-    icon: <Wallet className="w-6 h-6" />,
-    description: 'P2P Payments, Bill Recharges & Visual Spending Analytics',
-    color: 'from-emerald-600 to-green-600'
-  },
+
   {
     id: 'productivity',
     name: 'Tasks & Habits',

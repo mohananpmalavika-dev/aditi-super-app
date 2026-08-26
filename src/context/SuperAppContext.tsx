@@ -10,12 +10,10 @@ import {
   MOCK_SOCIAL_POSTS,
   MOCK_STORIES,
   MOCK_TASKS,
-  MOCK_TRANSACTIONS,
   MOCK_TUTORS
 } from '../data/mockData';
 import {
   addCloudComment,
-  addCloudTransaction,
   cloudLoginUser,
   cloudLogoutUser,
   cloudRegisterUser,
@@ -32,7 +30,6 @@ import {
   getCloudTasks,
   getCloudTutors,
   getCloudUserProfile,
-  getCloudWallet,
   isSupabaseConfigured,
   likeCloudPost,
   sendCloudInterestToMatrimony,
@@ -57,8 +54,7 @@ import {
   TaskItem,
   TutorBooking,
   TutorProfile,
-  UserProfile,
-  WalletTransaction
+  UserProfile
 } from '../types/superApp';
 
 interface SuperAppContextType {
@@ -101,12 +97,6 @@ interface SuperAppContextType {
   sendChatMessage: (chatId: string, text: string) => Promise<void>;
   startNewChatWith: (name: string, avatar: string, role: string, initialMessage?: string) => string;
   
-  // Digital Wallet
-  walletBalance: number;
-  transactions: WalletTransaction[];
-  sendMoney: (recipient: string, amount: number, category?: WalletTransaction['category']) => Promise<boolean>;
-  addMoneyToWallet: (amount: number) => Promise<void>;
-  
   // Productivity
   tasks: TaskItem[];
   addTask: (task: Omit<TaskItem, 'id'>) => Promise<void>;
@@ -131,7 +121,7 @@ interface SuperAppContextType {
 const SuperAppContext = createContext<SuperAppContextType | undefined>(undefined);
 
 export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(true); // Default active demo session
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(true);
   const [activeMiniApp, setActiveMiniApp] = useState<MiniAppId>('home');
   const [user, setUser] = useState<UserProfile>(INITIAL_USER);
   const [properties, setProperties] = useState<RealEstateProperty[]>(MOCK_PROPERTIES);
@@ -142,8 +132,6 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [stories] = useState<SocialStory[]>(MOCK_STORIES);
   const [chats, setChats] = useState<ChatConversation[]>(MOCK_CHATS);
   const [activeChatId, setActiveChatId] = useState<string>('chat-brain');
-  const [walletBalance, setWalletBalance] = useState<number>(2450.00);
-  const [transactions, setTransactions] = useState<WalletTransaction[]>(MOCK_TRANSACTIONS);
   const [tasks, setTasks] = useState<TaskItem[]>(MOCK_TASKS);
   const [habits, setHabits] = useState<HabitItem[]>(MOCK_HABITS);
   const [alerts, setAlerts] = useState<ProactiveAlert[]>(MOCK_ALERTS);
@@ -153,7 +141,7 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   useEffect(() => {
     async function loadCloudData() {
       try {
-        const [u, p, m, t, b, pos, ch, w, tsk, h] = await Promise.all([
+        const [u, p, m, t, b, pos, ch, tsk, h] = await Promise.all([
           getCloudUserProfile(),
           getCloudProperties(),
           getCloudMatrimonyProfiles(),
@@ -161,7 +149,6 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           getCloudBookings(),
           getCloudPosts(),
           getCloudChats(),
-          getCloudWallet(),
           getCloudTasks(),
           getCloudHabits()
         ]);
@@ -172,8 +159,6 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         setBookings(b);
         setPosts(pos);
         setChats(ch);
-        setWalletBalance(w.balance);
-        setTransactions(w.transactions);
         setTasks(tsk);
         setHabits(h);
       } catch (e) {
@@ -265,23 +250,6 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const tutor = tutors.find((t) => t.id === tutorId);
     if (!tutor) return false;
 
-    if (walletBalance < tutor.hourlyRate) {
-      showToast('⚠️ Insufficient wallet balance! Please add funds in Digital Wallet.');
-      return false;
-    }
-
-    const nextBal = walletBalance - tutor.hourlyRate;
-    const newTx: WalletTransaction = {
-      id: `tx-${Date.now()}`,
-      type: 'debit',
-      title: `Tutoring Session with ${tutor.name}`,
-      category: 'Tutor',
-      amount: tutor.hourlyRate,
-      recipientOrSender: tutor.name,
-      timestamp: 'Just now',
-      status: 'Completed'
-    };
-
     const newBooking: TutorBooking = {
       id: `book-${Date.now()}`,
       tutorId,
@@ -304,19 +272,16 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     };
 
     // Commit to Cloud Database
-    const [wRes, bRes, tRes] = await Promise.all([
-      addCloudTransaction(newTx, nextBal),
+    const [bRes, tRes] = await Promise.all([
       createCloudBooking(newBooking),
       createCloudTask(studyTask)
     ]);
 
-    setWalletBalance(wRes.balance);
-    setTransactions(wRes.transactions);
     setBookings(bRes);
     setTasks(tRes);
 
     confetti({ particleCount: 80, spread: 70, origin: { y: 0.6 } });
-    showToast(`🎉 Cloud: Session booked & synced across database!`);
+    showToast(`🎉 Mentorship session scheduled with ${tutor.name}!`);
     return true;
   };
 
@@ -436,54 +401,6 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return newChatId;
   };
 
-  // Wallet
-  const sendMoney = async (recipient: string, amount: number, category: WalletTransaction['category'] = 'Transfer'): Promise<boolean> => {
-    if (amount <= 0 || amount > walletBalance) {
-      showToast('⚠️ Invalid amount or insufficient balance!');
-      return false;
-    }
-
-    const nextBal = walletBalance - amount;
-    const newTx: WalletTransaction = {
-      id: `tx-${Date.now()}`,
-      type: 'debit',
-      title: `Transfer to ${recipient}`,
-      category,
-      amount,
-      recipientOrSender: recipient,
-      timestamp: 'Just now',
-      status: 'Completed'
-    };
-
-    const wRes = await addCloudTransaction(newTx, nextBal);
-    setWalletBalance(wRes.balance);
-    setTransactions(wRes.transactions);
-    confetti({ particleCount: 70, spread: 60 });
-    showToast(`💸 Cloud: Sent $${amount.toFixed(2)} to ${recipient}!`);
-    return true;
-  };
-
-  const addMoneyToWallet = async (amount: number) => {
-    if (amount <= 0) return;
-    const nextBal = walletBalance + amount;
-    const newTx: WalletTransaction = {
-      id: `tx-${Date.now()}`,
-      type: 'credit',
-      title: 'Wallet Top-Up',
-      category: 'Services',
-      amount,
-      recipientOrSender: 'Bank Account (Linked)',
-      timestamp: 'Just now',
-      status: 'Completed'
-    };
-
-    const wRes = await addCloudTransaction(newTx, nextBal);
-    setWalletBalance(wRes.balance);
-    setTransactions(wRes.transactions);
-    confetti({ particleCount: 60, spread: 50 });
-    showToast(`💳 Cloud: Added $${amount.toFixed(2)} to Digital Wallet!`);
-  };
-
   // Tasks
   const addTask = async (taskData: Omit<TaskItem, 'id'>) => {
     const newTask: TaskItem = {
@@ -528,8 +445,6 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     setTutors(MOCK_TUTORS);
     setPosts(MOCK_SOCIAL_POSTS);
     setChats(MOCK_CHATS);
-    setWalletBalance(2450.00);
-    setTransactions(MOCK_TRANSACTIONS);
     setTasks(MOCK_TASKS);
     setHabits(MOCK_HABITS);
     setAlerts(MOCK_ALERTS);
@@ -566,10 +481,6 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         setActiveChatId,
         sendChatMessage,
         startNewChatWith,
-        walletBalance,
-        transactions,
-        sendMoney,
-        addMoneyToWallet,
         tasks,
         addTask,
         toggleTaskStatus,

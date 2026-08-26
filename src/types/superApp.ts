@@ -8,7 +8,6 @@ export type MiniAppId =
   | 'matrimony'
   | 'tutor'
   | 'chat'
-  | 'wallet'
   | 'productivity'
   | 'utilities'
   | 'settings';

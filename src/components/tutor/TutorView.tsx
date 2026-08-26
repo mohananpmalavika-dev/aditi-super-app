@@ -17,7 +17,7 @@ import { useSuperApp } from '../../context/SuperAppContext';
 import { TutorCategory, TutorProfile } from '../../types/superApp';
 
 export const TutorView: React.FC = () => {
-  const { tutors, bookings, bookTutorSession, startNewChatWith, showToast, walletBalance } = useSuperApp();
+  const { tutors, bookings, bookTutorSession, startNewChatWith, showToast } = useSuperApp();
   
   const [selectedCategory, setSelectedCategory] = useState<TutorCategory | 'All'>('All');
   const [searchSubject, setSearchSubject] = useState('');
@@ -277,15 +277,15 @@ export const TutorView: React.FC = () => {
                 </div>
               </div>
 
-              {/* Wallet deduction info */}
+              {/* Session Rate Info */}
               <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-between">
                 <div>
-                  <span className="text-[10px] text-slate-400 block">Total Due (1 Hour)</span>
-                  <span className="font-extrabold text-sm text-emerald-400">${selectedTutor.hourlyRate}.00</span>
+                  <span className="text-[10px] text-slate-400 block">Session Fee</span>
+                  <span className="font-extrabold text-sm text-emerald-400">${selectedTutor.hourlyRate}.00 / hr</span>
                 </div>
                 <div className="text-right">
-                  <span className="text-[10px] text-slate-400 block">Wallet Balance</span>
-                  <span className="font-bold text-xs text-slate-200">${walletBalance.toFixed(2)}</span>
+                  <span className="text-[10px] text-slate-400 block">Payment Method</span>
+                  <span className="font-bold text-xs text-emerald-300">Direct Mentorship Booking</span>
                 </div>
               </div>
 
@@ -301,7 +301,7 @@ export const TutorView: React.FC = () => {
                   type="submit"
                   className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold flex items-center gap-1.5 shadow-md shadow-emerald-500/25"
                 >
-                  <span>Pay & Confirm Booking</span>
+                  <span>Confirm Mentorship Booking</span>
                 </button>
               </div>
 

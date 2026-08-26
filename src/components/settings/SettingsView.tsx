@@ -20,7 +20,7 @@ import confetti from 'canvas-confetti';
 import { searchLocations, LocationSuggestion } from '../../services/locationService';
 
 export const SettingsView: React.FC = () => {
-  const { user, updateUser, properties, matrimonyProfiles, tutors, bookings, posts, chats, walletBalance, transactions, tasks, habits, resetDefaults, showToast } = useSuperApp();
+  const { user, updateUser, properties, matrimonyProfiles, tutors, bookings, posts, chats, tasks, habits, resetDefaults, showToast } = useSuperApp();
   const { theme, setTheme } = useTheme();
 
   const [name, setName] = useState(user.name);
@@ -100,8 +100,6 @@ export const SettingsView: React.FC = () => {
       bookings,
       posts,
       chats,
-      walletBalance,
-      transactions,
       tasks,
       habits
     };

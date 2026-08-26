@@ -18,7 +18,6 @@ import { RealEstateView } from './components/realestate/RealEstateView';
 import { MatrimonyView } from './components/matrimony/MatrimonyView';
 import { TutorView } from './components/tutor/TutorView';
 import { LiveChatMessenger } from './components/chat/LiveChatMessenger';
-import { DigitalWalletView } from './components/wallet/DigitalWalletView';
 import { TasksAndCalendar } from './components/productivity/TasksAndCalendar';
 import { UtilitiesView } from './components/utilities/UtilitiesView';
 import { SettingsView } from './components/settings/SettingsView';
@@ -55,8 +54,6 @@ const SuperAppContent: React.FC = () => {
         return <TutorView />;
       case 'chat':
         return <LiveChatMessenger />;
-      case 'wallet':
-        return <DigitalWalletView />;
       case 'productivity':
         return <TasksAndCalendar />;
       case 'utilities':

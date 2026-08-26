@@ -22,7 +22,7 @@ interface TopHeaderProps {
 }
 
 export const TopHeader: React.FC<TopHeaderProps> = ({ onOpenLauncher }) => {
-  const { user, walletBalance, alerts, dismissAlert, setActiveMiniApp, logout } = useSuperApp();
+  const { user, alerts, dismissAlert, setActiveMiniApp, logout } = useSuperApp();
   const { theme, toggleTheme } = useTheme();
   const { toggleAgentDrawer, askBrain } = useOmniBrain();
   
@@ -112,15 +112,6 @@ export const TopHeader: React.FC<TopHeaderProps> = ({ onOpenLauncher }) => {
             <Sparkles className="w-4 h-4 animate-spin-slow text-yellow-300" />
             <span className="hidden sm:inline">Aditi Brain AI</span>
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
-          </button>
-
-          {/* Quick Wallet Balance Pill */}
-          <button
-            onClick={() => setActiveMiniApp('wallet')}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-800/90 hover:bg-slate-700/80 border border-slate-700/80 text-xs font-semibold text-slate-200 transition-colors"
-          >
-            <Wallet className="w-4 h-4 text-emerald-400" />
-            <span>${walletBalance.toFixed(2)}</span>
           </button>
 
           {/* Proactive Notification Alerts */}
@@ -237,17 +228,6 @@ export const TopHeader: React.FC<TopHeaderProps> = ({ onOpenLauncher }) => {
                   >
                     <span>⚙️</span>
                     <span>Account Settings</span>
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      setActiveMiniApp('wallet');
-                      setShowUserMenu(false);
-                    }}
-                    className="w-full p-2 rounded-xl text-left text-slate-300 hover:bg-slate-800 hover:text-white transition-colors flex items-center gap-2"
-                  >
-                    <span>💳</span>
-                    <span>Wallet (${walletBalance.toFixed(2)})</span>
                   </button>
 
                   <div className="pt-2 border-t border-slate-800">

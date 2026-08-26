@@ -24,7 +24,6 @@ import { MiniAppId } from '../../types/superApp';
 export const SuperAppHome: React.FC = () => {
   const { 
     user, 
-    walletBalance, 
     tasks, 
     toggleTaskStatus, 
     habits, 
@@ -144,7 +143,7 @@ export const SuperAppHome: React.FC = () => {
             { id: 'realestate', name: 'Real Estate', icon: <Building2 className="w-5 h-5" />, desc: 'Luxury Buy & Rent', color: 'from-amber-500 to-orange-600' },
             { id: 'matrimony', name: 'Matrimony', icon: <Heart className="w-5 h-5" />, desc: 'Verified Matches', color: 'from-rose-500 to-pink-600' },
             { id: 'tutor', name: 'Tutor Academy', icon: <GraduationCap className="w-5 h-5" />, desc: '1-on-1 Mentorship', color: 'from-emerald-500 to-teal-600' },
-            { id: 'wallet', name: 'Digital Wallet', icon: <Wallet className="w-5 h-5" />, desc: `$${walletBalance.toFixed(2)} Balance`, color: 'from-blue-600 to-indigo-600' },
+            { id: 'chat', name: 'AditiChat & Calls', icon: <Send className="w-5 h-5" />, desc: 'P2P Video & Voice', color: 'from-blue-600 to-indigo-600' },
           ].map((app) => (
             <button
               key={app.id}
