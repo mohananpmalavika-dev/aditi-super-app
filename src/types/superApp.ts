@@ -23,6 +23,23 @@ export interface UserProfile {
   bio: string;
   location: string;
   isVerified: boolean;
+  createdAt?: string;
+}
+
+export interface RegisterCredentials {
+  name: string;
+  email: string;
+  password: string;
+  handle: string;
+  zodiacSign: string;
+  avatar: string;
+  bio?: string;
+  location?: string;
+}
+
+export interface LoginCredentials {
+  email: string;
+  password: string;
 }
 
 /* ==================== REAL ESTATE ==================== */

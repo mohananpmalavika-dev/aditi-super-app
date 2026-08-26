@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { ThemeProvider } from './context/ThemeContext';
 import { SuperAppProvider, useSuperApp } from './context/SuperAppContext';
-import { OmniBrainProvider, useOmniBrain } from './context/OmniBrainContext';
+import { OmniBrainProvider } from './context/OmniBrainContext';
 import { TopHeader } from './components/shell/TopHeader';
 import { BottomNavBar } from './components/shell/BottomNavBar';
 import { AppLauncherModal } from './components/shell/AppLauncherModal';
 import { OmniBrainDrawer } from './components/shell/OmniBrainDrawer';
 import { ToastContainer } from './components/shell/ToastContainer';
+import { AuthPage } from './components/auth/AuthPage';
 
 // Mini-App Views
 import { SuperAppHome } from './components/hub/SuperAppHome';
@@ -23,8 +24,18 @@ import { UtilitiesView } from './components/utilities/UtilitiesView';
 import { SettingsView } from './components/settings/SettingsView';
 
 const SuperAppContent: React.FC = () => {
-  const { activeMiniApp } = useSuperApp();
+  const { activeMiniApp, isAuthenticated } = useSuperApp();
   const [isLauncherOpen, setIsLauncherOpen] = useState(false);
+
+  // If user is not authenticated, show the Login/Registration screen
+  if (!isAuthenticated) {
+    return (
+      <>
+        <AuthPage />
+        <ToastContainer />
+      </>
+    );
+  }
 
   const renderActiveView = () => {
     switch (activeMiniApp) {

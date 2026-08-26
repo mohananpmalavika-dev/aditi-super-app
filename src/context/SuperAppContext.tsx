@@ -16,6 +16,9 @@ import {
 import {
   addCloudComment,
   addCloudTransaction,
+  cloudLoginUser,
+  cloudLogoutUser,
+  cloudRegisterUser,
   createCloudBooking,
   createCloudPost,
   createCloudTask,
@@ -43,10 +46,12 @@ import {
 import {
   ChatConversation,
   HabitItem,
+  LoginCredentials,
   MatrimonyProfile,
   MiniAppId,
   ProactiveAlert,
   RealEstateProperty,
+  RegisterCredentials,
   SocialPost,
   SocialStory,
   TaskItem,
@@ -57,6 +62,12 @@ import {
 } from '../types/superApp';
 
 interface SuperAppContextType {
+  // Authentication
+  isAuthenticated: boolean;
+  login: (creds: LoginCredentials) => Promise<{ success: boolean; error?: string }>;
+  register: (creds: RegisterCredentials) => Promise<{ success: boolean; error?: string }>;
+  logout: () => Promise<void>;
+  
   activeMiniApp: MiniAppId;
   setActiveMiniApp: (app: MiniAppId) => void;
   user: UserProfile;
@@ -120,6 +131,7 @@ interface SuperAppContextType {
 const SuperAppContext = createContext<SuperAppContextType | undefined>(undefined);
 
 export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(true); // Default active demo session
   const [activeMiniApp, setActiveMiniApp] = useState<MiniAppId>('home');
   const [user, setUser] = useState<UserProfile>(INITIAL_USER);
   const [properties, setProperties] = useState<RealEstateProperty[]>(MOCK_PROPERTIES);
@@ -137,7 +149,7 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [alerts, setAlerts] = useState<ProactiveAlert[]>(MOCK_ALERTS);
   const [toast, setToast] = useState<string | null>(null);
 
-  // Initial Load from Cloud Database API (No LocalStorage)
+  // Initial Load from Cloud Database API
   useEffect(() => {
     async function loadCloudData() {
       try {
@@ -174,6 +186,51 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const showToast = (msg: string) => {
     setToast(msg);
     setTimeout(() => setToast(null), 3500);
+  };
+
+  /* ==================== AUTHENTICATION ACTIONS ==================== */
+  const login = async (creds: LoginCredentials): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const res = await cloudLoginUser(creds);
+      if (res.error) {
+        showToast(`⚠️ ${res.error}`);
+        return { success: false, error: res.error };
+      }
+      setUser(res.user);
+      setIsAuthenticated(true);
+      setActiveMiniApp('home');
+      confetti({ particleCount: 70, spread: 60, origin: { y: 0.6 } });
+      showToast(`Welcome back, ${res.user.name}! 🌟`);
+      return { success: true };
+    } catch (err: any) {
+      showToast('⚠️ Authentication failed. Please try again.');
+      return { success: false, error: err.message };
+    }
+  };
+
+  const register = async (creds: RegisterCredentials): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const res = await cloudRegisterUser(creds);
+      if (res.error) {
+        showToast(`⚠️ ${res.error}`);
+        return { success: false, error: res.error };
+      }
+      setUser(res.user);
+      setIsAuthenticated(true);
+      setActiveMiniApp('home');
+      confetti({ particleCount: 90, spread: 80, origin: { y: 0.6 } });
+      showToast(`🎉 Registration complete! Welcome to Aditi, ${res.user.name}!`);
+      return { success: true };
+    } catch (err: any) {
+      showToast('⚠️ Registration error. Please try again.');
+      return { success: false, error: err.message };
+    }
+  };
+
+  const logout = async (): Promise<void> => {
+    await cloudLogoutUser();
+    setIsAuthenticated(false);
+    showToast('👋 You have been logged out securely.');
   };
 
   const updateUser = async (updated: Partial<UserProfile>) => {
@@ -483,6 +540,10 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   return (
     <SuperAppContext.Provider
       value={{
+        isAuthenticated,
+        login,
+        register,
+        logout,
         activeMiniApp,
         setActiveMiniApp,
         user,

@@ -22,12 +22,13 @@ interface TopHeaderProps {
 }
 
 export const TopHeader: React.FC<TopHeaderProps> = ({ onOpenLauncher }) => {
-  const { user, walletBalance, alerts, dismissAlert, setActiveMiniApp } = useSuperApp();
+  const { user, walletBalance, alerts, dismissAlert, setActiveMiniApp, logout } = useSuperApp();
   const { theme, toggleTheme } = useTheme();
   const { toggleAgentDrawer, askBrain } = useOmniBrain();
   
   const [searchQuery, setSearchQuery] = useState('');
   const [showAlertsPopover, setShowAlertsPopover] = useState(false);
+  const [showUserMenu, setShowUserMenu] = useState(false);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -197,17 +198,74 @@ export const TopHeader: React.FC<TopHeaderProps> = ({ onOpenLauncher }) => {
             )}
           </button>
 
-          {/* User Profile Avatar */}
-          <button
-            onClick={() => setActiveMiniApp('settings')}
-            className="flex items-center gap-2 p-1 rounded-xl hover:bg-slate-800 transition-colors"
-          >
-            <img
-              src={user.avatar}
-              alt={user.name}
-              className="w-8 h-8 rounded-full object-cover ring-2 ring-indigo-500/50"
-            />
-          </button>
+          {/* User Profile Avatar & Dropdown */}
+          <div className="relative">
+            <button
+              onClick={() => setShowUserMenu(!showUserMenu)}
+              className="flex items-center gap-2 p-1 rounded-xl hover:bg-slate-800 transition-colors focus:outline-none"
+            >
+              <img
+                src={user.avatar}
+                alt={user.name}
+                className="w-8 h-8 rounded-full object-cover ring-2 ring-indigo-500/50"
+              />
+            </button>
+
+            {/* User Profile Dropdown */}
+            {showUserMenu && (
+              <div className="absolute right-0 mt-2 w-64 rounded-2xl bg-slate-900 border border-slate-800 shadow-2xl p-4 z-50 animate-in fade-in slide-in-from-top-2 space-y-3">
+                <div className="flex items-center gap-3 pb-3 border-b border-slate-800">
+                  <img
+                    src={user.avatar}
+                    alt={user.name}
+                    className="w-10 h-10 rounded-xl object-cover ring-2 ring-indigo-500/40"
+                  />
+                  <div className="min-w-0">
+                    <h4 className="font-bold text-xs text-white truncate">{user.name}</h4>
+                    <p className="text-[11px] text-indigo-400 font-mono truncate">{user.handle}</p>
+                    <span className="text-[10px] text-slate-400 font-semibold">{user.zodiacSign} ♌</span>
+                  </div>
+                </div>
+
+                <div className="space-y-1 text-xs">
+                  <button
+                    onClick={() => {
+                      setActiveMiniApp('settings');
+                      setShowUserMenu(false);
+                    }}
+                    className="w-full p-2 rounded-xl text-left text-slate-300 hover:bg-slate-800 hover:text-white transition-colors flex items-center gap-2"
+                  >
+                    <span>⚙️</span>
+                    <span>Account Settings</span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setActiveMiniApp('wallet');
+                      setShowUserMenu(false);
+                    }}
+                    className="w-full p-2 rounded-xl text-left text-slate-300 hover:bg-slate-800 hover:text-white transition-colors flex items-center gap-2"
+                  >
+                    <span>💳</span>
+                    <span>Wallet (${walletBalance.toFixed(2)})</span>
+                  </button>
+
+                  <div className="pt-2 border-t border-slate-800">
+                    <button
+                      onClick={() => {
+                        setShowUserMenu(false);
+                        logout();
+                      }}
+                      className="w-full p-2 rounded-xl text-left font-bold text-rose-400 hover:bg-rose-500/10 transition-colors flex items-center gap-2"
+                    >
+                      <span>🚪</span>
+                      <span>Log Out</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
 
         </div>
       </div>
