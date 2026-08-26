@@ -230,6 +230,26 @@ export const TopHeader: React.FC<TopHeaderProps> = ({ onOpenLauncher }) => {
                     <span>Account Settings</span>
                   </button>
 
+                  <button
+                    onClick={() => {
+                      setShowUserMenu(false);
+                      if (navigator.share) {
+                        navigator.share({
+                          title: 'Aditi Super App',
+                          text: 'Explore Aditi Super App on malabarbazaar.shop',
+                          url: window.location.origin
+                        });
+                      } else {
+                        const waText = encodeURIComponent(`Explore Aditi Super App at ${window.location.origin}`);
+                        window.open(`https://api.whatsapp.com/send?text=${waText}`, '_blank');
+                      }
+                    }}
+                    className="w-full p-2 rounded-xl text-left text-indigo-300 hover:bg-slate-800 hover:text-white transition-colors flex items-center gap-2"
+                  >
+                    <span>📱</span>
+                    <span>Share App / QR Code</span>
+                  </button>
+
                   <div className="pt-2 border-t border-slate-800">
                     <button
                       onClick={() => {

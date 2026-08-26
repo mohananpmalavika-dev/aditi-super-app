@@ -1,0 +1,20 @@
+{
+  "name": "Aditi - The Boundless Super App",
+  "short_name": "Aditi",
+  "description": "The Boundless All-in-One LifeOS & Super App (Creative AI, Real Estate, Matrimony, Tutors, Astrology, and P2P Chat)",
+  "start_url": "/",
+  "id": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#030712",
+  "theme_color": "#4f46e5",
+  "categories": ["lifestyle", "productivity", "utilities", "social"],
+  "icons": [
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='128' fill='%234f46e5'/><text x='50%' y='65%' font-size='280' text-anchor='middle' fill='white'>🌐</text></svg>",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

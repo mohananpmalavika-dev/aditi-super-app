@@ -121,7 +121,7 @@ interface SuperAppContextType {
 const SuperAppContext = createContext<SuperAppContextType | undefined>(undefined);
 
 export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(true);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [activeMiniApp, setActiveMiniApp] = useState<MiniAppId>('home');
   const [user, setUser] = useState<UserProfile>(INITIAL_USER);
   const [properties, setProperties] = useState<RealEstateProperty[]>(MOCK_PROPERTIES);
