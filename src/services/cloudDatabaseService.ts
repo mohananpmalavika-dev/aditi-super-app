@@ -228,6 +228,85 @@ export async function cloudLoginUser(creds: LoginCredentials): Promise<{ user: U
   return { user: dbResult.user };
 }
 
+export async function cloudGoogleAuthUser(googleUserData?: {
+  name: string;
+  email: string;
+  avatar?: string;
+}): Promise<{ user: UserProfile; error?: string }> {
+  // If payload provided (direct Google authentication)
+  if (googleUserData) {
+    if (isDummyOrDisposableAccount(googleUserData.email)) {
+      return {
+        user: cloudState.user,
+        error: '❌ Dummy and disposable emails are blocked. Please use a valid Google / Gmail account.'
+      };
+    }
+
+    const cleanEmail = googleUserData.email.trim().toLowerCase();
+
+    // 1. Check if user already exists in DB
+    const existingDbUser = await dbFindUserByEmail(cleanEmail);
+    if (existingDbUser) {
+      const userProfile: UserProfile = {
+        id: existingDbUser.id,
+        name: existingDbUser.name,
+        email: existingDbUser.email,
+        handle: existingDbUser.handle,
+        avatar: existingDbUser.avatar || googleUserData.avatar || INITIAL_USER.avatar,
+        zodiacSign: existingDbUser.zodiacSign || 'Leo',
+        bio: existingDbUser.bio || 'Aditi Google-Verified Member 🌟',
+        location: existingDbUser.location || 'Kozhikode, Kerala, India',
+        isVerified: true
+      };
+      cloudState.user = userProfile;
+      return { user: userProfile };
+    }
+
+    // 2. User does not exist -> Automatically write and create user in DB
+    const randomPass = 'GoogleAuth_' + Math.random().toString(36).substring(2, 12);
+    const passwordHash = await hashPassword(randomPass);
+
+    const creds: RegisterCredentials = {
+      name: googleUserData.name.trim() || cleanEmail.split('@')[0],
+      email: cleanEmail,
+      password: randomPass,
+      handle: `@${cleanEmail.split('@')[0]}`,
+      avatar: googleUserData.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300',
+      location: 'Kozhikode, Kerala, India',
+      bio: 'Google Verified Member 🌟',
+      zodiacSign: 'Leo'
+    };
+
+    const regResult = await dbRegisterUser(creds, passwordHash);
+    if (!regResult.success || !regResult.user) {
+      return {
+        user: cloudState.user,
+        error: regResult.error || '❌ Failed to create Google account in database.'
+      };
+    }
+
+    cloudState.user = regResult.user;
+    return { user: regResult.user };
+  }
+
+  // If Supabase OAuth configured
+  if (supabase) {
+    try {
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: typeof window !== 'undefined' ? window.location.origin : undefined
+        }
+      });
+      if (error) return { user: cloudState.user, error: error.message };
+    } catch (e: any) {
+      console.warn('Supabase Google OAuth fallback:', e);
+    }
+  }
+
+  return { user: cloudState.user };
+}
+
 export async function cloudLogoutUser(): Promise<void> {
   if (supabase) {
     await supabase.auth.signOut();

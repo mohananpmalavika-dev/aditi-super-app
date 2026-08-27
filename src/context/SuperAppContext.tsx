@@ -17,6 +17,7 @@ import {
   cloudLoginUser,
   cloudLogoutUser,
   cloudRegisterUser,
+  cloudGoogleAuthUser,
   createCloudBooking,
   createCloudPost,
   createCloudTask,
@@ -43,6 +44,7 @@ import {
 import {
   ChatConversation,
   ChatMessage,
+  ChatPoll,
   ChatReminder,
   HabitItem,
   LoginCredentials,
@@ -75,6 +77,7 @@ interface SuperAppContextType {
   sessionUser: DeviceSessionUser | null;
   unlockDevice: () => void;
   login: (creds: LoginCredentials) => Promise<{ success: boolean; error?: string }>;
+  loginWithGoogle: (googleUser?: { name: string; email: string; avatar?: string }) => Promise<{ success: boolean; error?: string }>;
   register: (creds: RegisterCredentials) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
   
@@ -344,6 +347,38 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       return { success: true };
     } catch (err: any) {
       showToast('⚠️ Registration error. Please try again.');
+      return { success: false, error: err.message };
+    }
+  };
+
+  const loginWithGoogle = async (googleUser?: { name: string; email: string; avatar?: string }): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const res = await cloudGoogleAuthUser(googleUser);
+      if (res.error) {
+        showToast(`⚠️ ${res.error}`);
+        return { success: false, error: res.error };
+      }
+      setUser(res.user);
+
+      const sessionUserObj: DeviceSessionUser = {
+        id: res.user.id || res.user.email,
+        name: res.user.name,
+        email: res.user.email,
+        avatar: res.user.avatar,
+        handle: res.user.handle
+      };
+      saveActiveSession(sessionUserObj);
+      registerDeviceLock(sessionUserObj);
+      setSessionUser(sessionUserObj);
+
+      setIsDeviceLocked(false);
+      setIsAuthenticated(true);
+      setActiveMiniApp('home');
+      confetti({ particleCount: 90, spread: 80, origin: { y: 0.6 } });
+      showToast(`🎉 Welcome to Aditi, ${res.user.name}! Signed in via Google.`);
+      return { success: true };
+    } catch (err: any) {
+      showToast('⚠️ Google Sign-In error. Please try again.');
       return { success: false, error: err.message };
     }
   };
@@ -1039,6 +1074,7 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         sessionUser,
         unlockDevice,
         login,
+        loginWithGoogle,
         register,
         logout,
         activeMiniApp,
