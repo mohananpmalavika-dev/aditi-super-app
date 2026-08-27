@@ -106,12 +106,19 @@ interface SuperAppContextType {
   chats: ChatConversation[];
   activeChatId: string;
   setActiveChatId: (id: string) => void;
-  sendChatMessage: (chatId: string, text: string, options?: { expiresDuration?: number | null }) => Promise<void>;
+  sendChatMessage: (chatId: string, text: string, options?: { expiresDuration?: number | null; mediaUrl?: string; mediaType?: 'image' | 'video' | 'audio' | 'video_note' | 'sticker' | 'gif' | 'file'; poll?: any; isForwarded?: boolean }) => Promise<void>;
   startNewChatWith: (name: string, avatar: string, role: string, initialMessage?: string) => string;
   createChannel: (channelData: { name: string; handle: string; description: string; avatar: string; isPrivate: boolean; initialPost?: string }) => string;
   sendBroadcast: (recipientChatIds: string[], text: string) => Promise<void>;
   toggleFriendStatus: (chatId: string) => void;
   toggleBlockStatus: (chatId: string) => void;
+  votePoll: (chatId: string, messageId: string, optionId: string) => void;
+  toggleStarMessage: (chatId: string, messageId: string) => void;
+  reactToMessage: (chatId: string, messageId: string, emoji: string) => void;
+  togglePinChat: (chatId: string) => void;
+  toggleMuteChat: (chatId: string) => void;
+  setChatWallpaper: (chatId: string, wallpaper: string) => void;
+  clearChatHistory: (chatId: string) => void;
   
   // Productivity
   tasks: TaskItem[];
@@ -425,8 +432,18 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   }, []);
 
   // Chat Actions
-  const sendChatMessage = async (chatId: string, text: string, options?: { expiresDuration?: number | null }) => {
-    if (!text.trim()) return;
+  const sendChatMessage = async (
+    chatId: string,
+    text: string,
+    options?: {
+      expiresDuration?: number | null;
+      mediaUrl?: string;
+      mediaType?: 'image' | 'video' | 'audio' | 'video_note' | 'sticker' | 'gif' | 'file';
+      poll?: any;
+      isForwarded?: boolean;
+    }
+  ) => {
+    if (!text.trim() && !options?.mediaUrl && !options?.poll) return;
 
     const expiresAt = options?.expiresDuration ? Date.now() + options.expiresDuration * 1000 : undefined;
 
@@ -434,9 +451,13 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       id: `m-${Date.now()}`,
       senderId: 'user',
       senderName: user.name,
-      text,
+      text: text || (options?.poll ? `📊 Poll: ${options.poll.question}` : options?.mediaType ? `[${options.mediaType}]` : ''),
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       isUser: true,
+      mediaUrl: options?.mediaUrl,
+      mediaType: options?.mediaType,
+      poll: options?.poll,
+      isForwarded: options?.isForwarded,
       expiresAt,
       expiresDuration: options?.expiresDuration || undefined,
       isDisappearing: Boolean(options?.expiresDuration)
@@ -445,7 +466,7 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const updated = await sendCloudMessage(chatId, userMsg);
     setChats(updated);
 
-    if (chatId !== 'chat-brain') {
+    if (chatId !== 'chat-brain' && !options?.poll) {
       setTimeout(async () => {
         const replyExpiresAt = options?.expiresDuration ? Date.now() + options.expiresDuration * 1000 : undefined;
         const replyMsg: ChatMessage = {
@@ -603,6 +624,147 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     );
   };
 
+  const votePoll = (chatId: string, messageId: string, optionId: string) => {
+    setChats((prev) =>
+      prev.map((c) => {
+        if (c.id === chatId) {
+          const updatedMessages = c.messages.map((m) => {
+            if (m.id === messageId && m.poll) {
+              const nextOptions = m.poll.options.map((opt) => {
+                const isThis = opt.id === optionId;
+                const wasVoted = opt.votedUserIds?.includes('user');
+                let newVotedIds = opt.votedUserIds || [];
+                let newVotes = opt.votes;
+
+                if (isThis) {
+                  if (wasVoted) {
+                    newVotedIds = newVotedIds.filter((id) => id !== 'user');
+                    newVotes = Math.max(0, newVotes - 1);
+                  } else {
+                    newVotedIds = [...newVotedIds, 'user'];
+                    newVotes += 1;
+                  }
+                } else if (!m.poll?.allowsMultiple && wasVoted) {
+                  newVotedIds = newVotedIds.filter((id) => id !== 'user');
+                  newVotes = Math.max(0, newVotes - 1);
+                }
+                return { ...opt, votes: newVotes, votedUserIds: newVotedIds };
+              });
+
+              const totalVotes = nextOptions.reduce((acc, curr) => acc + curr.votes, 0);
+              return {
+                ...m,
+                poll: {
+                  ...m.poll,
+                  options: nextOptions,
+                  totalVotes
+                }
+              };
+            }
+            return m;
+          });
+          return { ...c, messages: updatedMessages };
+        }
+        return c;
+      })
+    );
+    showToast('📊 Poll vote registered!');
+  };
+
+  const toggleStarMessage = (chatId: string, messageId: string) => {
+    setChats((prev) =>
+      prev.map((c) => {
+        if (c.id === chatId) {
+          const updated = c.messages.map((m) => {
+            if (m.id === messageId) {
+              const nextStar = !m.isStarred;
+              showToast(nextStar ? '⭐ Message starred!' : 'Message unstarred.');
+              return { ...m, isStarred: nextStar };
+            }
+            return m;
+          });
+          return { ...c, messages: updated };
+        }
+        return c;
+      })
+    );
+  };
+
+  const reactToMessage = (chatId: string, messageId: string, emoji: string) => {
+    setChats((prev) =>
+      prev.map((c) => {
+        if (c.id === chatId) {
+          const updated = c.messages.map((m) => {
+            if (m.id === messageId) {
+              const reactions = { ...(m.reactions || {}) };
+              const currentReaction = m.userReaction;
+
+              if (currentReaction === emoji) {
+                reactions[emoji] = Math.max(0, (reactions[emoji] || 1) - 1);
+                if (reactions[emoji] === 0) delete reactions[emoji];
+                return { ...m, reactions, userReaction: undefined };
+              } else {
+                if (currentReaction && reactions[currentReaction]) {
+                  reactions[currentReaction] = Math.max(0, reactions[currentReaction] - 1);
+                  if (reactions[currentReaction] === 0) delete reactions[currentReaction];
+                }
+                reactions[emoji] = (reactions[emoji] || 0) + 1;
+                return { ...m, reactions, userReaction: emoji };
+              }
+            }
+            return m;
+          });
+          return { ...c, messages: updated };
+        }
+        return c;
+      })
+    );
+  };
+
+  const togglePinChat = (chatId: string) => {
+    setChats((prev) =>
+      prev.map((c) => {
+        if (c.id === chatId) {
+          const nextPin = !c.isPinned;
+          showToast(nextPin ? `📌 Pinned ${c.participantName} to top!` : `Unpinned ${c.participantName}.`);
+          return { ...c, isPinned: nextPin };
+        }
+        return c;
+      })
+    );
+  };
+
+  const toggleMuteChat = (chatId: string) => {
+    setChats((prev) =>
+      prev.map((c) => {
+        if (c.id === chatId) {
+          const nextMute = !c.isMuted;
+          showToast(nextMute ? `🔕 Muted notifications for ${c.participantName}.` : `🔔 Unmuted ${c.participantName}.`);
+          return { ...c, isMuted: nextMute };
+        }
+        return c;
+      })
+    );
+  };
+
+  const setChatWallpaper = (chatId: string, wallpaper: string) => {
+    setChats((prev) =>
+      prev.map((c) => (c.id === chatId ? { ...c, customWallpaper: wallpaper } : c))
+    );
+    showToast('🎨 Chat wallpaper theme updated!');
+  };
+
+  const clearChatHistory = (chatId: string) => {
+    setChats((prev) =>
+      prev.map((c) =>
+        c.id === chatId
+          ? { ...c, messages: [], lastMessage: 'Chat history cleared' }
+          : c
+      )
+    );
+    showToast('🗑️ Chat history cleared.');
+  };
+
   // Tasks
   const addTask = async (taskData: Omit<TaskItem, 'id'>) => {
     const newTask: TaskItem = {
@@ -690,6 +852,13 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         sendBroadcast,
         toggleFriendStatus,
         toggleBlockStatus,
+        votePoll,
+        toggleStarMessage,
+        reactToMessage,
+        togglePinChat,
+        toggleMuteChat,
+        setChatWallpaper,
+        clearChatHistory,
         tasks,
         addTask,
         toggleTaskStatus,

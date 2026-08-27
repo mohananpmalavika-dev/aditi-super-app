@@ -22,6 +22,7 @@ import {
   Laugh,
   Rocket,
   CheckCheck,
+  Check,
   Navigation,
   FileText,
   ChevronLeft,
@@ -45,10 +46,17 @@ import {
   Hash,
   UserCheck,
   Ban,
-  UserMinus
+  UserMinus,
+  BarChart2,
+  Forward,
+  Palette,
+  VolumeX,
+  Volume2,
+  PinOff,
+  Film
 } from 'lucide-react';
 import { useSuperApp } from '../../context/SuperAppContext';
-import { ChatConversation } from '../../types/superApp';
+import { ChatConversation, ChatMessage, ChatPoll } from '../../types/superApp';
 import { AudioRecorder } from './AudioRecorder';
 import { VideoCallModal } from './VideoCallModal';
 import { FloatingCallWidget } from './FloatingCallWidget';
@@ -62,25 +70,37 @@ import { ChannelCreateModal } from './ChannelCreateModal';
 import { BroadcastModal } from './BroadcastModal';
 import { ChatDetailsDrawer } from './ChatDetailsDrawer';
 import { AddFriendModal } from './AddFriendModal';
+import { PollModal } from './PollModal';
+import { StickerGifPickerModal } from './StickerGifPickerModal';
+import { VideoNoteModal } from './VideoNoteModal';
+import { ForwardModal } from './ForwardModal';
+import { StarredMessagesDrawer } from './StarredMessagesDrawer';
+import { WallpaperModal } from './WallpaperModal';
 import confetti from 'canvas-confetti';
 
-interface RichMessage {
-  id: string;
-  senderId: string;
-  senderName: string;
-  text: string;
-  timestamp: string;
-  isUser: boolean;
-  replyTo?: { text: string; senderName: string };
-  isStarred?: boolean;
-  isPinned?: boolean;
-  reactions?: Record<string, number>;
-  userReaction?: string;
-  expiresAt?: string;
-}
+const emojis = ['😀', '😂', '😍', '🔥', '👍', '🎉', '🚀', '❤️', '🙌', '💯', '✨', '🙏', '😎', '🥳'];
+const reactionEmojis = ['👍', '❤️', '😂', '😮', '😢', '🙏', '🔥', '🎉'];
 
 export const LiveChatMessenger: React.FC = () => {
-  const { chats, activeChatId, setActiveChatId, sendChatMessage, createChannel, sendBroadcast, toggleFriendStatus, toggleBlockStatus, user, showToast } = useSuperApp();
+  const {
+    chats,
+    activeChatId,
+    setActiveChatId,
+    sendChatMessage,
+    createChannel,
+    sendBroadcast,
+    toggleFriendStatus,
+    toggleBlockStatus,
+    votePoll,
+    toggleStarMessage,
+    reactToMessage,
+    togglePinChat,
+    toggleMuteChat,
+    setChatWallpaper,
+    clearChatHistory,
+    user,
+    showToast
+  } = useSuperApp();
   
   const [inputText, setInputText] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
@@ -95,6 +115,7 @@ export const LiveChatMessenger: React.FC = () => {
   const [activeReactionMsgId, setActiveReactionMsgId] = useState<string | null>(null);
   const [pinnedMessage, setPinnedMessage] = useState<string | null>(null);
   const [isTyping, setIsTyping] = useState(false);
+  const [audioSpeedMap, setAudioSpeedMap] = useState<Record<string, number>>({});
 
   // Mobile navigation state
   const [mobileView, setMobileView] = useState<'list' | 'chat'>('list');
@@ -116,6 +137,15 @@ export const LiveChatMessenger: React.FC = () => {
   const [broadcastModalOpen, setBroadcastModalOpen] = useState(false);
   const [addFriendModalOpen, setAddFriendModalOpen] = useState(false);
   const [detailsDrawerOpen, setDetailsDrawerOpen] = useState(false);
+
+  // WhatsApp & Telegram Super Features Modals
+  const [pollModalOpen, setPollModalOpen] = useState(false);
+  const [stickerModalOpen, setStickerModalOpen] = useState(false);
+  const [videoNoteModalOpen, setVideoNoteModalOpen] = useState(false);
+  const [forwardModalOpen, setForwardModalOpen] = useState(false);
+  const [forwardingMsg, setForwardingMsg] = useState<ChatMessage | null>(null);
+  const [starredDrawerOpen, setStarredDrawerOpen] = useState(false);
+  const [wallpaperModalOpen, setWallpaperModalOpen] = useState(false);
 
   // Pre-filled Email state
   const [emailInitialSubject, setEmailInitialSubject] = useState('');
@@ -175,26 +205,33 @@ export const LiveChatMessenger: React.FC = () => {
     return () => clearInterval(timer);
   }, [callModalOpen, floatingCallActive]);
 
-  const filteredChats = chats.filter((c) => {
-    const matchesSearch =
-      c.participantName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      c.roleOrContext.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (c.channelHandle && c.channelHandle.toLowerCase().includes(searchQuery.toLowerCase()));
+  // Filter and Sort: Pinned conversations always stick to the top
+  const filteredChats = chats
+    .filter((c) => {
+      const matchesSearch =
+        c.participantName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        c.roleOrContext.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (c.channelHandle && c.channelHandle.toLowerCase().includes(searchQuery.toLowerCase()));
 
-    if (!matchesSearch) return false;
+      if (!matchesSearch) return false;
 
-    if (chatFilterTab === 'direct') {
-      return !c.conversationType || c.conversationType === 'direct';
-    }
-    if (chatFilterTab === 'group') {
-      return c.conversationType === 'group';
-    }
-    if (chatFilterTab === 'channel') {
-      return c.conversationType === 'channel';
-    }
+      if (chatFilterTab === 'direct') {
+        return !c.conversationType || c.conversationType === 'direct';
+      }
+      if (chatFilterTab === 'group') {
+        return c.conversationType === 'group';
+      }
+      if (chatFilterTab === 'channel') {
+        return c.conversationType === 'channel';
+      }
 
-    return true;
-  });
+      return true;
+    })
+    .sort((a, b) => {
+      if (a.isPinned && !b.isPinned) return -1;
+      if (!a.isPinned && b.isPinned) return 1;
+      return 0;
+    });
 
   const handleSelectChat = (chatId: string) => {
     setActiveChatId(chatId);
@@ -238,7 +275,7 @@ export const LiveChatMessenger: React.FC = () => {
   const handleSendAudio = (audioData: { duration: number; bars: number[] }) => {
     if (!activeChat) return;
     const voiceMsg = `🎙️ Voice Note (${audioData.duration}s)`;
-    sendChatMessage(activeChat.id, voiceMsg, { expiresDuration: secretTimer });
+    sendChatMessage(activeChat.id, voiceMsg, { expiresDuration: secretTimer, mediaType: 'audio' });
     setIsRecordingAudio(false);
     showToast('🎙️ Voice memo delivered via MediaRecorder!');
   };
@@ -247,7 +284,7 @@ export const LiveChatMessenger: React.FC = () => {
   const handleSendSnap = (snapUrl: string, duration: number) => {
     if (!activeChat) return;
     const snapMsg = `🔥 Ephemeral Snap (${duration}s self-destruct timer)`;
-    sendChatMessage(activeChat.id, snapMsg, { expiresDuration: duration || secretTimer });
+    sendChatMessage(activeChat.id, snapMsg, { expiresDuration: duration || secretTimer, mediaUrl: snapUrl, mediaType: 'image' });
     confetti({ particleCount: 50, spread: 60 });
     showToast('🔥 Ephemeral snap sent!');
   };
@@ -283,124 +320,106 @@ export const LiveChatMessenger: React.FC = () => {
   };
 
   // Create Group Chat
-  const handleCreateGroup = (groupData: any) => {
-    const newGroupId = `group-${Date.now()}`;
-    const newGroupChat: ChatConversation = {
-      id: newGroupId,
-      participantName: groupData.name,
-      participantAvatar: 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=300&auto=format&fit=crop&q=80',
-      roleOrContext: `👥 Group • ${groupData.members.length + 1} members`,
-      lastMessage: `Group created by ${user.name}`,
-      lastMessageTime: 'Just now',
-      unreadCount: 0,
-      isOnline: true,
-      conversationType: 'group',
-      messages: [
-        {
-          id: `m-${Date.now()}`,
-          senderId: 'user',
-          senderName: user.name,
-          text: `🎉 Welcome to group "${groupData.name}"!`,
-          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          isUser: true
-        }
-      ]
-    };
-    sendChatMessage(newGroupId, `Welcome everyone to ${groupData.name}!`);
-    setActiveChatId(newGroupId);
-    showToast(`👥 Group "${groupData.name}" created!`);
+  const handleCreateGroup = (groupData: { name: string; members: string[]; avatar: string }) => {
+    showToast(`👥 Group "${groupData.name}" created with ${groupData.members.length + 1} members!`);
   };
 
-  // File Upload
+  // File Upload handler
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !activeChat) return;
-    const fileMsg = `📁 Shared file: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
-    sendChatMessage(activeChat.id, fileMsg, { expiresDuration: secretTimer });
-    showToast(`📁 File ${file.name} attached!`);
+    const fileMsg = `📁 Shared Document: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
+    sendChatMessage(activeChat.id, fileMsg, { expiresDuration: secretTimer, mediaType: 'file' });
+    showToast(`📎 File "${file.name}" sent to ${activeChat.participantName}!`);
   };
 
-  // Call Triggers
+  // Voice Note Speed Toggle
+  const toggleAudioSpeed = (msgId: string) => {
+    const current = audioSpeedMap[msgId] || 1;
+    const next = current === 1 ? 1.5 : current === 1.5 ? 2 : 1;
+    setAudioSpeedMap((prev) => ({ ...prev, [msgId]: next }));
+  };
+
+  // Handle Forward Message
+  const handleForwardMessage = (targetChatIds: string[], msg: ChatMessage) => {
+    targetChatIds.forEach((chatId) => {
+      sendChatMessage(chatId, msg.text, {
+        isForwarded: true,
+        mediaUrl: msg.mediaUrl,
+        mediaType: msg.mediaType,
+        poll: msg.poll
+      });
+    });
+    showToast(`↪️ Forwarded to ${targetChatIds.length} recipient${targetChatIds.length > 1 ? 's' : ''}!`);
+  };
+
+  // Start Voice/Video Call
   const handleStartCall = (video: boolean) => {
     setIsVideoCall(video);
-    setFloatingCallActive(false);
     setCallModalOpen(true);
+    setFloatingCallActive(false);
   };
 
+  // Minimize Call to PiP
   const handleMinimizeCall = () => {
     setCallModalOpen(false);
     setFloatingCallActive(true);
-    showToast('📱 Video Call minimized to Floating PiP!');
   };
 
+  // End Floating Call
   const handleEndFloatingCall = () => {
     setFloatingCallActive(false);
-    setCallModalOpen(false);
     setCallDuration(0);
-    showToast('☎ Call terminated.');
+    showToast('📞 Call ended');
   };
-
-  // End Call Handler
-  const handleEndCall = () => {
-    setCallModalOpen(false);
-    setFloatingCallActive(false);
-    setCallDuration(0);
-    showToast('☎ Call ended.');
-  };
-
-  const emojis = ['😀', '🔥', '❤️', '🚀', '✨', '🎉', '👍', '🙏', '💯', '😍', '😎', '🥳', '⚡', '👏'];
-  const reactionEmojis = ['❤️', '👍', '😂', '😮', '😢', '😡', '👏', '🔥'];
 
   return (
-    <div className="h-[calc(100dvh-175px)] sm:h-[calc(100dvh-160px)] flex flex-col md:flex-row rounded-3xl bg-slate-900/80 border border-slate-800 shadow-2xl overflow-hidden backdrop-blur-xl relative">
+    <div className="h-[calc(100vh-4rem)] flex flex-col md:flex-row bg-slate-950 text-slate-100 overflow-hidden font-sans border-t border-slate-800">
       
       {/* ========================================================================= */}
-      {/* LEFT CHAT SIDEBAR (CONTACTS, GROUPS & CHANNELS) */}
+      {/* LEFT SIDEBAR: CONVERSATION LIST & SEARCH */}
       {/* ========================================================================= */}
-      <div className={`w-full md:w-80 lg:w-96 border-r border-slate-800 flex flex-col bg-slate-950/75 ${mobileView === 'chat' ? 'hidden md:flex' : 'flex'}`}>
+      <div className={`w-full md:w-80 lg:w-96 flex-shrink-0 border-r border-slate-800 flex flex-col bg-slate-950 ${mobileView === 'chat' ? 'hidden md:flex' : 'flex'}`}>
         
-        {/* Top Header & Action Buttons */}
-        <div className="p-3 sm:p-3.5 border-b border-slate-800 space-y-2.5">
+        {/* Top Header */}
+        <div className="p-4 border-b border-slate-800 space-y-3 bg-slate-900/50 backdrop-blur-md">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1.5">
-              <h2 className="font-extrabold text-base text-white">AditiChat</h2>
-              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-indigo-500/20 text-indigo-400 border border-indigo-500/30">
-                P2P
-              </span>
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-indigo-600 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-600/30">
+                <Send className="w-4 h-4 text-white" />
+              </div>
+              <h2 className="font-extrabold text-base tracking-tight text-white">AditiChat Pro</h2>
             </div>
-
+            
             <div className="flex items-center gap-1">
-              {/* Add Friend Button */}
+              <button
+                onClick={() => setStarredDrawerOpen(true)}
+                className="p-1.5 rounded-xl bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 transition-colors"
+                title="Starred Bookmarks (WhatsApp)"
+              >
+                <Star className="w-3.5 h-3.5 fill-current" />
+              </button>
               <button
                 onClick={() => setAddFriendModalOpen(true)}
-                className="p-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs flex items-center gap-1 shadow-md shadow-indigo-600/30 transition-all hover:scale-105"
-                title="Add New Contact"
+                className="p-1.5 rounded-xl bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-400 border border-indigo-500/30 transition-colors font-bold text-xs flex items-center gap-1"
+                title="Add & Invite Friends"
               >
                 <UserPlus className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline text-[10px]">Add</span>
               </button>
-
-              {/* Create Channel Button */}
               <button
                 onClick={() => setChannelModalOpen(true)}
-                className="p-1.5 rounded-xl bg-purple-950/80 hover:bg-purple-900 border border-purple-500/40 text-purple-300 font-bold text-xs flex items-center gap-1 transition-all hover:scale-105"
-                title="Create Telegram/WhatsApp Broadcast Channel"
+                className="p-1.5 rounded-xl bg-purple-600/20 hover:bg-purple-600/30 text-purple-400 border border-purple-500/30 transition-colors"
+                title="New Broadcast Channel (Telegram)"
               >
-                <Megaphone className="w-3.5 h-3.5 text-purple-400" />
-                <span className="hidden sm:inline text-[10px]">Channel</span>
+                <Megaphone className="w-3.5 h-3.5" />
               </button>
-
-              {/* Broadcast Message Button */}
               <button
                 onClick={() => setBroadcastModalOpen(true)}
-                className="p-1.5 rounded-xl bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-500/40 text-emerald-300 font-bold text-xs flex items-center gap-1 transition-all hover:scale-105"
-                title="Send Broadcast Announcement to Multiple Contacts"
+                className="p-1.5 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 border border-emerald-500/30 transition-colors"
+                title="Broadcast Message (WhatsApp)"
               >
-                <Radio className="w-3.5 h-3.5 text-emerald-400" />
-                <span className="hidden sm:inline text-[10px]">Broadcast</span>
+                <Radio className="w-3.5 h-3.5" />
               </button>
-
-              {/* Create Group Button */}
               <button
                 onClick={() => setGroupModalOpen(true)}
                 className="p-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors"
@@ -500,7 +519,13 @@ export const LiveChatMessenger: React.FC = () => {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-1.5 min-w-0">
+                      {chat.isPinned && (
+                        <Pin className="w-3 h-3 text-amber-400 fill-amber-400 flex-shrink-0" />
+                      )}
                       <h4 className="font-bold text-xs text-white truncate">{chat.participantName}</h4>
+                      {chat.isMuted && (
+                        <VolumeX className="w-3 h-3 text-slate-500 flex-shrink-0" />
+                      )}
                       {chat.isBlocked && (
                         <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/30 flex-shrink-0">
                           Blocked
@@ -526,7 +551,7 @@ export const LiveChatMessenger: React.FC = () => {
       {/* ========================================================================= */}
       {/* RIGHT MAIN CHAT WINDOW */}
       {/* ========================================================================= */}
-      <div className={`flex-1 flex flex-col bg-slate-950/40 relative ${mobileView === 'list' ? 'hidden md:flex' : 'flex'}`}>
+      <div className={`flex-1 flex flex-col ${activeChat.customWallpaper || 'bg-slate-950/40'} relative ${mobileView === 'list' ? 'hidden md:flex' : 'flex'}`}>
         
         {/* Top Active Chat Header */}
         <div className="px-3.5 sm:px-5 py-3 bg-slate-950/90 border-b border-slate-800 backdrop-blur-xl flex items-center justify-between z-20">
@@ -628,15 +653,46 @@ export const LiveChatMessenger: React.FC = () => {
           </div>
 
           {/* Action Toolbar */}
-          <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
+          <div className="flex items-center gap-1 sm:gap-1.5 flex-shrink-0">
             
+            {/* Custom Chat Wallpaper / Theme */}
+            <button
+              onClick={() => setWallpaperModalOpen(true)}
+              className="p-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-indigo-400 hover:text-indigo-300 transition-colors"
+              title="Chat Wallpapers & Themes (WhatsApp & Telegram)"
+            >
+              <Palette className="w-4 h-4" />
+            </button>
+
+            {/* Pin / Unpin Chat */}
+            <button
+              onClick={() => togglePinChat(activeChat.id)}
+              className={`p-2 rounded-xl transition-colors ${
+                activeChat.isPinned ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' : 'bg-slate-800/80 text-slate-400 hover:text-white'
+              }`}
+              title={activeChat.isPinned ? 'Unpin chat' : 'Pin chat to top'}
+            >
+              <Pin className={`w-4 h-4 ${activeChat.isPinned ? 'fill-current' : ''}`} />
+            </button>
+
+            {/* Mute / Unmute Notifications */}
+            <button
+              onClick={() => toggleMuteChat(activeChat.id)}
+              className={`p-2 rounded-xl transition-colors ${
+                activeChat.isMuted ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30' : 'bg-slate-800/80 text-slate-400 hover:text-white'
+              }`}
+              title={activeChat.isMuted ? 'Unmute notifications' : 'Mute notifications'}
+            >
+              {activeChat.isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+            </button>
+
             {/* Secret Timer */}
             <button
               onClick={() => setShowSecretBar(!showSecretBar)}
               className={`p-2 rounded-xl transition-colors ${
                 secretTimer ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30' : 'bg-slate-800/80 text-slate-400 hover:text-white'
               }`}
-              title="Disappearing Messages"
+              title="Disappearing Messages (Viber & Telegram Secret Chat)"
             >
               <Lock className="w-4 h-4" />
             </button>
@@ -648,7 +704,7 @@ export const LiveChatMessenger: React.FC = () => {
                 setEmailInitialBody('');
                 setEmailModalOpen(true);
               }}
-              className="p-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-emerald-400 hover:text-emerald-300 transition-colors"
+              className="p-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-emerald-400 hover:text-emerald-300 transition-colors hidden sm:block"
               title="Send Direct Email"
             >
               <Mail className="w-4 h-4" />
@@ -756,11 +812,14 @@ export const LiveChatMessenger: React.FC = () => {
         <div className="flex-1 overflow-y-auto p-3.5 sm:p-5 space-y-3.5">
           {activeChat.messages.map((msg) => {
             const isUser = msg.isUser;
-            const isAudio = msg.text.startsWith('🎙️');
+            const isAudio = msg.text.startsWith('🎙️') || msg.mediaType === 'audio';
             const isSnap = msg.text.startsWith('🔥');
             const isLocation = msg.text.includes('OpenStreetMap') || msg.text.startsWith('📍') || msg.text.startsWith('🔴');
-            const isFile = msg.text.startsWith('📁');
+            const isFile = msg.text.startsWith('📁') || msg.mediaType === 'file';
             const isEmail = msg.text.startsWith('📧');
+            const isVideoNote = msg.mediaType === 'video_note';
+            const isSticker = msg.mediaType === 'sticker';
+            const isGif = msg.mediaType === 'gif';
             const remainingSecs = msg.expiresAt ? Math.max(0, Math.ceil((msg.expiresAt - now) / 1000)) : null;
 
             return (
@@ -779,16 +838,105 @@ export const LiveChatMessenger: React.FC = () => {
                 )}
 
                 <div className="space-y-1 min-w-0">
+                  
+                  {/* Forwarded Tag */}
+                  {msg.isForwarded && (
+                    <div className={`flex items-center gap-1 text-[10px] text-indigo-300 italic px-1 ${isUser ? 'justify-end' : 'justify-start'}`}>
+                      <Forward className="w-3 h-3" />
+                      <span>Forwarded</span>
+                    </div>
+                  )}
+
                   <div
                     className={`p-3.5 rounded-2xl text-xs sm:text-sm leading-relaxed shadow-lg relative ${
-                      isUser
+                      isSticker
+                        ? 'bg-transparent shadow-none p-0'
+                        : isUser
                         ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-br-none'
                         : 'bg-slate-900 border border-slate-800 text-slate-200 rounded-bl-none'
                     }`}
                   >
-                    {/* Audio Note Rendering */}
-                    {isAudio ? (
-                      <div className="flex items-center gap-3 py-1 min-w-[200px]">
+                    
+                    {/* Live Poll Rendering */}
+                    {msg.poll ? (
+                      <div className="space-y-3 p-1 min-w-[240px] sm:min-w-[280px]">
+                        <div className="flex items-center justify-between gap-2 border-b border-white/10 pb-2">
+                          <div className="flex items-center gap-2">
+                            <BarChart2 className="w-4 h-4 text-indigo-300" />
+                            <span className="font-extrabold text-sm">{msg.poll.question}</span>
+                          </div>
+                        </div>
+                        
+                        <div className="space-y-2">
+                          {msg.poll.options.map((opt) => {
+                            const isVoted = opt.votedUserIds?.includes('user');
+                            const pct = msg.poll!.totalVotes > 0 ? Math.round((opt.votes / msg.poll!.totalVotes) * 100) : 0;
+                            return (
+                              <button
+                                key={opt.id}
+                                type="button"
+                                onClick={() => votePoll(activeChat.id, msg.id, opt.id)}
+                                className={`w-full p-2.5 rounded-xl border text-left text-xs transition-all relative overflow-hidden flex flex-col gap-1.5 ${
+                                  isVoted ? 'border-indigo-400 bg-indigo-950/60 ring-1 ring-indigo-400/40' : 'border-white/10 bg-black/20 hover:bg-black/40'
+                                }`}
+                              >
+                                <div className="flex items-center justify-between relative z-10">
+                                  <div className="flex items-center gap-2">
+                                    <div className={`w-4 h-4 rounded-md border flex items-center justify-center ${isVoted ? 'bg-indigo-600 border-indigo-400 text-white' : 'border-white/40'}`}>
+                                      {isVoted && <Check className="w-3 h-3 stroke-[3]" />}
+                                    </div>
+                                    <span className="font-bold">{opt.text}</span>
+                                  </div>
+                                  <span className="font-mono font-bold text-[11px]">{pct}% ({opt.votes})</span>
+                                </div>
+                                <div className="w-full bg-white/10 h-1.5 rounded-full overflow-hidden">
+                                  <div className="bg-indigo-400 h-full transition-all duration-500 rounded-full" style={{ width: `${pct}%` }} />
+                                </div>
+                              </button>
+                            );
+                          })}
+                        </div>
+
+                        <div className="flex items-center justify-between text-[10px] text-white/70 pt-1">
+                          <span>{msg.poll.totalVotes} vote{msg.poll.totalVotes !== 1 ? 's' : ''}</span>
+                          <span>{msg.poll.isAnonymous ? '🔒 Anonymous poll' : 'Public poll'}</span>
+                        </div>
+                      </div>
+                    ) : isVideoNote ? (
+                      <div className="relative p-1">
+                        <div className="w-48 h-48 sm:w-56 sm:h-56 rounded-full overflow-hidden border-4 border-indigo-500/80 shadow-2xl bg-black relative group/vid">
+                          <img
+                            src={msg.mediaUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=500&auto=format&fit=crop&q=80'}
+                            alt="Round Video Note"
+                            className="w-full h-full object-cover"
+                          />
+                          <div className="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 group-hover/vid:opacity-100 transition-opacity">
+                            <Play className="w-10 h-10 text-white fill-white" />
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-center gap-1.5 mt-1.5 text-[10px] text-indigo-300 font-mono">
+                          <Video className="w-3 h-3" />
+                          <span>Round Video Memo ({msg.audioDuration || 6}s)</span>
+                        </div>
+                      </div>
+                    ) : isSticker ? (
+                      <div className="p-1">
+                        <img
+                          src={msg.mediaUrl}
+                          alt="Sticker"
+                          className="w-36 h-36 object-contain rounded-2xl hover:scale-105 transition-transform"
+                        />
+                      </div>
+                    ) : isGif ? (
+                      <div className="p-1 rounded-2xl overflow-hidden max-w-xs">
+                        <img
+                          src={msg.mediaUrl}
+                          alt="GIF"
+                          className="w-full max-h-56 object-cover rounded-xl"
+                        />
+                      </div>
+                    ) : isAudio ? (
+                      <div className="flex items-center gap-3 py-1 min-w-[220px]">
                         <button
                           onClick={() => setPlayingAudioId(playingAudioId === msg.id ? null : msg.id)}
                           className="p-2.5 rounded-full bg-white/20 hover:bg-white/30 text-white transition-colors"
@@ -809,15 +957,32 @@ export const LiveChatMessenger: React.FC = () => {
                           </div>
                           <span className="text-[10px] text-white/80 font-mono">MediaRecorder Audio Note</span>
                         </div>
+                        <button
+                          type="button"
+                          onClick={() => toggleAudioSpeed(msg.id)}
+                          className="px-2 py-0.5 rounded-full bg-white/20 hover:bg-white/30 text-[10px] font-extrabold text-white transition-colors"
+                          title="Playback Speed (WhatsApp/Telegram)"
+                        >
+                          {audioSpeedMap[msg.id] || 1}x
+                        </button>
                       </div>
                     ) : isSnap ? (
-                      <div className="flex items-center gap-2.5 py-1">
-                        <div className="p-2.5 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/30">
-                          <Flame className="w-5 h-5 fill-amber-400" />
-                        </div>
-                        <div>
-                          <span className="font-bold block text-xs">Ephemeral Snap</span>
-                          <span className="text-[10px] text-amber-300">Self-destruct view protection active</span>
+                      <div className="space-y-2">
+                        {msg.mediaUrl && (
+                          <img
+                            src={msg.mediaUrl}
+                            alt="Snap"
+                            className="w-full max-h-60 rounded-xl object-cover"
+                          />
+                        )}
+                        <div className="flex items-center gap-2.5 py-1">
+                          <div className="p-2 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                            <Flame className="w-4 h-4 fill-amber-400" />
+                          </div>
+                          <div>
+                            <span className="font-bold block text-xs">Ephemeral Snap</span>
+                            <span className="text-[10px] text-amber-300">Self-destruct view protection active</span>
+                          </div>
                         </div>
                       </div>
                     ) : isLocation ? (
@@ -880,6 +1045,23 @@ export const LiveChatMessenger: React.FC = () => {
                         <CornerUpLeft className="w-3 h-3" />
                       </button>
                       <button
+                        onClick={() => toggleStarMessage(activeChat.id, msg.id)}
+                        className={`p-1 transition-colors ${msg.isStarred ? 'text-yellow-400' : 'hover:text-yellow-400 text-slate-400'}`}
+                        title={msg.isStarred ? 'Unstar Message' : 'Star Message'}
+                      >
+                        <Star className={`w-3 h-3 ${msg.isStarred ? 'fill-current' : ''}`} />
+                      </button>
+                      <button
+                        onClick={() => {
+                          setForwardingMsg(msg);
+                          setForwardModalOpen(true);
+                        }}
+                        className="p-1 hover:text-indigo-400 text-slate-400"
+                        title="Forward Message"
+                      >
+                        <Forward className="w-3 h-3" />
+                      </button>
+                      <button
                         onClick={() => handleMessageToEmail(msg.text)}
                         className="p-1 hover:text-emerald-400 text-slate-400"
                         title="Send as Email"
@@ -922,7 +1104,7 @@ export const LiveChatMessenger: React.FC = () => {
                           <button
                             key={emo}
                             onClick={() => {
-                              showToast(`Reacted with ${emo}`);
+                              reactToMessage(activeChat.id, msg.id, emo);
                               setActiveReactionMsgId(null);
                             }}
                             className="text-base hover:scale-125 transition-transform p-0.5"
@@ -935,12 +1117,34 @@ export const LiveChatMessenger: React.FC = () => {
 
                   </div>
 
-                  {/* Timestamp & Delivery State */}
+                  {/* Reaction Chips Display */}
+                  {msg.reactions && Object.keys(msg.reactions).length > 0 && (
+                    <div className={`flex items-center gap-1 px-1 flex-wrap ${isUser ? 'justify-end' : 'justify-start'}`}>
+                      {Object.entries(msg.reactions).map(([emoji, count]) => (
+                        <button
+                          key={emoji}
+                          type="button"
+                          onClick={() => reactToMessage(activeChat.id, msg.id, emoji)}
+                          className={`px-2 py-0.5 rounded-full text-xs font-bold flex items-center gap-1 border transition-all ${
+                            msg.userReaction === emoji
+                              ? 'bg-indigo-600/30 border-indigo-400 text-indigo-200 shadow-sm'
+                              : 'bg-slate-900/80 border-slate-800 text-slate-300 hover:bg-slate-800'
+                          }`}
+                        >
+                          <span>{emoji}</span>
+                          <span className="text-[10px]">{count}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Timestamp, Star & Delivery State */}
                   <div
                     className={`flex items-center gap-1.5 text-[10px] text-slate-500 px-1 ${
                       isUser ? 'justify-end' : 'justify-start'
                     }`}
                   >
+                    {msg.isStarred && <Star className="w-2.5 h-2.5 text-yellow-400 fill-current" />}
                     <span>{msg.timestamp}</span>
                     {isUser && <CheckCheck className="w-3.5 h-3.5 text-indigo-400" />}
                   </div>
@@ -1055,7 +1259,7 @@ export const LiveChatMessenger: React.FC = () => {
             {!isRecordingAudio && (
               <form
                 onSubmit={handleSendText}
-                className="p-2.5 sm:p-3.5 bg-slate-950/95 border-t border-slate-800 flex items-center gap-1.5 sm:gap-2 backdrop-blur-xl relative"
+                className="p-2 sm:p-3 bg-slate-950/95 border-t border-slate-800 flex items-center gap-1 sm:gap-2 backdrop-blur-xl relative"
               >
                 {/* Emoji Picker */}
                 {showEmojiPicker && (
@@ -1080,18 +1284,48 @@ export const LiveChatMessenger: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                  className="p-2 sm:p-2.5 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-yellow-400 transition-colors"
+                  className="p-2 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-yellow-400 transition-colors"
                   title="Add Emoji"
                 >
                   <Smile className="w-4 h-4 sm:w-5 sm:h-5" />
                 </button>
 
-                {/* Ephemeral Snap */}
+                {/* Stickers & GIFs Button (WhatsApp / Telegram / Viber) */}
+                <button
+                  type="button"
+                  onClick={() => setStickerModalOpen(true)}
+                  className="p-2 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-yellow-300 transition-colors"
+                  title="Stickers & Trending GIFs (WhatsApp, Telegram & Viber)"
+                >
+                  <Sparkles className="w-4 h-4 sm:w-5 sm:h-5" />
+                </button>
+
+                {/* Live Poll Creator Button (WhatsApp & Telegram) */}
+                <button
+                  type="button"
+                  onClick={() => setPollModalOpen(true)}
+                  className="p-2 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-indigo-400 transition-colors"
+                  title="Create Live Poll (WhatsApp & Telegram)"
+                >
+                  <BarChart2 className="w-4 h-4 sm:w-5 sm:h-5" />
+                </button>
+
+                {/* Circular Video Note (Telegram Round Video) */}
+                <button
+                  type="button"
+                  onClick={() => setVideoNoteModalOpen(true)}
+                  className="p-2 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-cyan-400 transition-colors"
+                  title="Record Circular Video Note (Telegram Style)"
+                >
+                  <Video className="w-4 h-4 sm:w-5 sm:h-5" />
+                </button>
+
+                {/* Ephemeral Snap (Snapchat) */}
                 <button
                   type="button"
                   onClick={() => setSnapModalOpen(true)}
-                  className="p-2 sm:p-2.5 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-purple-400 transition-colors"
-                  title="Send Ephemeral Snap"
+                  className="p-2 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-purple-400 transition-colors"
+                  title="Send Ephemeral Snap (Snapchat Style)"
                 >
                   <Camera className="w-4 h-4 sm:w-5 sm:h-5" />
                 </button>
@@ -1100,7 +1334,7 @@ export const LiveChatMessenger: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setLocationModalOpen(true)}
-                  className="p-2 sm:p-2.5 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-emerald-400 transition-colors"
+                  className="p-2 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-emerald-400 transition-colors hidden sm:block"
                   title="Share GPS Location"
                 >
                   <MapPin className="w-4 h-4 sm:w-5 sm:h-5" />
@@ -1116,7 +1350,7 @@ export const LiveChatMessenger: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  className="p-2 sm:p-2.5 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-indigo-400 transition-colors hidden sm:block"
+                  className="p-2 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-indigo-400 transition-colors hidden sm:block"
                   title="Attach File"
                 >
                   <Paperclip className="w-4 h-4 sm:w-5 sm:h-5" />
@@ -1128,7 +1362,7 @@ export const LiveChatMessenger: React.FC = () => {
                   value={inputText}
                   onChange={(e) => setInputText(e.target.value)}
                   placeholder={`Message ${activeChat.participantName}...`}
-                  className="flex-1 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl bg-slate-900 border border-slate-800 text-xs sm:text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                  className="flex-1 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl bg-slate-900 border border-slate-800 text-xs sm:text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 min-w-0"
                 />
 
                 {/* Send or Record Mic */}
@@ -1167,11 +1401,16 @@ export const LiveChatMessenger: React.FC = () => {
         contactName={activeChat.participantName}
         contactAvatar={activeChat.participantAvatar}
         isVideo={isVideoCall}
-        onClose={() => setCallModalOpen(false)}
+        onClose={() => {
+          setCallModalOpen(false);
+          setFloatingCallActive(false);
+          setCallDuration(0);
+          showToast('📞 Call ended');
+        }}
         onMinimize={handleMinimizeCall}
       />
 
-      {/* Floating Picture-in-Picture Call Widget */}
+      {/* Floating Call PiP Mini Widget */}
       {floatingCallActive && (
         <FloatingCallWidget
           contactName={activeChat.participantName}
@@ -1190,7 +1429,7 @@ export const LiveChatMessenger: React.FC = () => {
         />
       )}
 
-      {/* Ephemeral Snaps */}
+      {/* Ephemeral Snaps (Snapchat) */}
       <SnapCameraModal
         isOpen={snapModalOpen}
         onClose={() => setSnapModalOpen(false)}
@@ -1262,7 +1501,7 @@ export const LiveChatMessenger: React.FC = () => {
         onSelectChat={(chatId) => handleSelectChat(chatId)}
       />
 
-      {/* Broadcast Channel Creator Modal */}
+      {/* Broadcast Channel Creator Modal (Telegram) */}
       <ChannelCreateModal
         isOpen={channelModalOpen}
         onClose={() => setChannelModalOpen(false)}
@@ -1272,7 +1511,7 @@ export const LiveChatMessenger: React.FC = () => {
         }}
       />
 
-      {/* Broadcast Message to Multiple Contacts Modal */}
+      {/* Broadcast Message to Multiple Contacts Modal (WhatsApp) */}
       <BroadcastModal
         isOpen={broadcastModalOpen}
         onClose={() => setBroadcastModalOpen(false)}
@@ -1280,6 +1519,70 @@ export const LiveChatMessenger: React.FC = () => {
         onSendBroadcast={(selectedChatIds, messageText) => {
           sendBroadcast(selectedChatIds, messageText);
         }}
+      />
+
+      {/* Live Poll Creator Modal (WhatsApp & Telegram) */}
+      <PollModal
+        isOpen={pollModalOpen}
+        onClose={() => setPollModalOpen(false)}
+        onCreatePoll={(poll: ChatPoll) => {
+          sendChatMessage(activeChat.id, '', { poll });
+          showToast('📊 Live poll created and broadcasted!');
+        }}
+      />
+
+      {/* Stickers & Trending GIFs Studio Modal (Telegram, WhatsApp & Viber) */}
+      <StickerGifPickerModal
+        isOpen={stickerModalOpen}
+        onClose={() => setStickerModalOpen(false)}
+        onSelectMedia={(mediaUrl, mediaType) => {
+          sendChatMessage(activeChat.id, '', { mediaUrl, mediaType });
+          showToast(mediaType === 'sticker' ? '🌟 Sticker sent!' : '🎬 Animated GIF sent!');
+        }}
+      />
+
+      {/* Telegram Round Video Memo Modal */}
+      <VideoNoteModal
+        isOpen={videoNoteModalOpen}
+        onClose={() => setVideoNoteModalOpen(false)}
+        onSendVideoNote={(videoUrl, duration) => {
+          sendChatMessage(activeChat.id, '', {
+            mediaUrl: videoUrl,
+            mediaType: 'video_note',
+            expiresDuration: secretTimer
+          });
+          confetti({ particleCount: 40, spread: 60 });
+          showToast('⭕ Circular video note dispatched!');
+        }}
+      />
+
+      {/* Forward Message to Multiple Contacts Modal (WhatsApp & Telegram) */}
+      <ForwardModal
+        isOpen={forwardModalOpen}
+        onClose={() => {
+          setForwardModalOpen(false);
+          setForwardingMsg(null);
+        }}
+        message={forwardingMsg}
+        chats={chats}
+        onForwardMessage={handleForwardMessage}
+      />
+
+      {/* Starred Messages Drawer (WhatsApp) */}
+      <StarredMessagesDrawer
+        isOpen={starredDrawerOpen}
+        onClose={() => setStarredDrawerOpen(false)}
+        chats={chats}
+        onSelectChat={(chatId) => handleSelectChat(chatId)}
+        onUnstarMessage={(chatId, msgId) => toggleStarMessage(chatId, msgId)}
+      />
+
+      {/* Chat Wallpapers & Themes Switcher (WhatsApp & Telegram) */}
+      <WallpaperModal
+        isOpen={wallpaperModalOpen}
+        onClose={() => setWallpaperModalOpen(false)}
+        currentWallpaper={activeChat.customWallpaper || ''}
+        onSelectWallpaper={(themeClass) => setChatWallpaper(activeChat.id, themeClass)}
       />
 
     </div>

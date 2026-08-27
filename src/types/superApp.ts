@@ -243,6 +243,22 @@ export interface SocialPost {
 }
 
 /* ==================== CHAT & MESSENGER ==================== */
+export interface PollOption {
+  id: string;
+  text: string;
+  votes: number;
+  votedUserIds?: string[];
+}
+
+export interface ChatPoll {
+  id: string;
+  question: string;
+  options: PollOption[];
+  isAnonymous?: boolean;
+  allowsMultiple?: boolean;
+  totalVotes: number;
+}
+
 export interface ChatMessage {
   id: string;
   senderId: string;
@@ -251,9 +267,18 @@ export interface ChatMessage {
   timestamp: string;
   isUser: boolean;
   mediaUrl?: string;
+  mediaType?: 'image' | 'video' | 'audio' | 'video_note' | 'sticker' | 'gif' | 'file';
   expiresAt?: number; // timestamp in milliseconds when message will permanently self-destruct
   expiresDuration?: number; // duration in seconds (5, 30, 60, 3600, etc.)
   isDisappearing?: boolean;
+  isStarred?: boolean;
+  isForwarded?: boolean;
+  reactions?: Record<string, number>; // e.g. { '❤️': 2, '👍': 1, '🔥': 3 }
+  userReaction?: string; // current user's reaction
+  poll?: ChatPoll;
+  audioDuration?: number;
+  fileName?: string;
+  fileSize?: string;
 }
 
 export interface ChatConversation {
@@ -275,6 +300,9 @@ export interface ChatConversation {
   isFriend?: boolean;
   friendRequestSent?: boolean;
   isBlocked?: boolean;
+  isPinned?: boolean;
+  isMuted?: boolean;
+  customWallpaper?: string;
 }
 
 /* ==================== DIGITAL WALLET ==================== */
