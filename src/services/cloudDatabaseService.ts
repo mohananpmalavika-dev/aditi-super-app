@@ -57,8 +57,104 @@ let cloudState = {
   alerts: [...MOCK_ALERTS]
 };
 
+/* ==================== DUMMY ACCOUNT VALIDATION & BLOCK ENGINE ==================== */
+const DUMMY_KEYWORDS = [
+  'test',
+  'demo',
+  'dummy',
+  'fake',
+  'sample',
+  'temp',
+  'trashmail',
+  'mailinator',
+  'guerrillamail',
+  '10minutemail',
+  'sharklasers',
+  'yopmail',
+  'dispostable',
+  'example.com',
+  'test.com',
+  'dummy.com',
+  'fake.com',
+  'sample.com',
+  'abc.com',
+  'foo.com',
+  '12345',
+  'admin@admin',
+  'user@user'
+];
+
+export function isDummyOrDisposableAccount(email: string, name?: string, handle?: string): boolean {
+  if (!email || typeof email !== 'string') return true;
+  const cleanEmail = email.trim().toLowerCase();
+
+  // Basic RFC 5322 regex validation
+  const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+  if (!emailRegex.test(cleanEmail)) return true;
+
+  // Check against dummy keyword patterns
+  for (const keyword of DUMMY_KEYWORDS) {
+    if (cleanEmail.includes(keyword)) return true;
+    if (name && name.toLowerCase().includes(keyword)) return true;
+    if (handle && handle.toLowerCase().includes(keyword)) return true;
+  }
+
+  const [localPart, domain] = cleanEmail.split('@');
+  if (!localPart || localPart.length < 3) return true;
+  if (/^[0-9]+$/.test(localPart)) return true; // all-numeric local part
+  if (localPart === 'asdf' || localPart === 'qwerty' || localPart === 'user' || localPart === 'admin') return true;
+
+  return false;
+}
+
+// Local registry of legitimate registered accounts
+const REGISTERED_USERS_KEY = 'omnilife_registered_users_registry';
+
+function getRegisteredUsersRegistry(): Record<string, { user: UserProfile; passwordHash: string }> {
+  try {
+    const saved = localStorage.getItem(REGISTERED_USERS_KEY);
+    return saved ? JSON.parse(saved) : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveRegisteredUserToRegistry(email: string, user: UserProfile, passwordHash: string): void {
+  try {
+    const reg = getRegisteredUsersRegistry();
+    reg[email.toLowerCase().trim()] = { user, passwordHash };
+    localStorage.setItem(REGISTERED_USERS_KEY, JSON.stringify(reg));
+  } catch (err) {
+    console.error('Failed to save to user registry:', err);
+  }
+}
+
 /* ==================== AUTH & REGISTRATION CLOUD APIS ==================== */
 export async function cloudRegisterUser(creds: RegisterCredentials): Promise<{ user: UserProfile; error?: string }> {
+  // 1. Strict Dummy / Fake User Creation Block
+  if (isDummyOrDisposableAccount(creds.email, creds.name, creds.handle)) {
+    return {
+      user: cloudState.user,
+      error: '❌ Dummy & Test account creation is strictly blocked. Please provide a genuine, valid email address and real user details.'
+    };
+  }
+
+  // 2. Strict Password Validation
+  if (!creds.password || creds.password.length < 6) {
+    return {
+      user: cloudState.user,
+      error: '❌ Password must be at least 6 characters long for real security.'
+    };
+  }
+
+  // 3. Strict Name Validation
+  if (!creds.name || creds.name.trim().length < 2) {
+    return {
+      user: cloudState.user,
+      error: '❌ Please provide a valid full name.'
+    };
+  }
+
   if (supabase) {
     try {
       const { data, error } = await supabase.auth.signUp({
@@ -84,12 +180,13 @@ export async function cloudRegisterUser(creds: RegisterCredentials): Promise<{ u
           handle: creds.handle,
           avatar: creds.avatar,
           zodiacSign: creds.zodiacSign,
-          bio: creds.bio || 'Aditi LifeOS explorer 🚀',
-          location: creds.location || 'San Francisco, CA',
+          bio: creds.bio || 'Aditi Verified Member 🚀',
+          location: creds.location || 'Kozhikode, Kerala, India',
           isVerified: true,
           createdAt: new Date().toISOString()
         };
         cloudState.user = newUser;
+        saveRegisteredUserToRegistry(creds.email, newUser, creds.password);
         return { user: newUser };
       }
     } catch (e: any) {
@@ -97,7 +194,7 @@ export async function cloudRegisterUser(creds: RegisterCredentials): Promise<{ u
     }
   }
 
-  // Fallback direct registered account
+  // Direct Verified registered account
   const newUser: UserProfile = {
     id: `usr-${Date.now()}`,
     name: creds.name,
@@ -105,16 +202,26 @@ export async function cloudRegisterUser(creds: RegisterCredentials): Promise<{ u
     handle: creds.handle.startsWith('@') ? creds.handle : `@${creds.handle}`,
     avatar: creds.avatar || INITIAL_USER.avatar,
     zodiacSign: creds.zodiacSign || 'Leo',
-    bio: creds.bio || 'Aditi LifeOS member 🚀',
-    location: creds.location || 'San Francisco, CA',
+    bio: creds.bio || 'Aditi Verified Member 🚀',
+    location: creds.location || 'Kozhikode, Kerala, India',
     isVerified: true,
     createdAt: new Date().toISOString()
   };
+
   cloudState.user = newUser;
+  saveRegisteredUserToRegistry(creds.email, newUser, creds.password);
   return { user: newUser };
 }
 
 export async function cloudLoginUser(creds: LoginCredentials): Promise<{ user: UserProfile; error?: string }> {
+  // 1. Strict Dummy / Fake User Login Block
+  if (isDummyOrDisposableAccount(creds.email)) {
+    return {
+      user: cloudState.user,
+      error: '❌ Dummy, Demo & Test account logins are strictly blocked. Please sign in with your verified real account or register anew.'
+    };
+  }
+
   if (supabase) {
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
@@ -130,8 +237,8 @@ export async function cloudLoginUser(creds: LoginCredentials): Promise<{ user: U
           handle: data.user.user_metadata?.handle || `@${data.user.email?.split('@')[0]}`,
           avatar: data.user.user_metadata?.avatar || INITIAL_USER.avatar,
           zodiacSign: data.user.user_metadata?.zodiacSign || 'Leo',
-          bio: data.user.user_metadata?.bio || 'Aditi LifeOS member 🚀',
-          location: data.user.user_metadata?.location || 'San Francisco, CA',
+          bio: data.user.user_metadata?.bio || 'Aditi Verified Member 🚀',
+          location: data.user.user_metadata?.location || 'Kozhikode, Kerala, India',
           isVerified: true
         };
         cloudState.user = loggedInUser;
@@ -142,14 +249,31 @@ export async function cloudLoginUser(creds: LoginCredentials): Promise<{ user: U
     }
   }
 
-  // Standard user verification
+  // Check verified account registry
+  const registry = getRegisteredUsersRegistry();
+  const registeredAccount = registry[creds.email.toLowerCase().trim()];
+
+  if (registeredAccount) {
+    if (registeredAccount.passwordHash && registeredAccount.passwordHash !== creds.password) {
+      return {
+        user: cloudState.user,
+        error: '❌ Incorrect password. Please enter your valid credentials.'
+      };
+    }
+    cloudState.user = registeredAccount.user;
+    return { user: registeredAccount.user };
+  }
+
+  // If first-time genuine login matching user profile
   const loggedInUser: UserProfile = {
     ...cloudState.user,
     email: creds.email,
-    name: creds.email.toLowerCase().includes('dhanya') ? 'Dhanya Sharma' : (creds.email.split('@')[0] || 'Member'),
-    handle: creds.email.toLowerCase().includes('dhanya') ? '@dhanya.tech' : `@${creds.email.split('@')[0]}`
+    name: creds.email.split('@')[0].replace(/[\._]/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
+    handle: `@${creds.email.split('@')[0]}`
   };
+
   cloudState.user = loggedInUser;
+  saveRegisteredUserToRegistry(creds.email, loggedInUser, creds.password);
   return { user: loggedInUser };
 }
 

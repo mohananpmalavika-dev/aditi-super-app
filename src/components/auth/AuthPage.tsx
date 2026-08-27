@@ -37,6 +37,7 @@ import { RegisterCredentials } from '../../types/superApp';
 import { ZODIAC_SIGNS } from '../../services/astrologyEngine';
 import { searchLocations, LocationSuggestion } from '../../services/locationService';
 import { usePWAInstall } from '../../services/pwaService';
+import { isDummyOrDisposableAccount } from '../../services/cloudDatabaseService';
 import { PhotoCaptureModal } from './PhotoCaptureModal';
 import { FaceUnlockModal } from './FaceUnlockModal';
 import { FingerprintModal } from './FingerprintModal';
@@ -197,8 +198,15 @@ export const AuthPage: React.FC = () => {
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!loginEmail || !loginPassword) return;
+
+    // Strict dummy user login block
+    if (isDummyOrDisposableAccount(loginEmail)) {
+      showToast('❌ Dummy / Demo account logins are strictly blocked. Please use your genuine verified account.');
+      return;
+    }
+
     setLoading(true);
-    await login({ email: loginEmail, password: loginPassword });
+    await login({ email: loginEmail.trim(), password: loginPassword });
     setLoading(false);
   };
 
@@ -208,19 +216,31 @@ export const AuthPage: React.FC = () => {
       showToast('⚠️ Please complete all required registration fields');
       return;
     }
+
+    // Strict dummy user registration block
+    if (isDummyOrDisposableAccount(regEmail, regName, regHandle)) {
+      showToast('❌ Dummy & Test account creation is strictly blocked. Please provide a genuine, valid email and real user details.');
+      return;
+    }
+
+    if (regPassword.length < 6) {
+      showToast('❌ Password must be at least 6 characters long for real security.');
+      return;
+    }
+
     setLoading(true);
     const creds: RegisterCredentials = {
-      name: regName,
-      email: regEmail,
+      name: regName.trim(),
+      email: regEmail.trim(),
       password: regPassword,
-      handle: regHandle || regEmail.split('@')[0],
+      handle: regHandle ? (regHandle.startsWith('@') ? regHandle : `@${regHandle}`) : `@${regEmail.split('@')[0]}`,
       dateOfBirth: regDob,
       timeOfBirth: regTob,
-      placeOfBirth: regPob || 'Kollam, Kerala, India',
+      placeOfBirth: regPob || 'Kozhikode, Kerala, India',
       gender: regGender,
       zodiacSign: regZodiac,
       avatar: regAvatar,
-      location: regPob || 'Kollam, Kerala, India',
+      location: regPob || 'Kozhikode, Kerala, India',
       bio: regBio
     };
     await register(creds);
