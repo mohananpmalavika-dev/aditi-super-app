@@ -1,6 +1,5 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { 
-  INITIAL_USER, 
   MOCK_ALERTS, 
   MOCK_CHATS, 
   MOCK_HABITS, 
@@ -13,12 +12,14 @@ import {
 } from '../data/mockData';
 import { 
   ChatConversation, 
+  ChatMessage,
   HabitItem, 
   LoginCredentials,
   MatrimonyProfile, 
   ProactiveAlert, 
   RealEstateProperty, 
   RegisterCredentials,
+  SocialComment,
   SocialPost, 
   TaskItem, 
   TutorBooking, 
@@ -26,16 +27,11 @@ import {
   UserProfile, 
   WalletTransaction 
 } from '../types/superApp';
-import { 
-  hashPassword, 
-  dbRegisterUser, 
-  dbVerifyAndLoginUser, 
-  dbFindUserByEmail 
-} from './databaseEngine';
+import { LoginSchema, RegisterSchema } from '../lib/validation/authSchemas';
 
 /**
  * Cloud Database Service (Supabase PostgreSQL / Cloud Backend API)
- * Replaces all localStorage with real asynchronous cloud network queries.
+ * Authoritative backend service for Aditi Super App.
  */
 
 const SUPABASE_URL = (import.meta as any).env?.VITE_SUPABASE_URL || '';
@@ -44,61 +40,59 @@ const SUPABASE_ANON_KEY = (import.meta as any).env?.VITE_SUPABASE_ANON_KEY || ''
 export const isSupabaseConfigured = Boolean(SUPABASE_URL && SUPABASE_ANON_KEY);
 
 export const supabase: SupabaseClient | null = isSupabaseConfigured
-  ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+  ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true
+      }
+    })
   : null;
 
-// In-Memory Cloud State Cache for session synchronization (Zero LocalStorage)
+// Initial Guest Profile template
+const GUEST_USER: UserProfile = {
+  id: 'usr-guest',
+  name: 'Aditi Member',
+  avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80',
+  handle: '@aditi.user',
+  email: '',
+  zodiacSign: 'Leo',
+  bio: 'Aditi LifeOS explorer 🚀',
+  location: 'Kozhikode, Kerala, India',
+  isVerified: false
+};
+
+// In-Memory state for active authenticated session
 let cloudState = {
-  user: { ...INITIAL_USER },
-  properties: [...MOCK_PROPERTIES],
-  matrimonyProfiles: [...MOCK_MATRIMONY_PROFILES],
-  tutors: [...MOCK_TUTORS],
+  user: { ...GUEST_USER },
+  properties: isSupabaseConfigured ? [] : [...MOCK_PROPERTIES],
+  matrimonyProfiles: isSupabaseConfigured ? [] : [...MOCK_MATRIMONY_PROFILES],
+  tutors: isSupabaseConfigured ? [] : [...MOCK_TUTORS],
   bookings: [] as TutorBooking[],
-  posts: [...MOCK_SOCIAL_POSTS],
-  chats: [...MOCK_CHATS],
-  walletBalance: 2450.00,
-  transactions: [...MOCK_TRANSACTIONS],
-  tasks: [...MOCK_TASKS],
-  habits: [...MOCK_HABITS],
-  alerts: [...MOCK_ALERTS]
+  posts: isSupabaseConfigured ? [] : [...MOCK_SOCIAL_POSTS],
+  chats: isSupabaseConfigured ? [] : [...MOCK_CHATS],
+  walletBalance: 0.00,
+  transactions: [] as WalletTransaction[],
+  tasks: isSupabaseConfigured ? [] : [...MOCK_TASKS],
+  habits: isSupabaseConfigured ? [] : [...MOCK_HABITS],
+  alerts: [] as ProactiveAlert[]
 };
 
 /* ==================== DUMMY ACCOUNT VALIDATION & BLOCK ENGINE ==================== */
 const DUMMY_KEYWORDS = [
-  'test',
-  'demo',
-  'dummy',
-  'fake',
-  'sample',
-  'temp',
-  'trashmail',
-  'mailinator',
-  'guerrillamail',
-  '10minutemail',
-  'sharklasers',
-  'yopmail',
-  'dispostable',
-  'example.com',
-  'test.com',
-  'dummy.com',
-  'fake.com',
-  'sample.com',
-  'abc.com',
-  'foo.com',
-  '12345',
-  'admin@admin',
-  'user@user'
+  'test', 'demo', 'dummy', 'fake', 'sample', 'temp', 'trashmail', 'mailinator',
+  'guerrillamail', '10minutemail', 'sharklasers', 'yopmail', 'dispostable',
+  'example.com', 'test.com', 'dummy.com', 'fake.com', 'sample.com', 'abc.com',
+  'foo.com', '12345', 'admin@admin', 'user@user'
 ];
 
 export function isDummyOrDisposableAccount(email: string, name?: string, handle?: string): boolean {
   if (!email || typeof email !== 'string') return true;
   const cleanEmail = email.trim().toLowerCase();
 
-  // Basic RFC 5322 regex validation
   const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
   if (!emailRegex.test(cleanEmail)) return true;
 
-  // Check against dummy keyword patterns
   for (const keyword of DUMMY_KEYWORDS) {
     if (cleanEmail.includes(keyword)) return true;
     if (name && name.toLowerCase().includes(keyword)) return true;
@@ -107,42 +101,30 @@ export function isDummyOrDisposableAccount(email: string, name?: string, handle?
 
   const [localPart] = cleanEmail.split('@');
   if (!localPart || localPart.length < 3) return true;
-  if (/^[0-9]+$/.test(localPart)) return true; // all-numeric local part
+  if (/^[0-9]+$/.test(localPart)) return true;
   if (localPart === 'asdf' || localPart === 'qwerty' || localPart === 'user' || localPart === 'admin') return true;
 
   return false;
 }
 
 /* ==================== AUTH & REGISTRATION CLOUD APIS ==================== */
+
 export async function cloudRegisterUser(creds: RegisterCredentials): Promise<{ user: UserProfile; error?: string }> {
-  // 1. Strict Dummy / Fake User Creation Block
+  const validation = RegisterSchema.safeParse(creds);
+  if (!validation.success) {
+    return {
+      user: cloudState.user,
+      error: validation.error.issues[0]?.message || 'Invalid registration details'
+    };
+  }
+
   if (isDummyOrDisposableAccount(creds.email, creds.name, creds.handle)) {
     return {
       user: cloudState.user,
-      error: '❌ Dummy & Test account creation is strictly blocked. Please provide a genuine, valid email address and real user details.'
+      error: '❌ Dummy & Test account creation is strictly blocked. Please provide a genuine email address and real user details.'
     };
   }
 
-  // 2. Strict Password Validation
-  if (!creds.password || creds.password.length < 6) {
-    return {
-      user: cloudState.user,
-      error: '❌ Password must be at least 6 characters long for real security.'
-    };
-  }
-
-  // 3. Strict Name Validation
-  if (!creds.name || creds.name.trim().length < 2) {
-    return {
-      user: cloudState.user,
-      error: '❌ Please provide a valid full name.'
-    };
-  }
-
-  // 4. Generate secure cryptographic hash
-  const passwordHash = await hashPassword(creds.password);
-
-  // 5. If Supabase is configured, write user to remote Supabase DB
   if (supabase) {
     try {
       const { data, error } = await supabase.auth.signUp({
@@ -155,39 +137,65 @@ export async function cloudRegisterUser(creds: RegisterCredentials): Promise<{ u
             avatar: creds.avatar,
             zodiacSign: creds.zodiacSign,
             bio: creds.bio || '',
-            location: creds.location || 'Global'
+            location: creds.location || 'Kozhikode, Kerala, India'
           }
         }
       });
       if (error) return { user: cloudState.user, error: error.message };
+      if (data.user) {
+        const newUser: UserProfile = {
+          id: data.user.id,
+          name: creds.name,
+          email: creds.email,
+          handle: creds.handle.startsWith('@') ? creds.handle : `@${creds.handle}`,
+          avatar: creds.avatar || GUEST_USER.avatar,
+          zodiacSign: creds.zodiacSign || 'Leo',
+          bio: creds.bio || 'Aditi Verified Member 🚀',
+          location: creds.location || 'Kozhikode, Kerala, India',
+          isVerified: true,
+          createdAt: new Date().toISOString()
+        };
+        cloudState.user = newUser;
+        return { user: newUser };
+      }
     } catch (e: any) {
-      console.warn('Supabase auth write fallback:', e);
+      return { user: cloudState.user, error: e.message || 'Supabase authentication failed' };
     }
   }
 
-  // 6. Write and persist user directly into Database
-  const dbResult = await dbRegisterUser(creds, passwordHash);
-  if (!dbResult.success || !dbResult.user) {
-    return {
-      user: cloudState.user,
-      error: dbResult.error || '❌ Database write failed. User was not created.'
-    };
-  }
-
-  cloudState.user = dbResult.user;
-  return { user: dbResult.user };
+  // Local development session
+  const localUser: UserProfile = {
+    id: `usr-${crypto.randomUUID()}`,
+    name: creds.name,
+    email: creds.email,
+    handle: creds.handle.startsWith('@') ? creds.handle : `@${creds.handle}`,
+    avatar: creds.avatar || GUEST_USER.avatar,
+    zodiacSign: creds.zodiacSign || 'Leo',
+    bio: creds.bio || 'Aditi Verified Member 🚀',
+    location: creds.location || 'Kozhikode, Kerala, India',
+    isVerified: true,
+    createdAt: new Date().toISOString()
+  };
+  cloudState.user = localUser;
+  return { user: localUser };
 }
 
 export async function cloudLoginUser(creds: LoginCredentials): Promise<{ user: UserProfile; error?: string }> {
-  // 1. Strict Dummy / Fake User Login Block
-  if (isDummyOrDisposableAccount(creds.email)) {
+  const validation = LoginSchema.safeParse(creds);
+  if (!validation.success) {
     return {
       user: cloudState.user,
-      error: '❌ Dummy, Demo & Test account logins are strictly blocked. Please sign in with your verified real account or register anew.'
+      error: validation.error.issues[0]?.message || 'Invalid login details'
     };
   }
 
-  // 2. If Supabase is configured, verify against Supabase DB
+  if (isDummyOrDisposableAccount(creds.email)) {
+    return {
+      user: cloudState.user,
+      error: '❌ Dummy, Demo & Test account logins are strictly blocked. Please sign in with your verified real account.'
+    };
+  }
+
   if (supabase) {
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
@@ -196,36 +204,41 @@ export async function cloudLoginUser(creds: LoginCredentials): Promise<{ user: U
       });
       if (error) return { user: cloudState.user, error: error.message };
       if (data.user) {
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', data.user.id)
+          .single();
+
         const loggedInUser: UserProfile = {
           id: data.user.id,
-          name: data.user.user_metadata?.name || data.user.email?.split('@')[0] || 'User',
+          name: profileData?.name || data.user.user_metadata?.name || data.user.email?.split('@')[0] || 'User',
           email: data.user.email || creds.email,
-          handle: data.user.user_metadata?.handle || `@${data.user.email?.split('@')[0]}`,
-          avatar: data.user.user_metadata?.avatar || INITIAL_USER.avatar,
-          zodiacSign: data.user.user_metadata?.zodiacSign || 'Leo',
-          bio: data.user.user_metadata?.bio || 'Aditi Verified Member 🚀',
-          location: data.user.user_metadata?.location || 'Kozhikode, Kerala, India',
+          handle: profileData?.handle || data.user.user_metadata?.handle || `@${data.user.email?.split('@')[0]}`,
+          avatar: profileData?.avatar_url || data.user.user_metadata?.avatar || GUEST_USER.avatar,
+          zodiacSign: profileData?.zodiac_sign || data.user.user_metadata?.zodiacSign || 'Leo',
+          bio: profileData?.bio || data.user.user_metadata?.bio || 'Aditi Verified Member 🚀',
+          location: profileData?.location || data.user.user_metadata?.location || 'Kozhikode, Kerala, India',
           isVerified: true
         };
         cloudState.user = loggedInUser;
         return { user: loggedInUser };
       }
     } catch (e: any) {
-      console.warn('Supabase auth fallback:', e);
+      return { user: cloudState.user, error: e.message || 'Supabase authentication failed' };
     }
   }
 
-  // 3. Strict Database Verification (Queries DB & verifies hashed password)
-  const dbResult = await dbVerifyAndLoginUser(creds);
-  if (!dbResult.success || !dbResult.user) {
-    return {
-      user: cloudState.user,
-      error: dbResult.error || '❌ Database authentication verification failed.'
-    };
-  }
-
-  cloudState.user = dbResult.user;
-  return { user: dbResult.user };
+  // Local development session
+  const loggedInUser: UserProfile = {
+    ...cloudState.user,
+    email: creds.email,
+    name: creds.email.split('@')[0].replace(/[\._]/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
+    handle: `@${creds.email.split('@')[0]}`,
+    isVerified: true
+  };
+  cloudState.user = loggedInUser;
+  return { user: loggedInUser };
 }
 
 export async function cloudGoogleAuthUser(googleUserData?: {
@@ -233,104 +246,122 @@ export async function cloudGoogleAuthUser(googleUserData?: {
   email: string;
   avatar?: string;
 }): Promise<{ user: UserProfile; error?: string }> {
-  // If payload provided (direct Google authentication)
   if (googleUserData) {
-    if (isDummyOrDisposableAccount(googleUserData.email)) {
-      return {
-        user: cloudState.user,
-        error: '❌ Dummy and disposable emails are blocked. Please use a valid Google / Gmail account.'
-      };
-    }
-
     const cleanEmail = googleUserData.email.trim().toLowerCase();
-
-    // 1. Check if user already exists in DB
-    const existingDbUser = await dbFindUserByEmail(cleanEmail);
-    if (existingDbUser) {
-      const userProfile: UserProfile = {
-        id: existingDbUser.id,
-        name: existingDbUser.name,
-        email: existingDbUser.email,
-        handle: existingDbUser.handle,
-        avatar: existingDbUser.avatar || googleUserData.avatar || INITIAL_USER.avatar,
-        zodiacSign: existingDbUser.zodiacSign || 'Leo',
-        bio: existingDbUser.bio || 'Aditi Google-Verified Member 🌟',
-        location: existingDbUser.location || 'Kozhikode, Kerala, India',
-        isVerified: true
-      };
-      cloudState.user = userProfile;
-      return { user: userProfile };
-    }
-
-    // 2. User does not exist -> Automatically write and create user in DB
-    const randomPass = 'GoogleAuth_' + Math.random().toString(36).substring(2, 12);
-    const passwordHash = await hashPassword(randomPass);
-
-    const creds: RegisterCredentials = {
-      name: googleUserData.name.trim() || cleanEmail.split('@')[0],
+    const userProfile: UserProfile = {
+      id: `usr-${crypto.randomUUID()}`,
+      name: googleUserData.name || cleanEmail.split('@')[0],
       email: cleanEmail,
-      password: randomPass,
       handle: `@${cleanEmail.split('@')[0]}`,
-      avatar: googleUserData.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300',
+      avatar: googleUserData.avatar || GUEST_USER.avatar,
+      zodiacSign: 'Leo',
+      bio: 'Aditi Google-Verified Member 🌟',
       location: 'Kozhikode, Kerala, India',
-      bio: 'Google Verified Member 🌟',
-      zodiacSign: 'Leo'
+      isVerified: true
     };
-
-    const regResult = await dbRegisterUser(creds, passwordHash);
-    if (!regResult.success || !regResult.user) {
-      return {
-        user: cloudState.user,
-        error: regResult.error || '❌ Failed to create Google account in database.'
-      };
-    }
-
-    cloudState.user = regResult.user;
-    return { user: regResult.user };
+    cloudState.user = userProfile;
+    return { user: userProfile };
   }
 
-  // If Supabase OAuth configured
   if (supabase) {
     try {
-      const { data, error } = await supabase.auth.signInWithOAuth({
+      const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
           redirectTo: typeof window !== 'undefined' ? window.location.origin : undefined
         }
       });
       if (error) return { user: cloudState.user, error: error.message };
+      return { user: cloudState.user };
     } catch (e: any) {
-      console.warn('Supabase Google OAuth fallback:', e);
+      return { user: cloudState.user, error: e.message };
     }
   }
 
   return { user: cloudState.user };
 }
 
+export async function cloudResetPassword(email: string): Promise<{ success: boolean; error?: string }> {
+  if (supabase) {
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+        redirectTo: typeof window !== 'undefined' ? `${window.location.origin}/reset-password` : undefined
+      });
+      if (error) return { success: false, error: error.message };
+      return { success: true };
+    } catch (e: any) {
+      return { success: false, error: e.message };
+    }
+  }
+  return { success: true };
+}
+
 export async function cloudLogoutUser(): Promise<void> {
   if (supabase) {
     await supabase.auth.signOut();
   }
+  cloudState.user = { ...GUEST_USER };
 }
 
 /* ==================== USER PROFILE CLOUD APIS ==================== */
 export async function getCloudUserProfile(): Promise<UserProfile> {
   if (supabase) {
-    const { data, error } = await supabase.from('users').select('*').eq('id', INITIAL_USER.id).single();
-    if (!error && data) return data;
+    const { data: authData } = await supabase.auth.getUser();
+    if (authData.user) {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', authData.user.id)
+        .single();
+      if (!error && data) {
+        return {
+          id: data.id,
+          name: data.name,
+          email: data.email,
+          handle: data.handle,
+          avatar: data.avatar_url,
+          bio: data.bio,
+          location: data.location,
+          zodiacSign: data.zodiac_sign,
+          gender: data.gender,
+          isVerified: data.is_verified,
+          createdAt: data.created_at
+        };
+      }
+    }
   }
   return { ...cloudState.user };
 }
 
 export async function updateCloudUserProfile(updates: Partial<UserProfile>): Promise<UserProfile> {
   if (supabase) {
-    const { data, error } = await supabase
-      .from('users')
-      .update(updates)
-      .eq('id', INITIAL_USER.id)
-      .select()
-      .single();
-    if (!error && data) return data;
+    const { data: authData } = await supabase.auth.getUser();
+    if (authData.user) {
+      const dbUpdates: any = {};
+      if (updates.name) dbUpdates.name = updates.name;
+      if (updates.handle) dbUpdates.handle = updates.handle;
+      if (updates.avatar) dbUpdates.avatar_url = updates.avatar;
+      if (updates.bio) dbUpdates.bio = updates.bio;
+      if (updates.location) dbUpdates.location = updates.location;
+      if (updates.zodiacSign) dbUpdates.zodiac_sign = updates.zodiacSign;
+      if (updates.gender) dbUpdates.gender = updates.gender;
+
+      const { data, error } = await supabase
+        .from('profiles')
+        .update(dbUpdates)
+        .eq('id', authData.user.id)
+        .select()
+        .single();
+      if (!error && data) {
+        const updatedUser: UserProfile = {
+          ...cloudState.user,
+          ...updates,
+          id: data.id
+        };
+        cloudState.user = updatedUser;
+        return updatedUser;
+      }
+    }
   }
   cloudState.user = { ...cloudState.user, ...updates };
   return cloudState.user;
@@ -339,7 +370,10 @@ export async function updateCloudUserProfile(updates: Partial<UserProfile>): Pro
 /* ==================== REAL ESTATE CLOUD APIS ==================== */
 export async function getCloudProperties(): Promise<RealEstateProperty[]> {
   if (supabase) {
-    const { data, error } = await supabase.from('properties').select('*');
+    const { data, error } = await supabase
+      .from('properties')
+      .select('*')
+      .eq('status', 'published');
     if (!error && data && data.length > 0) return data;
   }
   return [...cloudState.properties];
@@ -347,9 +381,26 @@ export async function getCloudProperties(): Promise<RealEstateProperty[]> {
 
 export async function toggleCloudSaveProperty(id: string): Promise<RealEstateProperty[]> {
   if (supabase) {
-    const prop = cloudState.properties.find(p => p.id === id);
-    if (prop) {
-      await supabase.from('properties').update({ isSaved: !prop.isSaved }).eq('id', id);
+    const { data: authData } = await supabase.auth.getUser();
+    if (authData.user) {
+      const { data: existing } = await supabase
+        .from('property_saves')
+        .select('*')
+        .eq('property_id', id)
+        .eq('user_id', authData.user.id)
+        .single();
+
+      if (existing) {
+        await supabase
+          .from('property_saves')
+          .delete()
+          .eq('property_id', id)
+          .eq('user_id', authData.user.id);
+      } else {
+        await supabase
+          .from('property_saves')
+          .insert({ property_id: id, user_id: authData.user.id });
+      }
     }
   }
   cloudState.properties = cloudState.properties.map(p =>
@@ -361,39 +412,43 @@ export async function toggleCloudSaveProperty(id: string): Promise<RealEstatePro
 /* ==================== MATRIMONY CLOUD APIS ==================== */
 export async function getCloudMatrimonyProfiles(): Promise<MatrimonyProfile[]> {
   if (supabase) {
-    const { data, error } = await supabase.from('matrimony').select('*');
+    const { data, error } = await supabase
+      .from('matrimony_profiles')
+      .select('*, profiles(name, avatar_url)')
+      .eq('is_active', true);
     if (!error && data && data.length > 0) return data;
   }
   return [...cloudState.matrimonyProfiles];
 }
 
-export async function sendCloudInterestToMatrimony(id: string): Promise<MatrimonyProfile[]> {
+export async function sendCloudInterestToMatrimony(recipientUserId: string): Promise<MatrimonyProfile[]> {
   if (supabase) {
-    await supabase.from('matrimony').update({ interestSent: true }).eq('id', id);
+    const { data: authData } = await supabase.auth.getUser();
+    if (authData.user) {
+      await supabase.from('matrimony_interests').insert({
+        sender_id: authData.user.id,
+        recipient_id: recipientUserId,
+        status: 'sent'
+      });
+    }
   }
   cloudState.matrimonyProfiles = cloudState.matrimonyProfiles.map(m =>
-    m.id === id ? { ...m, interestSent: true } : m
+    m.id === recipientUserId ? { ...m, interestSent: true } : m
   );
   return [...cloudState.matrimonyProfiles];
 }
 
 export async function toggleCloudShortlistMatrimony(id: string): Promise<MatrimonyProfile[]> {
-  if (supabase) {
-    const item = cloudState.matrimonyProfiles.find(m => m.id === id);
-    if (item) {
-      await supabase.from('matrimony').update({ isShortlisted: !item.isShortlisted }).eq('id', id);
-    }
-  }
   cloudState.matrimonyProfiles = cloudState.matrimonyProfiles.map(m =>
     m.id === id ? { ...m, isShortlisted: !m.isShortlisted } : m
   );
   return [...cloudState.matrimonyProfiles];
 }
 
-/* ==================== TUTOR & BOOKING CLOUD APIS ==================== */
+/* ==================== TUTORS & BOOKINGS CLOUD APIS ==================== */
 export async function getCloudTutors(): Promise<TutorProfile[]> {
   if (supabase) {
-    const { data, error } = await supabase.from('tutors').select('*');
+    const { data, error } = await supabase.from('tutors').select('*').eq('status', 'active');
     if (!error && data && data.length > 0) return data;
   }
   return [...cloudState.tutors];
@@ -401,151 +456,136 @@ export async function getCloudTutors(): Promise<TutorProfile[]> {
 
 export async function getCloudBookings(): Promise<TutorBooking[]> {
   if (supabase) {
-    const { data, error } = await supabase.from('bookings').select('*');
-    if (!error && data) return data;
+    const { data: authData } = await supabase.auth.getUser();
+    if (authData.user) {
+      const { data, error } = await supabase
+        .from('tutor_bookings')
+        .select('*, tutors(name, avatar_url, hourly_rate)')
+        .eq('student_id', authData.user.id);
+      if (!error && data) return data;
+    }
   }
   return [...cloudState.bookings];
 }
 
-export async function createCloudBooking(booking: TutorBooking): Promise<TutorBooking[]> {
+export async function createCloudBooking(bookingData: {
+  tutorId: string;
+  subject: string;
+  date: string;
+  time: string;
+}): Promise<TutorBooking[]> {
+  const tutor = cloudState.tutors.find(t => t.id === bookingData.tutorId);
+  const newBooking: TutorBooking = {
+    id: `book-${crypto.randomUUID()}`,
+    tutorId: bookingData.tutorId,
+    tutorName: tutor?.name || 'Academic Tutor',
+    subject: bookingData.subject,
+    date: bookingData.date,
+    time: bookingData.time,
+    status: 'Confirmed',
+    rate: tutor?.hourlyRate || 50
+  };
+
   if (supabase) {
-    await supabase.from('bookings').insert([booking]);
+    const { data: authData } = await supabase.auth.getUser();
+    if (authData.user) {
+      const startTime = new Date(`${bookingData.date}T${bookingData.time}:00Z`).toISOString();
+      const endTime = new Date(new Date(startTime).getTime() + 60 * 60 * 1000).toISOString();
+      await supabase.from('tutor_bookings').insert({
+        tutor_id: bookingData.tutorId,
+        student_id: authData.user.id,
+        subject: bookingData.subject,
+        start_at: startTime,
+        end_at: endTime,
+        status: 'confirmed'
+      });
+    }
   }
-  cloudState.bookings = [booking, ...cloudState.bookings];
+
+  cloudState.bookings = [newBooking, ...cloudState.bookings];
   return [...cloudState.bookings];
 }
 
-/* ==================== WALLET & TRANSACTIONS CLOUD APIS ==================== */
-export async function getCloudWallet(): Promise<{ balance: number; transactions: WalletTransaction[] }> {
-  if (supabase) {
-    const { data: userWallet } = await supabase.from('wallets').select('balance').eq('userId', INITIAL_USER.id).single();
-    const { data: txs } = await supabase.from('transactions').select('*').order('created_at', { ascending: false });
-    if (userWallet && txs) {
-      return { balance: userWallet.balance, transactions: txs };
-    }
-  }
-  return { balance: cloudState.walletBalance, transactions: [...cloudState.transactions] };
-}
-
-export async function addCloudTransaction(
-  tx: WalletTransaction,
-  newBalance: number
-): Promise<{ balance: number; transactions: WalletTransaction[] }> {
-  if (supabase) {
-    await supabase.from('wallets').update({ balance: newBalance }).eq('userId', INITIAL_USER.id);
-    await supabase.from('transactions').insert([tx]);
-  }
-  cloudState.walletBalance = newBalance;
-  cloudState.transactions = [tx, ...cloudState.transactions];
-  return { balance: cloudState.walletBalance, transactions: [...cloudState.transactions] };
-}
-
-/* ==================== TASKS & LIFEOS CLOUD APIS ==================== */
-export async function getCloudTasks(): Promise<TaskItem[]> {
-  if (supabase) {
-    const { data, error } = await supabase.from('tasks').select('*').order('created_at', { ascending: false });
-    if (!error && data) return data;
-  }
-  return [...cloudState.tasks];
-}
-
-export async function createCloudTask(task: TaskItem): Promise<TaskItem[]> {
-  if (supabase) {
-    await supabase.from('tasks').insert([task]);
-  }
-  cloudState.tasks = [task, ...cloudState.tasks];
-  return [...cloudState.tasks];
-}
-
-export async function updateCloudTaskStatus(id: string, nextStatus: TaskItem['status']): Promise<TaskItem[]> {
-  if (supabase) {
-    await supabase.from('tasks').update({ status: nextStatus }).eq('id', id);
-  }
-  cloudState.tasks = cloudState.tasks.map(t =>
-    t.id === id ? { ...t, status: nextStatus } : t
-  );
-  return [...cloudState.tasks];
-}
-
-export async function deleteCloudTask(id: string): Promise<TaskItem[]> {
-  if (supabase) {
-    await supabase.from('tasks').delete().eq('id', id);
-  }
-  cloudState.tasks = cloudState.tasks.filter(t => t.id !== id);
-  return [...cloudState.tasks];
-}
-
-/* ==================== HABITS CLOUD APIS ==================== */
-export async function getCloudHabits(): Promise<HabitItem[]> {
-  if (supabase) {
-    const { data, error } = await supabase.from('habits').select('*');
-    if (!error && data) return data;
-  }
-  return [...cloudState.habits];
-}
-
-export async function updateCloudHabit(id: string, dayIdx: number): Promise<HabitItem[]> {
-  cloudState.habits = cloudState.habits.map(h => {
-    if (h.id === id) {
-      const updatedDays = [...h.completedDays];
-      updatedDays[dayIdx] = !updatedDays[dayIdx];
-      const streak = updatedDays.filter(Boolean).length;
-      return { ...h, completedDays: updatedDays, streak };
-    }
-    return h;
-  });
-
-  if (supabase) {
-    const updated = cloudState.habits.find(h => h.id === id);
-    if (updated) {
-      await supabase.from('habits').update({ completedDays: updated.completedDays, streak: updated.streak }).eq('id', id);
-    }
-  }
-
-  return [...cloudState.habits];
-}
-
-/* ==================== SOCIAL POSTS CLOUD APIS ==================== */
+/* ==================== SOCIAL FEED CLOUD APIS ==================== */
 export async function getCloudPosts(): Promise<SocialPost[]> {
   if (supabase) {
-    const { data, error } = await supabase.from('posts').select('*').order('created_at', { ascending: false });
-    if (!error && data) return data;
+    const { data, error } = await supabase
+      .from('posts')
+      .select('*, profiles(name, avatar_url, handle), post_likes(user_id), post_comments(*)')
+      .order('created_at', { ascending: false });
+    if (!error && data && data.length > 0) return data;
   }
   return [...cloudState.posts];
 }
 
 export async function createCloudPost(post: SocialPost): Promise<SocialPost[]> {
   if (supabase) {
-    await supabase.from('posts').insert([post]);
+    const { data: authData } = await supabase.auth.getUser();
+    if (authData.user) {
+      await supabase.from('posts').insert({
+        user_id: authData.user.id,
+        content: post.content,
+        media_url: post.mediaUrl,
+        media_type: post.mediaType,
+        tags: post.tags || []
+      });
+    }
   }
+
   cloudState.posts = [post, ...cloudState.posts];
   return [...cloudState.posts];
 }
 
 export async function likeCloudPost(postId: string): Promise<SocialPost[]> {
+  if (supabase) {
+    const { data: authData } = await supabase.auth.getUser();
+    if (authData.user) {
+      const { data: existingLike } = await supabase
+        .from('post_likes')
+        .select('*')
+        .eq('post_id', postId)
+        .eq('user_id', authData.user.id)
+        .single();
+
+      if (existingLike) {
+        await supabase
+          .from('post_likes')
+          .delete()
+          .eq('post_id', postId)
+          .eq('user_id', authData.user.id);
+      } else {
+        await supabase
+          .from('post_likes')
+          .insert({ post_id: postId, user_id: authData.user.id });
+      }
+    }
+  }
+
   cloudState.posts = cloudState.posts.map(p => {
     if (p.id === postId) {
-      const isLiked = !p.isLiked;
       return {
         ...p,
-        isLiked,
-        likesCount: isLiked ? p.likesCount + 1 : p.likesCount - 1
+        isLiked: !p.isLiked,
+        likesCount: p.isLiked ? Math.max(0, p.likesCount - 1) : p.likesCount + 1
       };
     }
     return p;
   });
-
-  if (supabase) {
-    const post = cloudState.posts.find(p => p.id === postId);
-    if (post) {
-      await supabase.from('posts').update({ likesCount: post.likesCount, isLiked: post.isLiked }).eq('id', postId);
-    }
-  }
-
   return [...cloudState.posts];
 }
 
-export async function addCloudComment(postId: string, comment: any): Promise<SocialPost[]> {
+export async function addCloudComment(postId: string, comment: SocialComment): Promise<SocialPost[]> {
+  if (supabase) {
+    const { data: authData } = await supabase.auth.getUser();
+    if (authData.user) {
+      await supabase.from('post_comments').insert({
+        post_id: postId,
+        user_id: authData.user.id,
+        content: comment.content
+      });
+    }
+  }
+
   cloudState.posts = cloudState.posts.map(p => {
     if (p.id === postId) {
       return {
@@ -559,31 +599,134 @@ export async function addCloudComment(postId: string, comment: any): Promise<Soc
   return [...cloudState.posts];
 }
 
-/* ==================== CHAT CLOUD APIS ==================== */
+/* ==================== REALTIME CHAT CLOUD APIS ==================== */
 export async function getCloudChats(): Promise<ChatConversation[]> {
   if (supabase) {
-    const { data, error } = await supabase.from('chats').select('*');
-    if (!error && data) return data;
+    const { data: authData } = await supabase.auth.getUser();
+    if (authData.user) {
+      const { data, error } = await supabase
+        .from('conversations')
+        .select('*, messages(*), conversation_members(*)')
+        .order('created_at', { ascending: false });
+      if (!error && data && data.length > 0) return data;
+    }
   }
   return [...cloudState.chats];
 }
 
-export async function sendCloudMessage(chatId: string, message: any): Promise<ChatConversation[]> {
-  cloudState.chats = cloudState.chats.map(c => {
-    if (c.id === chatId) {
-      return {
-        ...c,
-        lastMessage: message.text,
-        lastMessageTime: 'Just now',
-        messages: [...c.messages, message]
-      };
-    }
-    return c;
-  });
-
+export async function sendCloudMessage(
+  chatId: string, 
+  messageOrText: string | ChatMessage, 
+  options?: any
+): Promise<ChatConversation[]> {
+  const text = typeof messageOrText === 'string' ? messageOrText : messageOrText.text;
   if (supabase) {
-    await supabase.from('messages').insert([{ chatId, ...message }]);
+    const { data: authData } = await supabase.auth.getUser();
+    if (authData.user) {
+      await supabase.from('messages').insert({
+        id: crypto.randomUUID(),
+        conversation_id: chatId,
+        sender_id: authData.user.id,
+        text: text,
+        media_url: options?.mediaUrl || null,
+        media_type: options?.mediaType || null,
+        is_disappearing: Boolean(options?.expiresDuration),
+        expires_at: options?.expiresDuration 
+          ? new Date(Date.now() + options.expiresDuration * 1000).toISOString() 
+          : null
+      });
+    }
+  }
+  return [...cloudState.chats];
+}
+
+/* ==================== PRODUCTIVITY: TASKS & HABITS ==================== */
+export async function getCloudTasks(): Promise<TaskItem[]> {
+  if (supabase) {
+    const { data: authData } = await supabase.auth.getUser();
+    if (authData.user) {
+      const { data, error } = await supabase
+        .from('tasks')
+        .select('*')
+        .eq('user_id', authData.user.id)
+        .order('created_at', { ascending: false });
+      if (!error && data) return data;
+    }
+  }
+  return [...cloudState.tasks];
+}
+
+export async function createCloudTask(taskData: TaskItem): Promise<TaskItem[]> {
+  if (supabase) {
+    const { data: authData } = await supabase.auth.getUser();
+    if (authData.user) {
+      await supabase.from('tasks').insert({
+        user_id: authData.user.id,
+        title: taskData.title,
+        priority: taskData.priority,
+        due_date: taskData.dueDate ? new Date(taskData.dueDate).toISOString() : null,
+        completed: taskData.status === 'done',
+        category: taskData.category || 'Personal'
+      });
+    }
   }
 
-  return [...cloudState.chats];
+  cloudState.tasks = [taskData, ...cloudState.tasks];
+  return [...cloudState.tasks];
+}
+
+export async function updateCloudTaskStatus(id: string, status: 'todo' | 'in_progress' | 'done'): Promise<TaskItem[]> {
+  if (supabase) {
+    const { data: authData } = await supabase.auth.getUser();
+    if (authData.user) {
+      await supabase
+        .from('tasks')
+        .update({ completed: status === 'done' })
+        .eq('id', id)
+        .eq('user_id', authData.user.id);
+    }
+  }
+  cloudState.tasks = cloudState.tasks.map(t => t.id === id ? { ...t, status } : t);
+  return [...cloudState.tasks];
+}
+
+export async function deleteCloudTask(id: string): Promise<TaskItem[]> {
+  if (supabase) {
+    const { data: authData } = await supabase.auth.getUser();
+    if (authData.user) {
+      await supabase
+        .from('tasks')
+        .delete()
+        .eq('id', id)
+        .eq('user_id', authData.user.id);
+    }
+  }
+  cloudState.tasks = cloudState.tasks.filter(t => t.id !== id);
+  return [...cloudState.tasks];
+}
+
+export async function getCloudHabits(): Promise<HabitItem[]> {
+  if (supabase) {
+    const { data: authData } = await supabase.auth.getUser();
+    if (authData.user) {
+      const { data, error } = await supabase
+        .from('habits')
+        .select('*, habit_entries(*)')
+        .eq('user_id', authData.user.id);
+      if (!error && data) return data;
+    }
+  }
+  return [...cloudState.habits];
+}
+
+export async function updateCloudHabit(id: string, dayIndex: number): Promise<HabitItem[]> {
+  cloudState.habits = cloudState.habits.map(h => {
+    if (h.id === id) {
+      const nextDays = [...h.completedDays];
+      nextDays[dayIndex] = !nextDays[dayIndex];
+      return { ...h, completedDays: nextDays };
+    }
+    return h;
+  });
+  return [...cloudState.habits];
 }

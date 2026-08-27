@@ -37,8 +37,7 @@ import { RegisterCredentials } from '../../types/superApp';
 import { ZODIAC_SIGNS } from '../../services/astrologyEngine';
 import { searchLocations, LocationSuggestion } from '../../services/locationService';
 import { usePWAInstall } from '../../services/pwaService';
-import { isDummyOrDisposableAccount } from '../../services/cloudDatabaseService';
-import { dbFindUserByEmail } from '../../services/databaseEngine';
+import { isDummyOrDisposableAccount, cloudResetPassword } from '../../services/cloudDatabaseService';
 import { PhotoCaptureModal } from './PhotoCaptureModal';
 import { FaceUnlockModal } from './FaceUnlockModal';
 import { FingerprintModal } from './FingerprintModal';
@@ -211,40 +210,39 @@ export const AuthPage: React.FC = () => {
       return;
     }
 
-    setLoading(true);
-
-    // 1. Check if user exists in Database
-    const existingDbUser = await dbFindUserByEmail(loginEmail.trim());
-
-    if (!existingDbUser) {
-      // User not found in DB -> Automatically switch to Create Account (Sign Up) with pre-filled details!
-      setLoading(false);
-      const parsedName = loginEmail.split('@')[0].replace(/[\._]/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
-      setRegEmail(loginEmail.trim());
-      setRegName(parsedName);
-      setRegHandle(`@${loginEmail.split('@')[0]}`);
-      setAuthMode('signup');
-      showToast(`ℹ️ "${loginEmail}" ഡാറ്റാബേസിൽ കണ്ടെത്തിയില്ല. പുതിയ അക്കൗണ്ട് നിർമ്മാണത്തിലേക്ക് മാറ്റുന്നു (Redirected to Create Account)! 📝`);
-      return;
-    }
-
     if (!loginPassword) {
-      setLoading(false);
       showToast('⚠️ Please enter your password to sign in.');
       return;
     }
 
-    // User exists -> verify credentials
+    setLoading(true);
     const result = await login({ email: loginEmail.trim(), password: loginPassword });
     setLoading(false);
 
-    if (!result.success && result.error?.includes('not found')) {
-      const parsedName = loginEmail.split('@')[0].replace(/[\._]/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
-      setRegEmail(loginEmail.trim());
-      setRegName(parsedName);
-      setRegHandle(`@${loginEmail.split('@')[0]}`);
-      setAuthMode('signup');
-      showToast('ℹ️ Account not found in database. Redirected to Create Account!');
+    if (!result.success) {
+      if (result.error?.toLowerCase().includes('invalid login credentials') || result.error?.toLowerCase().includes('not found')) {
+        const parsedName = loginEmail.split('@')[0].replace(/[\._]/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+        setRegEmail(loginEmail.trim());
+        setRegName(parsedName);
+        setRegHandle(`@${loginEmail.split('@')[0]}`);
+        setAuthMode('signup');
+        showToast(`ℹ️ "${loginEmail}" ഡാറ്റാബേസിൽ കണ്ടെത്തിയില്ല. പുതിയ അക്കൗണ്ട് നിർമ്മാണത്തിലേക്ക് മാറ്റുന്നു (Redirected to Create Account)! 📝`);
+      }
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    if (!loginEmail) {
+      showToast('⚠️ Please enter your email address first to receive a password reset link.');
+      return;
+    }
+    setLoading(true);
+    const res = await cloudResetPassword(loginEmail);
+    setLoading(false);
+    if (res.success) {
+      showToast(`📧 Password reset link sent to ${loginEmail}. Please check your inbox.`);
+    } else {
+      showToast(`⚠️ ${res.error || 'Failed to send reset email'}`);
     }
   };
 
@@ -509,6 +507,15 @@ export const AuthPage: React.FC = () => {
                           className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200"
                         >
                           {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      </div>
+                      <div className="flex justify-end">
+                        <button
+                          type="button"
+                          onClick={handleForgotPassword}
+                          className="text-[11px] font-semibold text-indigo-400 hover:text-indigo-300 transition-colors"
+                        >
+                          Forgot Password?
                         </button>
                       </div>
                     </div>

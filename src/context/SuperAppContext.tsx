@@ -614,8 +614,8 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const expiresAt = options?.expiresDuration ? Date.now() + options.expiresDuration * 1000 : undefined;
 
     const userMsg: ChatMessage = {
-      id: `m-${Date.now()}`,
-      senderId: 'user',
+      id: crypto.randomUUID(),
+      senderId: user.id || 'user',
       senderName: user.name,
       text: text || (options?.poll ? `📊 Poll: ${options.poll.question}` : options?.mediaType ? `[${options.mediaType}]` : ''),
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
@@ -629,27 +629,25 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       isDisappearing: Boolean(options?.expiresDuration)
     };
 
-    const updated = await sendCloudMessage(chatId, userMsg);
-    setChats(updated);
+    setChats((prevChats) =>
+      prevChats.map((c) =>
+        c.id === chatId
+          ? {
+              ...c,
+              lastMessage: userMsg.text,
+              lastMessageTime: 'Just now',
+              messages: [...c.messages, userMsg]
+            }
+          : c
+      )
+    );
 
-    if (chatId !== 'chat-brain' && !options?.poll) {
-      setTimeout(async () => {
-        const replyExpiresAt = options?.expiresDuration ? Date.now() + options.expiresDuration * 1000 : undefined;
-        const replyMsg: ChatMessage = {
-          id: `m-${Date.now() + 1}`,
-          senderId: 'contact',
-          senderName: 'Contact',
-          text: 'Got your message! Let me check the details and get back to you shortly. 👍',
-          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          isUser: false,
-          expiresAt: replyExpiresAt,
-          expiresDuration: options?.expiresDuration || undefined,
-          isDisappearing: Boolean(options?.expiresDuration)
-        };
-        const res = await sendCloudMessage(chatId, replyMsg);
-        setChats(res);
-      }, 1200);
-    }
+    // Persist to server backend
+    await sendCloudMessage(chatId, userMsg.text, {
+      mediaUrl: options?.mediaUrl,
+      mediaType: options?.mediaType,
+      expiresDuration: options?.expiresDuration
+    });
   };
 
   const startNewChatWith = (name: string, avatar: string, role: string, initialMessage?: string): string => {
