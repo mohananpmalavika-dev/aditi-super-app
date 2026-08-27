@@ -1,11 +1,12 @@
 -- ========================================================================
 -- ADITI SUPER APP — PRODUCTION POSTGRESQL DATABASE SCHEMA & RLS POLICIES
--- Version: 1.0.0
+-- Version: 2.0.0 (Hardened RLS & Exclusion Constraints)
 -- ========================================================================
 
 -- Enable required Postgres extensions
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+CREATE EXTENSION IF NOT EXISTS "btree_gist";
 
 -- ========================================================================
 -- 1. USER PROFILES & ACCOUNTS (Linked directly to auth.users)
@@ -30,19 +31,29 @@ CREATE TABLE IF NOT EXISTS public.profiles (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Profiles RLS
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Public profiles are viewable by authenticated users"
+-- Explicit RLS Policies for profiles
+CREATE POLICY "Profiles are readable by authenticated users"
     ON public.profiles FOR SELECT
     TO authenticated
     USING (true);
+
+CREATE POLICY "Users can insert their own profile"
+    ON public.profiles FOR INSERT
+    TO authenticated
+    WITH CHECK (auth.uid() = id);
 
 CREATE POLICY "Users can update their own profile"
     ON public.profiles FOR UPDATE
     TO authenticated
     USING (auth.uid() = id)
     WITH CHECK (auth.uid() = id);
+
+CREATE POLICY "Users can delete their own profile"
+    ON public.profiles FOR DELETE
+    TO authenticated
+    USING (auth.uid() = id);
 
 -- Auto create profile on auth.users insert
 CREATE OR REPLACE FUNCTION public.handle_new_user()
@@ -79,8 +90,25 @@ CREATE TABLE IF NOT EXISTS public.friendships (
 );
 
 ALTER TABLE public.friendships ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Users manage their friendships"
-    ON public.friendships FOR ALL
+
+CREATE POLICY "Users can select their own friendships"
+    ON public.friendships FOR SELECT
+    TO authenticated
+    USING (auth.uid() = user_id OR auth.uid() = friend_id);
+
+CREATE POLICY "Users can insert friendships where they are the requester"
+    ON public.friendships FOR INSERT
+    TO authenticated
+    WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update their friendships"
+    ON public.friendships FOR UPDATE
+    TO authenticated
+    USING (auth.uid() = user_id OR auth.uid() = friend_id)
+    WITH CHECK (auth.uid() = user_id OR auth.uid() = friend_id);
+
+CREATE POLICY "Users can delete their friendships"
+    ON public.friendships FOR DELETE
     TO authenticated
     USING (auth.uid() = user_id OR auth.uid() = friend_id);
 
@@ -93,8 +121,19 @@ CREATE TABLE IF NOT EXISTS public.user_blocks (
 );
 
 ALTER TABLE public.user_blocks ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Users manage their own blocklist"
-    ON public.user_blocks FOR ALL
+
+CREATE POLICY "Users can view their own blocklist"
+    ON public.user_blocks FOR SELECT
+    TO authenticated
+    USING (auth.uid() = blocker_id);
+
+CREATE POLICY "Users can insert into their own blocklist"
+    ON public.user_blocks FOR INSERT
+    TO authenticated
+    WITH CHECK (auth.uid() = blocker_id);
+
+CREATE POLICY "Users can delete from their own blocklist"
+    ON public.user_blocks FOR DELETE
     TO authenticated
     USING (auth.uid() = blocker_id);
 
@@ -110,10 +149,16 @@ CREATE TABLE IF NOT EXISTS public.user_reports (
 );
 
 ALTER TABLE public.user_reports ENABLE ROW LEVEL SECURITY;
+
 CREATE POLICY "Users can submit reports"
     ON public.user_reports FOR INSERT
     TO authenticated
     WITH CHECK (auth.uid() = reporter_id);
+
+CREATE POLICY "Users can view their submitted reports"
+    ON public.user_reports FOR SELECT
+    TO authenticated
+    USING (auth.uid() = reporter_id);
 
 -- ========================================================================
 -- 3. CONVERSATIONS & MULTI-USER REALTIME MESSAGING
@@ -141,12 +186,8 @@ CREATE TABLE IF NOT EXISTS public.conversation_members (
 );
 
 ALTER TABLE public.conversation_members ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Members can view their conversation memberships"
-    ON public.conversation_members FOR ALL
-    TO authenticated
-    USING (auth.uid() = user_id);
 
-CREATE POLICY "Conversations viewable by members"
+CREATE POLICY "Members can view conversations they belong to"
     ON public.conversations FOR SELECT
     TO authenticated
     USING (
@@ -154,6 +195,75 @@ CREATE POLICY "Conversations viewable by members"
             SELECT 1 FROM public.conversation_members
             WHERE conversation_members.conversation_id = conversations.id
             AND conversation_members.user_id = auth.uid()
+        )
+    );
+
+CREATE POLICY "Authenticated users can create conversations"
+    ON public.conversations FOR INSERT
+    TO authenticated
+    WITH CHECK (auth.uid() = created_by);
+
+CREATE POLICY "Admins can update conversation metadata"
+    ON public.conversations FOR UPDATE
+    TO authenticated
+    USING (
+        auth.uid() = created_by
+        OR EXISTS (
+            SELECT 1 FROM public.conversation_members
+            WHERE conversation_members.conversation_id = conversations.id
+            AND conversation_members.user_id = auth.uid()
+            AND conversation_members.role = 'admin'
+        )
+    )
+    WITH CHECK (
+        auth.uid() = created_by
+        OR EXISTS (
+            SELECT 1 FROM public.conversation_members
+            WHERE conversation_members.conversation_id = conversations.id
+            AND conversation_members.user_id = auth.uid()
+            AND conversation_members.role = 'admin'
+        )
+    );
+
+CREATE POLICY "Members can view membership rows of their conversations"
+    ON public.conversation_members FOR SELECT
+    TO authenticated
+    USING (
+        user_id = auth.uid()
+        OR EXISTS (
+            SELECT 1 FROM public.conversation_members AS cm
+            WHERE cm.conversation_id = conversation_members.conversation_id
+            AND cm.user_id = auth.uid()
+        )
+    );
+
+CREATE POLICY "Users or admins can add members"
+    ON public.conversation_members FOR INSERT
+    TO authenticated
+    WITH CHECK (
+        auth.uid() = user_id
+        OR EXISTS (
+            SELECT 1 FROM public.conversations
+            WHERE conversations.id = conversation_members.conversation_id
+            AND conversations.created_by = auth.uid()
+        )
+    );
+
+CREATE POLICY "Members can update their own preferences (pinned, muted)"
+    ON public.conversation_members FOR UPDATE
+    TO authenticated
+    USING (auth.uid() = user_id)
+    WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Members can leave or admins can remove members"
+    ON public.conversation_members FOR DELETE
+    TO authenticated
+    USING (
+        auth.uid() = user_id
+        OR EXISTS (
+            SELECT 1 FROM public.conversations
+            WHERE conversations.id = conversation_members.conversation_id
+            AND conversations.created_by = auth.uid()
         )
     );
 
@@ -172,7 +282,8 @@ CREATE TABLE IF NOT EXISTS public.messages (
 );
 
 ALTER TABLE public.messages ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Conversation members can read messages"
+
+CREATE POLICY "Conversation members can read active non-expired messages"
     ON public.messages FOR SELECT
     TO authenticated
     USING (
@@ -196,6 +307,17 @@ CREATE POLICY "Conversation members can send messages"
         )
     );
 
+CREATE POLICY "Senders can edit their messages"
+    ON public.messages FOR UPDATE
+    TO authenticated
+    USING (auth.uid() = sender_id)
+    WITH CHECK (auth.uid() = sender_id);
+
+CREATE POLICY "Senders can delete their messages"
+    ON public.messages FOR DELETE
+    TO authenticated
+    USING (auth.uid() = sender_id);
+
 CREATE TABLE IF NOT EXISTS public.message_reactions (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     message_id UUID NOT NULL REFERENCES public.messages(id) ON DELETE CASCADE,
@@ -206,8 +328,26 @@ CREATE TABLE IF NOT EXISTS public.message_reactions (
 );
 
 ALTER TABLE public.message_reactions ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Members can react to messages"
-    ON public.message_reactions FOR ALL
+
+CREATE POLICY "Members can view message reactions"
+    ON public.message_reactions FOR SELECT
+    TO authenticated
+    USING (
+        EXISTS (
+            SELECT 1 FROM public.messages
+            JOIN public.conversation_members ON conversation_members.conversation_id = messages.conversation_id
+            WHERE messages.id = message_reactions.message_id
+            AND conversation_members.user_id = auth.uid()
+        )
+    );
+
+CREATE POLICY "Users can add reactions"
+    ON public.message_reactions FOR INSERT
+    TO authenticated
+    WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can remove their reactions"
+    ON public.message_reactions FOR DELETE
     TO authenticated
     USING (auth.uid() = user_id);
 
@@ -227,6 +367,7 @@ CREATE TABLE IF NOT EXISTS public.posts (
 );
 
 ALTER TABLE public.posts ENABLE ROW LEVEL SECURITY;
+
 CREATE POLICY "Posts viewable by all authenticated users"
     ON public.posts FOR SELECT
     TO authenticated
@@ -237,8 +378,14 @@ CREATE POLICY "Users can create their own posts"
     TO authenticated
     WITH CHECK (auth.uid() = user_id);
 
-CREATE POLICY "Users can update/delete their own posts"
-    ON public.posts FOR ALL
+CREATE POLICY "Users can update their own posts"
+    ON public.posts FOR UPDATE
+    TO authenticated
+    USING (auth.uid() = user_id)
+    WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete their own posts"
+    ON public.posts FOR DELETE
     TO authenticated
     USING (auth.uid() = user_id);
 
@@ -251,8 +398,19 @@ CREATE TABLE IF NOT EXISTS public.post_likes (
 );
 
 ALTER TABLE public.post_likes ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Users manage their own post likes"
-    ON public.post_likes FOR ALL
+
+CREATE POLICY "Likes viewable by all authenticated users"
+    ON public.post_likes FOR SELECT
+    TO authenticated
+    USING (true);
+
+CREATE POLICY "Users can like posts"
+    ON public.post_likes FOR INSERT
+    TO authenticated
+    WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can unlike posts"
+    ON public.post_likes FOR DELETE
     TO authenticated
     USING (auth.uid() = user_id);
 
@@ -265,13 +423,19 @@ CREATE TABLE IF NOT EXISTS public.post_comments (
 );
 
 ALTER TABLE public.post_comments ENABLE ROW LEVEL SECURITY;
+
 CREATE POLICY "Comments viewable by authenticated users"
     ON public.post_comments FOR SELECT
     TO authenticated
     USING (true);
 
-CREATE POLICY "Users manage their own comments"
-    ON public.post_comments FOR ALL
+CREATE POLICY "Users can post comments"
+    ON public.post_comments FOR INSERT
+    TO authenticated
+    WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete their own comments"
+    ON public.post_comments FOR DELETE
     TO authenticated
     USING (auth.uid() = user_id);
 
@@ -299,10 +463,22 @@ CREATE TABLE IF NOT EXISTS public.properties (
 );
 
 ALTER TABLE public.properties ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Properties viewable by all"
+
+CREATE POLICY "Properties viewable by all authenticated users"
     ON public.properties FOR SELECT
     TO authenticated
-    USING (status = 'published');
+    USING (status = 'published' OR auth.uid() = owner_id);
+
+CREATE POLICY "Users can insert property listings"
+    ON public.properties FOR INSERT
+    TO authenticated
+    WITH CHECK (auth.uid() = owner_id);
+
+CREATE POLICY "Owners can update their property listings"
+    ON public.properties FOR UPDATE
+    TO authenticated
+    USING (auth.uid() = owner_id)
+    WITH CHECK (auth.uid() = owner_id);
 
 CREATE TABLE IF NOT EXISTS public.property_saves (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -313,8 +489,19 @@ CREATE TABLE IF NOT EXISTS public.property_saves (
 );
 
 ALTER TABLE public.property_saves ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Users manage their saved properties"
-    ON public.property_saves FOR ALL
+
+CREATE POLICY "Users can view their saved properties"
+    ON public.property_saves FOR SELECT
+    TO authenticated
+    USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can save properties"
+    ON public.property_saves FOR INSERT
+    TO authenticated
+    WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can unsave properties"
+    ON public.property_saves FOR DELETE
     TO authenticated
     USING (auth.uid() = user_id);
 
@@ -341,15 +528,22 @@ CREATE TABLE IF NOT EXISTS public.matrimony_profiles (
 );
 
 ALTER TABLE public.matrimony_profiles ENABLE ROW LEVEL SECURITY;
+
 CREATE POLICY "Active matrimony profiles viewable by authenticated users"
     ON public.matrimony_profiles FOR SELECT
     TO authenticated
-    USING (is_active = true);
+    USING (is_active = true OR auth.uid() = user_id);
 
-CREATE POLICY "Users manage their own matrimony profile"
-    ON public.matrimony_profiles FOR ALL
+CREATE POLICY "Users can create their matrimony profile"
+    ON public.matrimony_profiles FOR INSERT
     TO authenticated
-    USING (auth.uid() = user_id);
+    WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update their matrimony profile"
+    ON public.matrimony_profiles FOR UPDATE
+    TO authenticated
+    USING (auth.uid() = user_id)
+    WITH CHECK (auth.uid() = user_id);
 
 CREATE TABLE IF NOT EXISTS public.matrimony_interests (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -361,13 +555,30 @@ CREATE TABLE IF NOT EXISTS public.matrimony_interests (
 );
 
 ALTER TABLE public.matrimony_interests ENABLE ROW LEVEL SECURITY;
+
 CREATE POLICY "Interest visible to sender and recipient"
-    ON public.matrimony_interests FOR ALL
+    ON public.matrimony_interests FOR SELECT
     TO authenticated
     USING (auth.uid() = sender_id OR auth.uid() = recipient_id);
 
+CREATE POLICY "Users can send matrimony interests"
+    ON public.matrimony_interests FOR INSERT
+    TO authenticated
+    WITH CHECK (auth.uid() = sender_id);
+
+CREATE POLICY "Recipients can update interest status"
+    ON public.matrimony_interests FOR UPDATE
+    TO authenticated
+    USING (auth.uid() = recipient_id)
+    WITH CHECK (auth.uid() = recipient_id);
+
+CREATE POLICY "Senders can withdraw interest"
+    ON public.matrimony_interests FOR DELETE
+    TO authenticated
+    USING (auth.uid() = sender_id);
+
 -- ========================================================================
--- 7. TUTOR MARKETPLACE & BOOKINGS
+-- 7. TUTOR MARKETPLACE & DOUBLE-BOOKING CONFLICT EXCLUSION
 -- ========================================================================
 CREATE TABLE IF NOT EXISTS public.tutors (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -385,10 +596,11 @@ CREATE TABLE IF NOT EXISTS public.tutors (
 );
 
 ALTER TABLE public.tutors ENABLE ROW LEVEL SECURITY;
+
 CREATE POLICY "Active tutors viewable by authenticated users"
     ON public.tutors FOR SELECT
     TO authenticated
-    USING (status = 'active');
+    USING (status = 'active' OR auth.uid() = user_id);
 
 CREATE TABLE IF NOT EXISTS public.tutor_bookings (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -398,14 +610,41 @@ CREATE TABLE IF NOT EXISTS public.tutor_bookings (
     start_at TIMESTAMPTZ NOT NULL,
     end_at TIMESTAMPTZ NOT NULL,
     status TEXT NOT NULL DEFAULT 'confirmed' CHECK (status IN ('pending', 'confirmed', 'completed', 'cancelled')),
-    created_at TIMESTAMPTZ DEFAULT NOW()
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    -- Strict PostgreSQL Double-Booking Exclusion Constraint
+    CONSTRAINT no_overlapping_tutor_bookings
+    EXCLUDE USING gist (
+        tutor_id WITH =,
+        tstzrange(start_at, end_at) WITH &&
+    ) WHERE (status != 'cancelled')
 );
 
 ALTER TABLE public.tutor_bookings ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Students and tutors can manage bookings"
-    ON public.tutor_bookings FOR ALL
+
+CREATE POLICY "Bookings viewable by student and tutor"
+    ON public.tutor_bookings FOR SELECT
     TO authenticated
-    USING (auth.uid() = student_id OR auth.uid() = (SELECT user_id FROM public.tutors WHERE tutors.id = tutor_bookings.tutor_id));
+    USING (
+        auth.uid() = student_id 
+        OR auth.uid() = (SELECT user_id FROM public.tutors WHERE tutors.id = tutor_bookings.tutor_id)
+    );
+
+CREATE POLICY "Students can create bookings"
+    ON public.tutor_bookings FOR INSERT
+    TO authenticated
+    WITH CHECK (auth.uid() = student_id);
+
+CREATE POLICY "Participants can update booking status"
+    ON public.tutor_bookings FOR UPDATE
+    TO authenticated
+    USING (
+        auth.uid() = student_id 
+        OR auth.uid() = (SELECT user_id FROM public.tutors WHERE tutors.id = tutor_bookings.tutor_id)
+    )
+    WITH CHECK (
+        auth.uid() = student_id 
+        OR auth.uid() = (SELECT user_id FROM public.tutors WHERE tutors.id = tutor_bookings.tutor_id)
+    );
 
 -- ========================================================================
 -- 8. PRODUCTIVITY: TASKS & HABITS
@@ -422,8 +661,25 @@ CREATE TABLE IF NOT EXISTS public.tasks (
 );
 
 ALTER TABLE public.tasks ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Users own their tasks"
-    ON public.tasks FOR ALL
+
+CREATE POLICY "Users can view their tasks"
+    ON public.tasks FOR SELECT
+    TO authenticated
+    USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert their tasks"
+    ON public.tasks FOR INSERT
+    TO authenticated
+    WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update their tasks"
+    ON public.tasks FOR UPDATE
+    TO authenticated
+    USING (auth.uid() = user_id)
+    WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete their tasks"
+    ON public.tasks FOR DELETE
     TO authenticated
     USING (auth.uid() = user_id);
 
@@ -437,8 +693,25 @@ CREATE TABLE IF NOT EXISTS public.habits (
 );
 
 ALTER TABLE public.habits ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Users own their habits"
-    ON public.habits FOR ALL
+
+CREATE POLICY "Users can view their habits"
+    ON public.habits FOR SELECT
+    TO authenticated
+    USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert their habits"
+    ON public.habits FOR INSERT
+    TO authenticated
+    WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update their habits"
+    ON public.habits FOR UPDATE
+    TO authenticated
+    USING (auth.uid() = user_id)
+    WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete their habits"
+    ON public.habits FOR DELETE
     TO authenticated
     USING (auth.uid() = user_id);
 
@@ -453,10 +726,22 @@ CREATE TABLE IF NOT EXISTS public.habit_entries (
 );
 
 ALTER TABLE public.habit_entries ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Users own their habit entries"
-    ON public.habit_entries FOR ALL
+
+CREATE POLICY "Users can view their habit entries"
+    ON public.habit_entries FOR SELECT
     TO authenticated
     USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert their habit entries"
+    ON public.habit_entries FOR INSERT
+    TO authenticated
+    WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update their habit entries"
+    ON public.habit_entries FOR UPDATE
+    TO authenticated
+    USING (auth.uid() = user_id)
+    WITH CHECK (auth.uid() = user_id);
 
 -- ========================================================================
 -- 9. PERFORMANCE INDEXES

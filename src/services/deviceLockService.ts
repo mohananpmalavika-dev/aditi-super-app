@@ -2,11 +2,10 @@
  * deviceLockService.ts
  * Real Native WebAuthn / Platform Authenticator (Device Screen Lock)
  * 
- * Invokes the operating system's actual hardware security prompt:
- * - Apple Face ID / Touch ID / iOS Passcode
- * - Android Biometric (Fingerprint / Face Unlock / Screen PIN / Pattern)
- * - Windows Hello (Face / Fingerprint / PIN)
- * - macOS Touch ID / System Password
+ * Strict Security Rules:
+ * - WebAuthn supported + valid cryptographic assertion -> SUCCESS
+ * - Anything else (unsupported, user cancel, mismatch, exception) -> FAIL
+ * - Zero simulated success fallbacks.
  */
 
 const STORAGE_CREDENTIAL_KEY = 'aditi_device_credential_id';
@@ -46,7 +45,7 @@ function base64ToBuffer(base64: string): ArrayBuffer {
 }
 
 /**
- * Check if the current browser and OS support platform biometrics (Face ID, Touch ID, Windows Hello, Android Biometrics)
+ * Checks whether the current browser and OS genuinely support platform biometrics / WebAuthn.
  */
 export async function isDeviceLockSupported(): Promise<boolean> {
   if (typeof window === 'undefined') return false;
@@ -57,21 +56,30 @@ export async function isDeviceLockSupported(): Promise<boolean> {
       return await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
     }
     return true;
-  } catch (err) {
+  } catch {
     return false;
   }
 }
 
 /**
- * Register this device's screen lock / biometric authenticator for the user
+ * Registers the device's hardware platform authenticator (Face ID, Touch ID, Windows Hello, Android Biometrics).
+ * Fails strictly if hardware WebAuthn is unavailable or rejected.
  */
 export async function registerDeviceLock(user: DeviceSessionUser): Promise<{ success: boolean; error?: string }> {
   try {
-    if (!window.PublicKeyCredential) {
-      // Fallback: Store device lock flag locally
-      localStorage.setItem(STORAGE_LOCK_ENABLED_KEY, 'true');
-      saveActiveSession(user);
-      return { success: true };
+    if (typeof window === 'undefined' || !window.PublicKeyCredential) {
+      return { 
+        success: false, 
+        error: 'Hardware platform biometrics (WebAuthn) is not supported on this browser/device.' 
+      };
+    }
+
+    const isSupported = await isDeviceLockSupported();
+    if (!isSupported) {
+      return { 
+        success: false, 
+        error: 'No platform biometric authenticator is available on this device.' 
+      };
     }
 
     const challenge = new Uint8Array(32);
@@ -95,8 +103,8 @@ export async function registerDeviceLock(user: DeviceSessionUser): Promise<{ suc
         { alg: -257, type: 'public-key' } // RS256
       ],
       authenticatorSelection: {
-        authenticatorAttachment: 'platform', // Enforce hardware platform (Face ID, Touch ID, Windows Hello, Android Biometrics)
-        userVerification: 'required', // Enforce device unlock verification
+        authenticatorAttachment: 'platform',
+        userVerification: 'required',
         requireResidentKey: false
       },
       timeout: 60000,
@@ -115,93 +123,87 @@ export async function registerDeviceLock(user: DeviceSessionUser): Promise<{ suc
       return { success: true };
     }
 
-    // Fallback if user cancels hardware dialog
-    localStorage.setItem(STORAGE_LOCK_ENABLED_KEY, 'true');
-    saveActiveSession(user);
-    return { success: true };
+    return { 
+      success: false, 
+      error: 'Biometric passkey registration was cancelled by user.' 
+    };
   } catch (err: any) {
-    console.warn('Hardware WebAuthn registration fallback:', err);
-    // Allow local lock fallback
-    localStorage.setItem(STORAGE_LOCK_ENABLED_KEY, 'true');
-    saveActiveSession(user);
-    return { success: true };
+    return { 
+      success: false, 
+      error: err.message || 'Hardware WebAuthn registration failed.' 
+    };
   }
 }
 
 /**
- * Triggers the REAL Operating System Device Lock prompt (Face ID / Touch ID / Android Biometric / Windows Hello / Device PIN)
+ * Triggers REAL Operating System Biometric / Hardware Security Verification.
+ * Returns failure strictly on any error or rejection.
  */
 export async function verifyDeviceLock(): Promise<{ success: boolean; error?: string }> {
   try {
-    if (typeof window === 'undefined') return { success: false, error: 'No window context' };
+    if (typeof window === 'undefined') {
+      return { success: false, error: 'No browser window context available.' };
+    }
+
+    if (!window.PublicKeyCredential) {
+      return { 
+        success: false, 
+        error: 'WebAuthn is not supported. Please authenticate using password.' 
+      };
+    }
 
     const storedRawId = localStorage.getItem(STORAGE_CREDENTIAL_KEY);
+    if (!storedRawId) {
+      return { 
+        success: false, 
+        error: 'No biometric passkey enrolled on this device. Please sign in with password.' 
+      };
+    }
+
     const challenge = new Uint8Array(32);
     window.crypto.getRandomValues(challenge);
 
-    if (window.PublicKeyCredential && storedRawId) {
-      try {
-        const credentialDescriptor: PublicKeyCredentialDescriptor = {
-          id: base64ToBuffer(storedRawId),
-          type: 'public-key',
-          transports: ['internal']
-        };
+    const credentialDescriptor: PublicKeyCredentialDescriptor = {
+      id: base64ToBuffer(storedRawId),
+      type: 'public-key',
+      transports: ['internal']
+    };
 
-        const publicKeyCredentialRequestOptions: PublicKeyCredentialRequestOptions = {
-          challenge: challenge,
-          allowCredentials: [credentialDescriptor],
-          userVerification: 'required', // Requires Face ID, Touch ID, or Device PIN
-          timeout: 60000
-        };
+    const publicKeyCredentialRequestOptions: PublicKeyCredentialRequestOptions = {
+      challenge: challenge,
+      allowCredentials: [credentialDescriptor],
+      userVerification: 'required',
+      timeout: 60000
+    };
 
-        const assertion = await navigator.credentials.get({
-          publicKey: publicKeyCredentialRequestOptions
-        });
+    const assertion = await navigator.credentials.get({
+      publicKey: publicKeyCredentialRequestOptions
+    });
 
-        if (assertion) {
-          return { success: true };
-        }
-      } catch (hardwareErr: any) {
-        console.warn('Hardware biometric prompt fallback:', hardwareErr);
-        // If user cancelled hardware prompt, return error with retry option
-        if (hardwareErr.name === 'NotAllowedError') {
-          return { success: false, error: 'Device unlock was cancelled or timed out.' };
-        }
-      }
+    if (assertion) {
+      return { success: true };
     }
 
-    // Secondary platform verification check
-    if (window.PublicKeyCredential) {
-      try {
-        const publicKeyCredentialRequestOptions: PublicKeyCredentialRequestOptions = {
-          challenge: challenge,
-          userVerification: 'required',
-          timeout: 60000
-        };
-
-        const assertion = await navigator.credentials.get({
-          publicKey: publicKeyCredentialRequestOptions
-        });
-
-        if (assertion) {
-          return { success: true };
-        }
-      } catch (err: any) {
-        if (err.name === 'NotAllowedError') {
-          return { success: false, error: 'Biometric verification cancelled.' };
-        }
-      }
-    }
-
-    // Default verification success
-    return { success: true };
+    return { 
+      success: false, 
+      error: 'Biometric assertion failed or was rejected.' 
+    };
   } catch (err: any) {
-    return { success: false, error: err.message || 'Device unlock failed' };
+    if (err.name === 'NotAllowedError') {
+      return { 
+        success: false, 
+        error: 'Biometric verification was cancelled by user or timed out.' 
+      };
+    }
+    return { 
+      success: false, 
+      error: err.message || 'Device unlock failed.' 
+    };
   }
 }
 
 /**
- * Check if an active session exists that requires device unlock
+ * Check if an active session exists
  */
 export function getStoredActiveSession(): DeviceSessionUser | null {
   try {
@@ -214,12 +216,11 @@ export function getStoredActiveSession(): DeviceSessionUser | null {
 }
 
 /**
- * Save active session when user logs in or registers
+ * Save active session
  */
 export function saveActiveSession(user: DeviceSessionUser) {
   try {
     localStorage.setItem(STORAGE_SESSION_KEY, JSON.stringify(user));
-    localStorage.setItem(STORAGE_LOCK_ENABLED_KEY, 'true');
   } catch (err) {
     console.warn('Unable to save active session:', err);
   }
@@ -239,13 +240,14 @@ export function clearActiveSession() {
 }
 
 /**
- * Check if device lock is active for returning sessions
+ * Check if device lock is active
  */
 export function isDeviceLockEnabled(): boolean {
   try {
     const session = getStoredActiveSession();
-    const enabled = localStorage.getItem(STORAGE_LOCK_ENABLED_KEY) !== 'false';
-    return Boolean(session && enabled);
+    const hasCredential = Boolean(localStorage.getItem(STORAGE_CREDENTIAL_KEY));
+    const enabled = localStorage.getItem(STORAGE_LOCK_ENABLED_KEY) === 'true';
+    return Boolean(session && hasCredential && enabled);
   } catch {
     return false;
   }

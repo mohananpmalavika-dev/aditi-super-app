@@ -14,6 +14,11 @@ import {
 } from '../data/mockData';
 import {
   addCloudComment,
+  addCloudFriend,
+  removeCloudFriend,
+  blockCloudUser,
+  unblockCloudUser,
+  createCloudConversation,
   cloudLoginUser,
   cloudLogoutUser,
   cloudRegisterUser,
@@ -35,6 +40,7 @@ import {
   likeCloudPost,
   sendCloudInterestToMatrimony,
   sendCloudMessage,
+  supabase,
   toggleCloudSaveProperty,
   toggleCloudShortlistMatrimony,
   updateCloudHabit,
@@ -597,6 +603,56 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return () => clearInterval(cleaner);
   }, []);
 
+  // Real-time Supabase Database Message Replication Subscription
+  useEffect(() => {
+    if (supabase && user.id) {
+      const channel = supabase
+        .channel('public:messages')
+        .on(
+          'postgres_changes',
+          { event: 'INSERT', schema: 'public', table: 'messages' },
+          (payload: any) => {
+            const newMsg = payload.new;
+            if (newMsg && newMsg.sender_id !== user.id) {
+              setChats((prevChats) =>
+                prevChats.map((chat) => {
+                  if (chat.id === newMsg.conversation_id) {
+                    const mapped: ChatMessage = {
+                      id: newMsg.id,
+                      senderId: newMsg.sender_id,
+                      senderName: chat.participantName,
+                      text: newMsg.text,
+                      timestamp: new Date(newMsg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                      isUser: false,
+                      mediaUrl: newMsg.media_url,
+                      mediaType: newMsg.media_type,
+                      isDisappearing: newMsg.is_disappearing,
+                      expiresAt: newMsg.expires_at ? new Date(newMsg.expires_at).getTime() : undefined
+                    };
+                    return {
+                      ...chat,
+                      lastMessage: mapped.text,
+                      lastMessageTime: 'Just now',
+                      unreadCount: chat.unreadCount + 1,
+                      messages: [...chat.messages, mapped]
+                    };
+                  }
+                  return chat;
+                })
+              );
+            }
+          }
+        )
+        .subscribe();
+
+      return () => {
+        if (supabase) {
+          supabase.removeChannel(channel);
+        }
+      };
+    }
+  }, [user.id]);
+
   // Chat Actions
   const sendChatMessage = async (
     chatId: string,
@@ -739,8 +795,8 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     for (const chatId of recipientChatIds) {
       const broadcastMsg: ChatMessage = {
-        id: `m-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
-        senderId: 'user',
+        id: crypto.randomUUID(),
+        senderId: user.id || 'user',
         senderName: user.name,
         text,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
@@ -753,39 +809,55 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     setChats(updatedChats);
   };
 
-  const toggleFriendStatus = (chatId: string) => {
+  const toggleFriendStatus = async (chatId: string) => {
+    const targetChat = chats.find(c => c.id === chatId);
+    const willBeFriend = targetChat ? !targetChat.isFriend : true;
+
     setChats((prev) =>
       prev.map((c) => {
         if (c.id === chatId) {
-          const updated = !c.isFriend;
-          if (updated) {
+          if (willBeFriend) {
             confetti({ particleCount: 70, spread: 70 });
             showToast(`🎉 Added ${c.participantName} as friend! Unlimited messaging unlocked.`);
           } else {
             showToast(`Removed ${c.participantName} from friends list.`);
           }
-          return { ...c, isFriend: updated };
+          return { ...c, isFriend: willBeFriend };
         }
         return c;
       })
     );
+
+    if (willBeFriend) {
+      await addCloudFriend(chatId);
+    } else {
+      await removeCloudFriend(chatId);
+    }
   };
 
-  const toggleBlockStatus = (chatId: string) => {
+  const toggleBlockStatus = async (chatId: string) => {
+    const targetChat = chats.find(c => c.id === chatId);
+    const willBeBlocked = targetChat ? !targetChat.isBlocked : true;
+
     setChats((prev) =>
       prev.map((c) => {
         if (c.id === chatId) {
-          const updated = !c.isBlocked;
-          if (updated) {
+          if (willBeBlocked) {
             showToast(`🚫 Blocked ${c.participantName}.`);
           } else {
             showToast(`🔓 Unblocked ${c.participantName}.`);
           }
-          return { ...c, isBlocked: updated };
+          return { ...c, isBlocked: willBeBlocked };
         }
         return c;
       })
     );
+
+    if (willBeBlocked) {
+      await blockCloudUser(chatId);
+    } else {
+      await unblockCloudUser(chatId);
+    }
   };
 
   const votePoll = (chatId: string, messageId: string, optionId: string) => {

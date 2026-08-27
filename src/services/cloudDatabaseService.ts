@@ -640,6 +640,82 @@ export async function sendCloudMessage(
   return [...cloudState.chats];
 }
 
+export async function addCloudFriend(friendId: string): Promise<void> {
+  if (supabase) {
+    const { data: authData } = await supabase.auth.getUser();
+    if (authData.user) {
+      await supabase.from('friendships').insert({
+        user_id: authData.user.id,
+        friend_id: friendId,
+        status: 'accepted'
+      });
+    }
+  }
+}
+
+export async function removeCloudFriend(friendId: string): Promise<void> {
+  if (supabase) {
+    const { data: authData } = await supabase.auth.getUser();
+    if (authData.user) {
+      await supabase.from('friendships')
+        .delete()
+        .or(`and(user_id.eq.${authData.user.id},friend_id.eq.${friendId}),and(user_id.eq.${friendId},friend_id.eq.${authData.user.id})`);
+    }
+  }
+}
+
+export async function blockCloudUser(targetUserId: string): Promise<void> {
+  if (supabase) {
+    const { data: authData } = await supabase.auth.getUser();
+    if (authData.user) {
+      await supabase.from('user_blocks').insert({
+        blocker_id: authData.user.id,
+        blocked_id: targetUserId
+      });
+    }
+  }
+}
+
+export async function unblockCloudUser(targetUserId: string): Promise<void> {
+  if (supabase) {
+    const { data: authData } = await supabase.auth.getUser();
+    if (authData.user) {
+      await supabase.from('user_blocks')
+        .delete()
+        .eq('blocker_id', authData.user.id)
+        .eq('blocked_id', targetUserId);
+    }
+  }
+}
+
+export async function createCloudConversation(params: {
+  name?: string;
+  type: 'direct' | 'group' | 'channel';
+  memberIds: string[];
+}): Promise<string> {
+  const conversationId = crypto.randomUUID();
+  if (supabase) {
+    const { data: authData } = await supabase.auth.getUser();
+    if (authData.user) {
+      await supabase.from('conversations').insert({
+        id: conversationId,
+        type: params.type,
+        name: params.name || null,
+        created_by: authData.user.id
+      });
+
+      const memberInserts = [authData.user.id, ...params.memberIds].map(uid => ({
+        conversation_id: conversationId,
+        user_id: uid,
+        role: uid === authData.user.id ? 'admin' : 'member'
+      }));
+
+      await supabase.from('conversation_members').insert(memberInserts);
+    }
+  }
+  return conversationId;
+}
+
 /* ==================== PRODUCTIVITY: TASKS & HABITS ==================== */
 export async function getCloudTasks(): Promise<TaskItem[]> {
   if (supabase) {
