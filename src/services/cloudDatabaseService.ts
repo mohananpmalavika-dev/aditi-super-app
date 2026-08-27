@@ -151,10 +151,15 @@ export async function cloudRegisterUser(creds: RegisterCredentials): Promise<{ u
 
   if (supabase) {
     try {
+      const redirectUrl = typeof window !== 'undefined' && window.location.origin && !window.location.origin.includes('localhost')
+        ? window.location.origin
+        : 'https://malabarbazaar.shop';
+
       const { data, error } = await supabase.auth.signUp({
         email: creds.email,
         password: creds.password,
         options: {
+          emailRedirectTo: redirectUrl,
           data: {
             name: creds.name,
             handle: creds.handle,
@@ -320,10 +325,14 @@ export async function cloudGoogleAuthUser(googleUserData?: {
 
   if (supabase) {
     try {
+      const redirectUrl = typeof window !== 'undefined' && window.location.origin && !window.location.origin.includes('localhost')
+        ? window.location.origin
+        : 'https://malabarbazaar.shop';
+
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: typeof window !== 'undefined' ? window.location.origin : undefined
+          redirectTo: redirectUrl
         }
       });
       if (error) return { user: cloudState.user, error: error.message };
@@ -339,8 +348,12 @@ export async function cloudGoogleAuthUser(googleUserData?: {
 export async function cloudResetPassword(email: string): Promise<{ success: boolean; error?: string }> {
   if (supabase) {
     try {
+      const redirectUrl = typeof window !== 'undefined' && window.location.origin && !window.location.origin.includes('localhost')
+        ? window.location.origin
+        : 'https://malabarbazaar.shop';
+
       const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-        redirectTo: typeof window !== 'undefined' ? `${window.location.origin}/reset-password` : undefined
+        redirectTo: redirectUrl
       });
       if (error) return { success: false, error: error.message };
       return { success: true };
