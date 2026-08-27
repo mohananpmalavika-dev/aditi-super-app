@@ -281,6 +281,7 @@ export interface ChatMessage {
   fileSize?: string;
   voiceCloneAvailable?: boolean;
   voiceProfile?: Partial<UserVoiceProfile>;
+  talkingPhotoUrl?: string;
 }
 
 export interface UserVoiceProfile {
@@ -292,6 +293,7 @@ export interface UserVoiceProfile {
   timbre: 'warm' | 'deep' | 'crisp' | 'energetic' | 'calm';
   language: 'ml-IN' | 'en-IN' | 'hi-IN';
   sampleAudioUrl?: string;
+  talkingPhotoUrl?: string;
   enrolledDate?: string;
 }
 

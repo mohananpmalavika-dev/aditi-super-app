@@ -80,7 +80,9 @@ import { StarredMessagesDrawer } from './StarredMessagesDrawer';
 import { WallpaperModal } from './WallpaperModal';
 import { LiveBackgroundCamera } from './LiveBackgroundCamera';
 import { VoiceCloneStudioModal } from './VoiceCloneStudioModal';
+import { TalkingPortraitModal } from './TalkingPortraitModal';
 import { playTextInSenderVoice } from '../../services/voiceCloneService';
+import { UserVoiceProfile } from '../../types/superApp';
 import confetti from 'canvas-confetti';
 
 const emojis = ['😀', '😂', '😍', '🔥', '👍', '🎉', '🚀', '❤️', '🙌', '💯', '✨', '🙏', '😎', '🥳'];
@@ -138,6 +140,12 @@ export const LiveChatMessenger: React.FC = () => {
   // AI Voice Avatar & Voice Cloning Narration
   const [voiceStudioOpen, setVoiceStudioOpen] = useState(false);
   const [activePlayingVoiceMsgId, setActivePlayingVoiceMsgId] = useState<string | null>(null);
+  const [talkingPortraitModalData, setTalkingPortraitModalData] = useState<{
+    senderName: string;
+    senderAvatar: string;
+    messageText: string;
+    voiceProfile?: Partial<UserVoiceProfile>;
+  } | null>(null);
   const stopVoiceRef = useRef<(() => void) | null>(null);
 
   const handlePlayMessageInSenderVoice = (msg: ChatMessage) => {
@@ -1124,9 +1132,11 @@ export const LiveChatMessenger: React.FC = () => {
                       <p className="whitespace-pre-wrap">{msg.text}</p>
                     )}
 
-                    {/* Receiver AI Voice Narration Chip */}
+                    {/* Receiver AI Voice Narration & Talking Photo Chips */}
                     {!msg.mediaType && !msg.poll && !isSnap && !isLocation && msg.text.trim() && (
-                      <div className="mt-2 pt-1.5 border-t border-white/10 flex items-center justify-between gap-2 flex-wrap">
+                      <div className="mt-2 pt-1.5 border-t border-white/10 flex items-center justify-between gap-1.5 flex-wrap">
+                        
+                        {/* Hear Voice Audio Button */}
                         <button
                           type="button"
                           onClick={() => handlePlayMessageInSenderVoice(msg)}
@@ -1142,7 +1152,7 @@ export const LiveChatMessenger: React.FC = () => {
                           {activePlayingVoiceMsgId === msg.id ? (
                             <>
                               <Pause className="w-3 h-3 text-white" />
-                              <span>Speaking in {isUser ? 'your voice' : `${msg.senderName.split(' ')[0]}'s voice`}...</span>
+                              <span>Speaking...</span>
                               <div className="flex items-center gap-0.5 ml-1">
                                 {[40, 90, 60, 100, 50].map((h, i) => (
                                   <div
@@ -1156,10 +1166,29 @@ export const LiveChatMessenger: React.FC = () => {
                           ) : (
                             <>
                               <Volume2 className="w-3 h-3 text-purple-400" />
-                              <span>Hear in {isUser ? 'My Voice' : `${msg.senderName.split(' ')[0]}'s Voice`}</span>
+                              <span>Hear Voice</span>
                             </>
                           )}
                         </button>
+
+                        {/* Interactive Talking Photo Avatar Button */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setTalkingPortraitModalData({
+                              senderName: msg.senderName,
+                              senderAvatar: msg.talkingPhotoUrl || (isUser ? user.avatar : activeChat.participantAvatar),
+                              messageText: msg.text,
+                              voiceProfile: msg.voiceProfile
+                            });
+                          }}
+                          className="px-2.5 py-1 rounded-xl bg-gradient-to-r from-purple-600/30 to-indigo-600/30 hover:from-purple-600/50 hover:to-indigo-600/50 border border-purple-500/40 text-purple-200 text-[11px] font-extrabold flex items-center gap-1.5 transition-all hover:scale-105 shadow-sm"
+                          title="Watch sender's photo talk and speak this message with lip-sync animation"
+                        >
+                          <Sparkles className="w-3 h-3 text-purple-400" />
+                          <span>🗣️ Watch Photo Speak (സംസാരിക്കുന്ന ഫോട്ടോ)</span>
+                        </button>
+
                       </div>
                     )}
 
@@ -1806,6 +1835,18 @@ export const LiveChatMessenger: React.FC = () => {
         onClose={() => setVoiceStudioOpen(false)}
         onProfileUpdated={() => showToast('🎙️ AI Voice Avatar updated successfully!')}
       />
+
+      {/* AI Talking Photo Avatar Player Modal */}
+      {talkingPortraitModalData && (
+        <TalkingPortraitModal
+          isOpen={!!talkingPortraitModalData}
+          senderName={talkingPortraitModalData.senderName}
+          senderAvatar={talkingPortraitModalData.senderAvatar}
+          messageText={talkingPortraitModalData.messageText}
+          voiceProfile={talkingPortraitModalData.voiceProfile}
+          onClose={() => setTalkingPortraitModalData(null)}
+        />
+      )}
 
     </div>
   );

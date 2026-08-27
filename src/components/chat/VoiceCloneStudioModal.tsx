@@ -11,7 +11,9 @@ import {
   Volume2, 
   RotateCcw,
   Languages,
-  Radio
+  Upload,
+  Image as ImageIcon,
+  UserCheck
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { UserVoiceProfile } from '../../types/superApp';
@@ -23,22 +25,36 @@ interface VoiceCloneStudioModalProps {
   onProfileUpdated?: (profile: UserVoiceProfile) => void;
 }
 
+const PRESET_AVATARS = [
+  'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200', // Ananya
+  'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200', // Rahul
+  'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=200', // Deepa
+  'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200', // Vivek
+  'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200'  // Malavika
+];
+
 export const VoiceCloneStudioModal: React.FC<VoiceCloneStudioModalProps> = ({
   isOpen,
   onClose,
   onProfileUpdated
 }) => {
   const [profile, setProfile] = useState<UserVoiceProfile>(getUserVoiceProfile());
+  const [selectedPhoto, setSelectedPhoto] = useState<string>(
+    profile.talkingPhotoUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200'
+  );
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
   const [sampleRecorded, setSampleRecorded] = useState(profile.isEnrolled);
   const [isPlayingTest, setIsPlayingTest] = useState(false);
-  const [testText, setTestText] = useState('ഹലോ! ഇത് അദിതി ആപ്പിലെ എന്റെ സ്വന്തം AI ശബ്ദമാണ്. ചാറ്റിൽ ഞാൻ അയക്കുന്ന ഏത് ടെക്സ്റ്റും എന്റെ ഇതേ ശബ്ദത്തിൽ നിങ്ങൾക്ക് കേൾക്കാം.');
+  const [testText, setTestText] = useState('ഹലോ! ഇത് അദിതി ആപ്പിലെ എന്റെ സ്വന്തം AI സംസാരിക്കുന്ന ഫോട്ടോയും ശബ്ദവുമാണ്. ഞാൻ അയക്കുന്ന ടെക്സ്റ്റുകൾ ഈ ഫോട്ടോ സംസാരിക്കുന്നതുപോലെ നിങ്ങൾക്ക് കാണാം.');
   const stopSpeechRef = useRef<(() => void) | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     if (isOpen) {
-      setProfile(getUserVoiceProfile());
+      const p = getUserVoiceProfile();
+      setProfile(p);
+      setSelectedPhoto(p.talkingPhotoUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200');
       setIsPlayingTest(false);
       setIsRecording(false);
     } else {
@@ -64,6 +80,20 @@ export const VoiceCloneStudioModal: React.FC<VoiceCloneStudioModalProps> = ({
   }, [isRecording]);
 
   if (!isOpen) return null;
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const url = reader.result as string;
+        setSelectedPhoto(url);
+        setProfile((prev) => ({ ...prev, talkingPhotoUrl: url }));
+        confetti({ particleCount: 30, spread: 50 });
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   const handleStartRecording = async () => {
     setIsRecording(true);
@@ -99,6 +129,7 @@ export const VoiceCloneStudioModal: React.FC<VoiceCloneStudioModalProps> = ({
     e.preventDefault();
     const updated: UserVoiceProfile = {
       ...profile,
+      talkingPhotoUrl: selectedPhoto,
       isEnrolled: true,
       enrolledDate: new Date().toISOString().split('T')[0]
     };
@@ -120,10 +151,10 @@ export const VoiceCloneStudioModal: React.FC<VoiceCloneStudioModalProps> = ({
             </div>
             <div>
               <h3 className="font-extrabold text-base text-white">
-                AI Voice Avatar & Cloning Studio
+                AI Talking Photo & Voice Studio
               </h3>
               <p className="text-xs text-purple-300/80">
-                നിങ്ങളുടെ ശബ്ദം ക്ലോൺ ചെയ്യുക • ടെക്സ്റ്റ് മെസ്സേജുകൾ ശബ്ദമായി കേൾപ്പിക്കുക
+                സംസാരിക്കുന്ന ഫോട്ടോ അവതാർ + സ്വന്തം AI ശബ്ദം ക്രമീകരിക്കുക
               </p>
             </div>
           </div>
@@ -141,12 +172,75 @@ export const VoiceCloneStudioModal: React.FC<VoiceCloneStudioModalProps> = ({
 
         <form onSubmit={handleSave} className="space-y-4">
           
-          {/* Step 1: Voice Sample Enrollment Card */}
+          {/* Step 1: Talking Portrait Photo Upload & Selector */}
+          <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-extrabold text-white flex items-center gap-1.5">
+                <ImageIcon className="w-4 h-4 text-purple-400" />
+                <span>1. Talking Portrait Photo (സംസാരിക്കുന്ന നിങ്ങളുടെ ഫോട്ടോ)</span>
+              </span>
+              <span className="text-[10px] text-purple-300 font-mono">Face Morphing Active</span>
+            </div>
+
+            <div className="flex items-center gap-4">
+              {/* Photo Preview with Lip-Sync Halo */}
+              <div className="relative w-20 h-20 rounded-2xl overflow-hidden border-2 border-purple-500 shadow-lg flex-shrink-0 bg-slate-900">
+                <img
+                  src={selectedPhoto}
+                  alt="Talking Avatar"
+                  className="w-full h-full object-cover"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex items-end justify-center pb-1">
+                  <span className="text-[9px] text-white font-bold">Avatar</span>
+                </div>
+              </div>
+
+              <div className="flex-1 space-y-2">
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleFileUpload}
+                  accept="image/*"
+                  className="hidden"
+                />
+                
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="w-full py-2 px-3 rounded-xl bg-purple-600/20 hover:bg-purple-600/30 border border-purple-500/40 text-purple-200 font-bold text-xs flex items-center justify-center gap-2 transition-colors"
+                >
+                  <Upload className="w-3.5 h-3.5" />
+                  <span>Upload Your Own Photo (ഫോട്ടോ അപ്‌ലോഡ് ചെയ്യുക)</span>
+                </button>
+
+                {/* Preset Avatar Selection */}
+                <div className="flex items-center gap-1.5 overflow-x-auto py-1">
+                  {PRESET_AVATARS.map((url, i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => {
+                        setSelectedPhoto(url);
+                        setProfile((prev) => ({ ...prev, talkingPhotoUrl: url }));
+                      }}
+                      className={`w-8 h-8 rounded-lg overflow-hidden border transition-all flex-shrink-0 ${
+                        selectedPhoto === url ? 'border-purple-400 ring-2 ring-purple-500' : 'border-slate-800 opacity-60 hover:opacity-100'
+                      }`}
+                    >
+                      <img src={url} alt="preset" className="w-full h-full object-cover" />
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Step 2: Voice Sample Enrollment Card */}
           <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-xs font-extrabold text-white flex items-center gap-1.5">
                 <Mic className="w-4 h-4 text-purple-400" />
-                <span>1. Voice Sample Enrollment (5 സെക്കൻഡ് റെക്കോർഡിംഗ്)</span>
+                <span>2. Voice Sample Enrollment (5 സെക്കൻഡ് റെക്കോർഡിംഗ്)</span>
               </span>
               {sampleRecorded && (
                 <span className="text-[11px] font-bold text-emerald-400 flex items-center gap-1 bg-emerald-950/80 px-2 py-0.5 rounded-md border border-emerald-500/30">
@@ -187,11 +281,11 @@ export const VoiceCloneStudioModal: React.FC<VoiceCloneStudioModalProps> = ({
             )}
           </div>
 
-          {/* Step 2: Voice Customization & Timbre Tuning */}
+          {/* Step 3: Voice Customization & Timbre Tuning */}
           <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-4">
             <span className="text-xs font-extrabold text-white flex items-center gap-1.5">
               <Sliders className="w-4 h-4 text-indigo-400" />
-              <span>2. Voice Tone & Accent Customization (ശബ്ദ ക്രമീകരണങ്ങൾ)</span>
+              <span>3. Voice Tone & Accent Customization (ശബ്ദ ക്രമീകരണങ്ങൾ)</span>
             </span>
 
             {/* Timbre Preset Buttons */}
@@ -225,8 +319,6 @@ export const VoiceCloneStudioModal: React.FC<VoiceCloneStudioModalProps> = ({
 
             {/* Pitch & Rate Sliders */}
             <div className="grid grid-cols-2 gap-4">
-              
-              {/* Pitch Slider */}
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between text-xs">
                   <span className="font-bold text-slate-300">Pitch (ശബ്ദ ഉയരം)</span>
@@ -243,7 +335,6 @@ export const VoiceCloneStudioModal: React.FC<VoiceCloneStudioModalProps> = ({
                 />
               </div>
 
-              {/* Speech Speed / Rate Slider */}
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between text-xs">
                   <span className="font-bold text-slate-300">Speed Rate (വേഗത)</span>
@@ -259,7 +350,6 @@ export const VoiceCloneStudioModal: React.FC<VoiceCloneStudioModalProps> = ({
                   className="w-full accent-indigo-500 cursor-pointer"
                 />
               </div>
-
             </div>
 
             {/* Primary Language */}
@@ -292,12 +382,12 @@ export const VoiceCloneStudioModal: React.FC<VoiceCloneStudioModalProps> = ({
 
           </div>
 
-          {/* Step 3: Test Cloned Voice Playback */}
+          {/* Step 4: Test Cloned Voice Playback */}
           <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-xs font-extrabold text-white flex items-center gap-1.5">
                 <Volume2 className="w-4 h-4 text-emerald-400" />
-                <span>3. Test Live Narration in Your Cloned Voice</span>
+                <span>4. Test Live Talking Photo Playback</span>
               </span>
 
               {isPlayingTest && (
@@ -337,7 +427,7 @@ export const VoiceCloneStudioModal: React.FC<VoiceCloneStudioModalProps> = ({
               ) : (
                 <>
                   <Play className="w-4 h-4" />
-                  <span>Listen in Your Voice (ശബ്ദം ടെസ്റ്റ് ചെയ്യുക)</span>
+                  <span>Listen to Talking Photo (ശബ്ദം ടെസ്റ്റ് ചെയ്യുക)</span>
                 </>
               )}
             </button>
@@ -349,7 +439,7 @@ export const VoiceCloneStudioModal: React.FC<VoiceCloneStudioModalProps> = ({
             className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-600 hover:from-purple-500 hover:to-indigo-500 text-white font-extrabold text-xs flex items-center justify-center gap-2 shadow-xl shadow-purple-600/30 transition-all hover:scale-[1.02]"
           >
             <Sparkles className="w-4 h-4" />
-            <span>Save & Enable AI Voice Avatar for Messages</span>
+            <span>Save & Enable AI Talking Photo Avatar</span>
           </button>
 
         </form>
