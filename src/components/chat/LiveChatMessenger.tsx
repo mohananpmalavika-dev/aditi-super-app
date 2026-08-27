@@ -76,6 +76,7 @@ import { VideoNoteModal } from './VideoNoteModal';
 import { ForwardModal } from './ForwardModal';
 import { StarredMessagesDrawer } from './StarredMessagesDrawer';
 import { WallpaperModal } from './WallpaperModal';
+import { LiveBackgroundCamera } from './LiveBackgroundCamera';
 import confetti from 'canvas-confetti';
 
 const emojis = ['😀', '😂', '😍', '🔥', '👍', '🎉', '🚀', '❤️', '🙌', '💯', '✨', '🙏', '😎', '🥳'];
@@ -109,6 +110,11 @@ export const LiveChatMessenger: React.FC = () => {
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showSecretBar, setShowSecretBar] = useState(false);
   const [secretTimer, setSecretTimer] = useState<number | null>(null);
+
+  // Live Camera & Audio Walk & Chat Background with Location Tagging
+  const [isLiveBgActive, setIsLiveBgActive] = useState(false);
+  const [isLocationTagged, setIsLocationTagged] = useState(false);
+  const [currentLiveLocation, setCurrentLiveLocation] = useState('📍 Kozhikode, Kerala (11.2588° N, 75.7804° E)');
 
   // Message Actions state
   const [replyingMessage, setReplyingMessage] = useState<{ id: string; text: string; senderName: string } | null>(null);
@@ -253,6 +259,9 @@ export const LiveChatMessenger: React.FC = () => {
     }
 
     let fullMsg = inputText.trim();
+    if (isLocationTagged) {
+      fullMsg = `${fullMsg}\n${currentLiveLocation}`;
+    }
     if (replyingMessage) {
       fullMsg = `↩️ Replying to [${replyingMessage.senderName}: "${replyingMessage.text.slice(0, 30)}..."]\n${fullMsg}`;
     }
@@ -553,6 +562,19 @@ export const LiveChatMessenger: React.FC = () => {
       {/* ========================================================================= */}
       <div className={`flex-1 flex flex-col ${activeChat.customWallpaper || 'bg-slate-950/40'} relative ${mobileView === 'list' ? 'hidden md:flex' : 'flex'}`}>
         
+        {/* Live Real-time Camera & Audio Environment Background with GPS Tagging (Walk & Chat Mode) */}
+        <LiveBackgroundCamera
+          isActive={isLiveBgActive}
+          onClose={() => setIsLiveBgActive(false)}
+          onLocationUpdate={(loc) => setCurrentLiveLocation(loc)}
+          isLocationTagged={isLocationTagged}
+          onToggleLocationTag={() => {
+            const next = !isLocationTagged;
+            setIsLocationTagged(next);
+            showToast(next ? '📍 Live GPS Location Tagging active on chat background!' : 'Location tagging deactivated');
+          }}
+        />
+
         {/* Top Active Chat Header */}
         <div className="px-3.5 sm:px-5 py-3 bg-slate-950/90 border-b border-slate-800 backdrop-blur-xl flex items-center justify-between z-20">
           <div className="flex items-center gap-2 sm:gap-3 min-w-0">
@@ -655,6 +677,27 @@ export const LiveChatMessenger: React.FC = () => {
           {/* Action Toolbar */}
           <div className="flex items-center gap-1 sm:gap-1.5 flex-shrink-0">
             
+            {/* Live Camera & Audio Background with Location Tagging */}
+            <button
+              onClick={() => {
+                const next = !isLiveBgActive;
+                setIsLiveBgActive(next);
+                if (next) {
+                  showToast('🎥 Live Cam & Ambient Audio Chat Background activated!');
+                } else {
+                  showToast('Live background deactivated');
+                }
+              }}
+              className={`p-2 rounded-xl transition-all ${
+                isLiveBgActive
+                  ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/40 ring-2 ring-emerald-400 animate-pulse'
+                  : 'bg-slate-800/80 hover:bg-slate-700 text-emerald-400 hover:text-emerald-300'
+              }`}
+              title="Walk & Chat: Live Camera & Audio Background with Location Tagging"
+            >
+              <Camera className="w-4 h-4" />
+            </button>
+
             {/* Custom Chat Wallpaper / Theme */}
             <button
               onClick={() => setWallpaperModalOpen(true)}
