@@ -26,13 +26,13 @@ import { LoginSchema, RegisterSchema } from '../lib/validation/authSchemas';
 const SUPABASE_URL = 
   (import.meta as any).env?.VITE_SUPABASE_URL || 
   (import.meta as any).env?.SUPABASE_URL || 
-  '';
+  'https://rbmcpyvxwfaccqxiywuk.supabase.co';
 
 const SUPABASE_ANON_KEY = 
   (import.meta as any).env?.VITE_SUPABASE_ANON_KEY || 
   (import.meta as any).env?.VITE_SUPABASE_PUBLISHABLE_KEY || 
   (import.meta as any).env?.SUPABASE_PUBLISHABLE_KEY || 
-  '';
+  'sb_publishable_LZ31wCBwSmQP1BUg96kDgA_LQAARz8e';
 
 export const isSupabaseConfigured = Boolean(SUPABASE_URL && SUPABASE_ANON_KEY);
 
