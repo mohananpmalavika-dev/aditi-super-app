@@ -42,7 +42,8 @@ import {
   Radio,
   Square,
   Megaphone,
-  Hash
+  Hash,
+  UserCheck
 } from 'lucide-react';
 import { useSuperApp } from '../../context/SuperAppContext';
 import { ChatConversation } from '../../types/superApp';
@@ -77,7 +78,7 @@ interface RichMessage {
 }
 
 export const LiveChatMessenger: React.FC = () => {
-  const { chats, activeChatId, setActiveChatId, sendChatMessage, createChannel, sendBroadcast, user, showToast } = useSuperApp();
+  const { chats, activeChatId, setActiveChatId, sendChatMessage, createChannel, sendBroadcast, toggleFriendStatus, user, showToast } = useSuperApp();
   
   const [inputText, setInputText] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
@@ -133,6 +134,29 @@ export const LiveChatMessenger: React.FC = () => {
 
   const activeChat = chats.find((c) => c.id === activeChatId) || chats[0];
 
+  // Helper to count consecutive messages sent by the user since the last incoming message from the participant
+  const getConsecutiveUserSentCount = (chat: ChatConversation | undefined): number => {
+    if (!chat || !chat.messages || chat.messages.length === 0) return 0;
+    let count = 0;
+    for (let i = chat.messages.length - 1; i >= 0; i--) {
+      const msg = chat.messages[i];
+      if (msg.isUser) {
+        count++;
+      } else {
+        break; // Encountered reply from the other person -> stops consecutive streak
+      }
+    }
+    return count;
+  };
+
+  // Anti-spam 3-Message Limit logic for Non-Friends
+  const isDirectChat = !activeChat?.conversationType || activeChat?.conversationType === 'direct';
+  const isFriend = activeChat?.isFriend ?? false;
+  const isNonFriendDirect = isDirectChat && !isFriend;
+  const consecutiveSentCount = isNonFriendDirect ? getConsecutiveUserSentCount(activeChat) : 0;
+  const remainingNonFriendMessages = Math.max(0, 3 - consecutiveSentCount);
+  const isNonFriendBlocked = isNonFriendDirect && consecutiveSentCount >= 3;
+
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [activeChat?.messages, isTyping]);
@@ -178,6 +202,11 @@ export const LiveChatMessenger: React.FC = () => {
     e.preventDefault();
     if (!inputText.trim() || !activeChat) return;
 
+    if (isNonFriendBlocked) {
+      showToast(`🚫 Message limit reached (3/3). Please wait for ${activeChat.participantName} to reply, or add as friend.`);
+      return;
+    }
+
     let fullMsg = inputText.trim();
     if (replyingMessage) {
       fullMsg = `↩️ Replying to [${replyingMessage.senderName}: "${replyingMessage.text.slice(0, 30)}..."]\n${fullMsg}`;
@@ -187,6 +216,10 @@ export const LiveChatMessenger: React.FC = () => {
     setInputText('');
     setReplyingMessage(null);
     setShowEmojiPicker(false);
+
+    if (isNonFriendDirect && consecutiveSentCount === 2) {
+      showToast(`⚠️ You sent 3/3 daily messages. Awaiting reply from ${activeChat.participantName} to unlock next messages.`);
+    }
 
     // Simulate typing feedback
     setTimeout(() => setIsTyping(true), 600);
@@ -505,6 +538,29 @@ export const LiveChatMessenger: React.FC = () => {
                 <span className="hidden sm:inline-block text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-800 text-indigo-300 truncate">
                   {activeChat.roleOrContext}
                 </span>
+                
+                {/* Friend / Non-friend Badge */}
+                {isDirectChat && (
+                  isFriend ? (
+                    <span className="hidden sm:inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                      <UserCheck className="w-2.5 h-2.5" />
+                      <span>Friend</span>
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleFriendStatus(activeChat.id);
+                      }}
+                      className="text-[10px] font-extrabold px-2 py-0.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 flex items-center gap-1 shadow-sm transition-all hover:scale-105"
+                    >
+                      <UserPlus className="w-2.5 h-2.5" />
+                      <span>+ Add Friend</span>
+                    </button>
+                  )
+                )}
+
                 {secretTimer && (
                   <span className="flex items-center text-[10px] font-bold px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/40">
                     <Lock className="w-2.5 h-2.5 mr-1" />
@@ -580,6 +636,25 @@ export const LiveChatMessenger: React.FC = () => {
 
           </div>
         </div>
+
+        {/* Non-Friend Safety & 3-Message Daily Limit Banner */}
+        {isNonFriendDirect && (
+          <div className="px-3.5 sm:px-5 py-2.5 bg-gradient-to-r from-amber-950/70 via-slate-900 to-indigo-950/70 border-b border-amber-500/30 flex items-center justify-between gap-3 text-xs z-10 animate-in fade-in">
+            <div className="flex items-center gap-2 text-amber-300 min-w-0">
+              <UserPlus className="w-4 h-4 text-amber-400 flex-shrink-0" />
+              <span className="truncate">
+                <strong>{activeChat.participantName}</strong> is not in your friends list. Daily limit: <strong className="text-amber-200">{remainingNonFriendMessages} of 3</strong> messages remaining.
+              </span>
+            </div>
+            <button
+              onClick={() => toggleFriendStatus(activeChat.id)}
+              className="px-3 py-1 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold text-xs flex items-center gap-1.5 shadow-md shadow-amber-500/30 transition-all hover:scale-105 flex-shrink-0"
+            >
+              <UserPlus className="w-3.5 h-3.5" />
+              <span>+ Add Friend</span>
+            </button>
+          </div>
+        )}
 
         {/* Pinned Message Banner */}
         {pinnedMessage && (
@@ -855,116 +930,160 @@ export const LiveChatMessenger: React.FC = () => {
           </div>
         )}
 
-        {/* Audio Recorder Toolbar */}
-        {isRecordingAudio && (
-          <div className="p-2.5 sm:p-3 bg-slate-950/95 border-t border-slate-800">
-            <AudioRecorder
-              onSendAudio={handleSendAudio}
-              onCancel={() => setIsRecordingAudio(false)}
-            />
+        {/* Non-Friend 3-Message Blocked Banner OR Standard Composer */}
+        {isNonFriendBlocked ? (
+          <div className="p-3.5 sm:p-4 bg-slate-950/95 border-t border-rose-500/30 backdrop-blur-xl animate-in slide-in-from-bottom-2">
+            <div className="p-4 rounded-2xl bg-rose-950/40 border border-rose-500/30 text-center space-y-2">
+              <div className="flex items-center justify-center gap-2 text-rose-300 font-extrabold text-xs sm:text-sm">
+                <Lock className="w-4 h-4 text-rose-400" />
+                <span>Daily Non-Friend Message Limit Reached (3/3)</span>
+              </div>
+              <p className="text-[11px] sm:text-xs text-slate-300 max-w-md mx-auto leading-relaxed">
+                Messaging is paused until <strong>{activeChat.participantName}</strong> replies to your message, or until you add them as a friend.
+              </p>
+              <div className="flex items-center justify-center gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => toggleFriendStatus(activeChat.id)}
+                  className="px-4 py-2 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-lg shadow-indigo-500/30 transition-all hover:scale-105"
+                >
+                  <UserPlus className="w-3.5 h-3.5" />
+                  <span>+ Add {activeChat.participantName} as Friend</span>
+                </button>
+              </div>
+            </div>
           </div>
-        )}
-
-        {/* Bottom Input Form */}
-        {!isRecordingAudio && (
-          <form
-            onSubmit={handleSendText}
-            className="p-2.5 sm:p-3.5 bg-slate-950/95 border-t border-slate-800 flex items-center gap-1.5 sm:gap-2 backdrop-blur-xl relative"
-          >
-            {/* Emoji Picker */}
-            {showEmojiPicker && (
-              <div className="absolute bottom-16 left-2 sm:left-4 bg-slate-900 border border-slate-800 rounded-2xl p-3 shadow-2xl z-30 grid grid-cols-7 gap-2 animate-in fade-in">
-                {emojis.map((emoji) => (
-                  <button
-                    key={emoji}
-                    type="button"
-                    onClick={() => {
-                      setInputText((prev) => prev + emoji);
-                      setShowEmojiPicker(false);
-                    }}
-                    className="text-lg sm:text-xl hover:scale-125 transition-transform p-1"
-                  >
-                    {emoji}
-                  </button>
-                ))}
+        ) : (
+          <div>
+            {/* Non-friend remaining counter ribbon */}
+            {isNonFriendDirect && (
+              <div className="px-4 py-1.5 bg-slate-950 border-t border-slate-800 flex items-center justify-between text-[11px] animate-in fade-in">
+                <span className="text-amber-300 font-medium">
+                  💬 Non-friend limit: <strong className="text-amber-200">{remainingNonFriendMessages} of 3</strong> messages remaining (resets on reply)
+                </span>
+                <button
+                  type="button"
+                  onClick={() => toggleFriendStatus(activeChat.id)}
+                  className="text-amber-400 hover:text-amber-300 font-bold flex items-center gap-1 hover:underline"
+                >
+                  <UserPlus className="w-3 h-3" />
+                  <span>Add Friend for Unlimited Chat</span>
+                </button>
               </div>
             )}
 
-            {/* Quick Emoji Button */}
-            <button
-              type="button"
-              onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-              className="p-2 sm:p-2.5 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-yellow-400 transition-colors"
-              title="Add Emoji"
-            >
-              <Smile className="w-4 h-4 sm:w-5 sm:h-5" />
-            </button>
-
-            {/* Ephemeral Snap */}
-            <button
-              type="button"
-              onClick={() => setSnapModalOpen(true)}
-              className="p-2 sm:p-2.5 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-purple-400 transition-colors"
-              title="Send Ephemeral Snap"
-            >
-              <Camera className="w-4 h-4 sm:w-5 sm:h-5" />
-            </button>
-
-            {/* Location Share (OpenStreetMap GPS) */}
-            <button
-              type="button"
-              onClick={() => setLocationModalOpen(true)}
-              className="p-2 sm:p-2.5 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-emerald-400 transition-colors"
-              title="Share GPS Location"
-            >
-              <MapPin className="w-4 h-4 sm:w-5 sm:h-5" />
-            </button>
-
-            {/* File Attachment */}
-            <input
-              type="file"
-              ref={fileInputRef}
-              onChange={handleFileUpload}
-              className="hidden"
-            />
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className="p-2 sm:p-2.5 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-indigo-400 transition-colors hidden sm:block"
-              title="Attach File"
-            >
-              <Paperclip className="w-4 h-4 sm:w-5 sm:h-5" />
-            </button>
-
-            {/* Input Field */}
-            <input
-              type="text"
-              value={inputText}
-              onChange={(e) => setInputText(e.target.value)}
-              placeholder={`Message ${activeChat.participantName}...`}
-              className="flex-1 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl bg-slate-900 border border-slate-800 text-xs sm:text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
-            />
-
-            {/* Send or Record Mic */}
-            {inputText.trim() ? (
-              <button
-                type="submit"
-                className="p-2 sm:p-2.5 px-3 sm:px-4 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold flex items-center gap-1.5 shadow-lg shadow-indigo-600/30 transition-all hover:scale-105 active:scale-95 flex-shrink-0"
-              >
-                <Send className="w-4 h-4" />
-                <span className="hidden sm:inline text-xs">Send</span>
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={() => setIsRecordingAudio(true)}
-                className="p-2 sm:p-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/30 transition-all hover:scale-105 active:scale-95 flex-shrink-0"
-                title="Record Voice Memo"
-              >
-                <Mic className="w-4 h-4 sm:w-5 sm:h-5" />
-              </button>
+            {/* Audio Recorder Toolbar */}
+            {isRecordingAudio && (
+              <div className="p-2.5 sm:p-3 bg-slate-950/95 border-t border-slate-800">
+                <AudioRecorder
+                  onSendAudio={handleSendAudio}
+                  onCancel={() => setIsRecordingAudio(false)}
+                />
+              </div>
             )}
-          </form>
+
+            {/* Bottom Input Form */}
+            {!isRecordingAudio && (
+              <form
+                onSubmit={handleSendText}
+                className="p-2.5 sm:p-3.5 bg-slate-950/95 border-t border-slate-800 flex items-center gap-1.5 sm:gap-2 backdrop-blur-xl relative"
+              >
+                {/* Emoji Picker */}
+                {showEmojiPicker && (
+                  <div className="absolute bottom-16 left-2 sm:left-4 bg-slate-900 border border-slate-800 rounded-2xl p-3 shadow-2xl z-30 grid grid-cols-7 gap-2 animate-in fade-in">
+                    {emojis.map((emoji) => (
+                      <button
+                        key={emoji}
+                        type="button"
+                        onClick={() => {
+                          setInputText((prev) => prev + emoji);
+                          setShowEmojiPicker(false);
+                        }}
+                        className="text-lg sm:text-xl hover:scale-125 transition-transform p-1"
+                      >
+                        {emoji}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {/* Quick Emoji Button */}
+                <button
+                  type="button"
+                  onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                  className="p-2 sm:p-2.5 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-yellow-400 transition-colors"
+                  title="Add Emoji"
+                >
+                  <Smile className="w-4 h-4 sm:w-5 sm:h-5" />
+                </button>
+
+                {/* Ephemeral Snap */}
+                <button
+                  type="button"
+                  onClick={() => setSnapModalOpen(true)}
+                  className="p-2 sm:p-2.5 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-purple-400 transition-colors"
+                  title="Send Ephemeral Snap"
+                >
+                  <Camera className="w-4 h-4 sm:w-5 sm:h-5" />
+                </button>
+
+                {/* Location Share (OpenStreetMap GPS) */}
+                <button
+                  type="button"
+                  onClick={() => setLocationModalOpen(true)}
+                  className="p-2 sm:p-2.5 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-emerald-400 transition-colors"
+                  title="Share GPS Location"
+                >
+                  <MapPin className="w-4 h-4 sm:w-5 sm:h-5" />
+                </button>
+
+                {/* File Attachment */}
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleFileUpload}
+                  className="hidden"
+                />
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="p-2 sm:p-2.5 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-indigo-400 transition-colors hidden sm:block"
+                  title="Attach File"
+                >
+                  <Paperclip className="w-4 h-4 sm:w-5 sm:h-5" />
+                </button>
+
+                {/* Input Field */}
+                <input
+                  type="text"
+                  value={inputText}
+                  onChange={(e) => setInputText(e.target.value)}
+                  placeholder={`Message ${activeChat.participantName}...`}
+                  className="flex-1 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl bg-slate-900 border border-slate-800 text-xs sm:text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                />
+
+                {/* Send or Record Mic */}
+                {inputText.trim() ? (
+                  <button
+                    type="submit"
+                    className="p-2 sm:p-2.5 px-3 sm:px-4 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold flex items-center gap-1.5 shadow-lg shadow-indigo-600/30 transition-all hover:scale-105 active:scale-95 flex-shrink-0"
+                  >
+                    <Send className="w-4 h-4" />
+                    <span className="hidden sm:inline text-xs">Send</span>
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setIsRecordingAudio(true)}
+                    className="p-2 sm:p-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/30 transition-all hover:scale-105 active:scale-95 flex-shrink-0"
+                    title="Record Voice Memo"
+                  >
+                    <Mic className="w-4 h-4 sm:w-5 sm:h-5" />
+                  </button>
+                )}
+              </form>
+            )}
+          </div>
         )}
 
       </div>

@@ -110,6 +110,7 @@ interface SuperAppContextType {
   startNewChatWith: (name: string, avatar: string, role: string, initialMessage?: string) => string;
   createChannel: (channelData: { name: string; handle: string; description: string; avatar: string; isPrivate: boolean; initialPost?: string }) => string;
   sendBroadcast: (recipientChatIds: string[], text: string) => Promise<void>;
+  toggleFriendStatus: (chatId: string) => void;
   
   // Productivity
   tasks: TaskItem[];
@@ -566,6 +567,24 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     setChats(updatedChats);
   };
 
+  const toggleFriendStatus = (chatId: string) => {
+    setChats((prev) =>
+      prev.map((c) => {
+        if (c.id === chatId) {
+          const updated = !c.isFriend;
+          if (updated) {
+            confetti({ particleCount: 70, spread: 70 });
+            showToast(`🎉 Added ${c.participantName} as friend! Unlimited messaging unlocked.`);
+          } else {
+            showToast(`Removed ${c.participantName} from friends list.`);
+          }
+          return { ...c, isFriend: updated };
+        }
+        return c;
+      })
+    );
+  };
+
   // Tasks
   const addTask = async (taskData: Omit<TaskItem, 'id'>) => {
     const newTask: TaskItem = {
@@ -651,6 +670,7 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         startNewChatWith,
         createChannel,
         sendBroadcast,
+        toggleFriendStatus,
         tasks,
         addTask,
         toggleTaskStatus,

@@ -387,6 +387,7 @@ export const MOCK_CHATS: ChatConversation[] = [
     lastMessageTime: 'Just now',
     unreadCount: 1,
     isOnline: true,
+    isFriend: true,
     messages: [
       {
         id: 'm1',
@@ -407,6 +408,7 @@ export const MOCK_CHATS: ChatConversation[] = [
     lastMessageTime: '11:45 AM',
     unreadCount: 0,
     isOnline: true,
+    isFriend: false,
     messages: [
       {
         id: 'mv1',
@@ -443,6 +445,7 @@ export const MOCK_CHATS: ChatConversation[] = [
     lastMessageTime: 'Yesterday',
     unreadCount: 0,
     isOnline: false,
+    isFriend: true,
     messages: [
       {
         id: 'ms1',
