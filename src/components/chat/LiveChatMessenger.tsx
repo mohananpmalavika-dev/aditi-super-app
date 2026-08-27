@@ -43,7 +43,9 @@ import {
   Square,
   Megaphone,
   Hash,
-  UserCheck
+  UserCheck,
+  Ban,
+  UserMinus
 } from 'lucide-react';
 import { useSuperApp } from '../../context/SuperAppContext';
 import { ChatConversation } from '../../types/superApp';
@@ -78,7 +80,7 @@ interface RichMessage {
 }
 
 export const LiveChatMessenger: React.FC = () => {
-  const { chats, activeChatId, setActiveChatId, sendChatMessage, createChannel, sendBroadcast, toggleFriendStatus, user, showToast } = useSuperApp();
+  const { chats, activeChatId, setActiveChatId, sendChatMessage, createChannel, sendBroadcast, toggleFriendStatus, toggleBlockStatus, user, showToast } = useSuperApp();
   
   const [inputText, setInputText] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
@@ -149,10 +151,11 @@ export const LiveChatMessenger: React.FC = () => {
     return count;
   };
 
-  // Anti-spam 3-Message Limit logic for Non-Friends
+  // Anti-spam 3-Message Limit and Block logic
   const isDirectChat = !activeChat?.conversationType || activeChat?.conversationType === 'direct';
   const isFriend = activeChat?.isFriend ?? false;
-  const isNonFriendDirect = isDirectChat && !isFriend;
+  const isBlocked = activeChat?.isBlocked ?? false;
+  const isNonFriendDirect = isDirectChat && !isFriend && !isBlocked;
   const consecutiveSentCount = isNonFriendDirect ? getConsecutiveUserSentCount(activeChat) : 0;
   const remainingNonFriendMessages = Math.max(0, 3 - consecutiveSentCount);
   const isNonFriendBlocked = isNonFriendDirect && consecutiveSentCount >= 3;
@@ -201,6 +204,11 @@ export const LiveChatMessenger: React.FC = () => {
   const handleSendText = (e: React.FormEvent) => {
     e.preventDefault();
     if (!inputText.trim() || !activeChat) return;
+
+    if (isBlocked) {
+      showToast(`🚫 You have blocked ${activeChat.participantName}. Unblock to send messages.`);
+      return;
+    }
 
     if (isNonFriendBlocked) {
       showToast(`🚫 Message limit reached (3/3). Please wait for ${activeChat.participantName} to reply, or add as friend.`);
@@ -491,8 +499,20 @@ export const LiveChatMessenger: React.FC = () => {
 
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between">
-                    <h4 className="font-bold text-xs text-white truncate">{chat.participantName}</h4>
-                    <span className="text-[10px] text-slate-500">{chat.lastMessageTime}</span>
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <h4 className="font-bold text-xs text-white truncate">{chat.participantName}</h4>
+                      {chat.isBlocked && (
+                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/30 flex-shrink-0">
+                          Blocked
+                        </span>
+                      )}
+                      {chat.isFriend && (!chat.conversationType || chat.conversationType === 'direct') && (
+                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex-shrink-0">
+                          Friend
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-[10px] text-slate-500 flex-shrink-0">{chat.lastMessageTime}</span>
                   </div>
                   <p className="text-[11px] text-indigo-400 font-medium truncate">{chat.roleOrContext}</p>
                   <p className="text-xs text-slate-400 truncate mt-0.5">{chat.lastMessage}</p>
@@ -539,13 +559,40 @@ export const LiveChatMessenger: React.FC = () => {
                   {activeChat.roleOrContext}
                 </span>
                 
-                {/* Friend / Non-friend Badge */}
+                {/* Friend / Non-friend / Blocked Badges */}
                 {isDirectChat && (
-                  isFriend ? (
-                    <span className="hidden sm:inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                      <UserCheck className="w-2.5 h-2.5" />
-                      <span>Friend</span>
-                    </span>
+                  isBlocked ? (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleBlockStatus(activeChat.id);
+                      }}
+                      className="text-[10px] font-extrabold px-2 py-0.5 rounded-lg bg-rose-500/20 text-rose-300 border border-rose-500/40 hover:bg-rose-500/30 flex items-center gap-1 transition-all"
+                      title="Click to unblock this contact"
+                    >
+                      <Ban className="w-2.5 h-2.5" />
+                      <span>Blocked (Unblock)</span>
+                    </button>
+                  ) : isFriend ? (
+                    <div className="flex items-center gap-1">
+                      <span className="hidden sm:inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                        <UserCheck className="w-2.5 h-2.5" />
+                        <span>Friend</span>
+                      </span>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleFriendStatus(activeChat.id);
+                        }}
+                        className="hidden sm:inline-flex text-[10px] font-semibold px-2 py-0.5 rounded-lg hover:bg-rose-950/40 text-slate-400 hover:text-rose-300 items-center gap-1 transition-colors"
+                        title="Unfriend this contact"
+                      >
+                        <UserMinus className="w-2.5 h-2.5" />
+                        <span>Unfriend</span>
+                      </button>
+                    </div>
                   ) : (
                     <button
                       type="button"
@@ -930,8 +977,30 @@ export const LiveChatMessenger: React.FC = () => {
           </div>
         )}
 
-        {/* Non-Friend 3-Message Blocked Banner OR Standard Composer */}
-        {isNonFriendBlocked ? (
+        {/* Blocked User Banner OR Non-Friend 3-Message Blocked Banner OR Standard Composer */}
+        {isBlocked ? (
+          <div className="p-3.5 sm:p-4 bg-slate-950/95 border-t border-rose-500/40 backdrop-blur-xl animate-in slide-in-from-bottom-2">
+            <div className="p-4 rounded-2xl bg-rose-950/50 border border-rose-500/40 text-center space-y-2">
+              <div className="flex items-center justify-center gap-2 text-rose-300 font-extrabold text-xs sm:text-sm">
+                <Ban className="w-4 h-4 text-rose-400" />
+                <span>You have blocked {activeChat.participantName}</span>
+              </div>
+              <p className="text-[11px] sm:text-xs text-slate-300 max-w-md mx-auto leading-relaxed">
+                You cannot send or receive messages while this contact is blocked.
+              </p>
+              <div className="flex items-center justify-center gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => toggleBlockStatus(activeChat.id)}
+                  className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-lg shadow-emerald-600/30 transition-all hover:scale-105"
+                >
+                  <ShieldCheck className="w-3.5 h-3.5" />
+                  <span>Unblock {activeChat.participantName}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : isNonFriendBlocked ? (
           <div className="p-3.5 sm:p-4 bg-slate-950/95 border-t border-rose-500/30 backdrop-blur-xl animate-in slide-in-from-bottom-2">
             <div className="p-4 rounded-2xl bg-rose-950/40 border border-rose-500/30 text-center space-y-2">
               <div className="flex items-center justify-center gap-2 text-rose-300 font-extrabold text-xs sm:text-sm">
@@ -1166,8 +1235,11 @@ export const LiveChatMessenger: React.FC = () => {
         chat={activeChat}
         onClose={() => setDetailsDrawerOpen(false)}
         onBlockUser={() => {
-          showToast(`🚫 ${activeChat.participantName} has been blocked.`);
+          toggleBlockStatus(activeChat.id);
           setDetailsDrawerOpen(false);
+        }}
+        onToggleFriend={() => {
+          toggleFriendStatus(activeChat.id);
         }}
         onReportUser={() => {
           showToast(`🛡️ Report filed for ${activeChat.participantName}.`);

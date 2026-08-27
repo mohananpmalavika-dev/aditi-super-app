@@ -274,6 +274,7 @@ export interface ChatConversation {
   isPrivate?: boolean;
   isFriend?: boolean;
   friendRequestSent?: boolean;
+  isBlocked?: boolean;
 }
 
 /* ==================== DIGITAL WALLET ==================== */

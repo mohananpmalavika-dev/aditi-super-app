@@ -111,6 +111,7 @@ interface SuperAppContextType {
   createChannel: (channelData: { name: string; handle: string; description: string; avatar: string; isPrivate: boolean; initialPost?: string }) => string;
   sendBroadcast: (recipientChatIds: string[], text: string) => Promise<void>;
   toggleFriendStatus: (chatId: string) => void;
+  toggleBlockStatus: (chatId: string) => void;
   
   // Productivity
   tasks: TaskItem[];
@@ -585,6 +586,23 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     );
   };
 
+  const toggleBlockStatus = (chatId: string) => {
+    setChats((prev) =>
+      prev.map((c) => {
+        if (c.id === chatId) {
+          const updated = !c.isBlocked;
+          if (updated) {
+            showToast(`🚫 Blocked ${c.participantName}.`);
+          } else {
+            showToast(`🔓 Unblocked ${c.participantName}.`);
+          }
+          return { ...c, isBlocked: updated };
+        }
+        return c;
+      })
+    );
+  };
+
   // Tasks
   const addTask = async (taskData: Omit<TaskItem, 'id'>) => {
     const newTask: TaskItem = {
@@ -671,6 +689,7 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         createChannel,
         sendBroadcast,
         toggleFriendStatus,
+        toggleBlockStatus,
         tasks,
         addTask,
         toggleTaskStatus,

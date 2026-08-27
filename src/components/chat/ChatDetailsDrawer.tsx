@@ -10,7 +10,11 @@ import {
   Bell, 
   Mail, 
   Phone, 
-  Video 
+  Video,
+  UserCheck,
+  UserPlus,
+  UserMinus,
+  ShieldCheck
 } from 'lucide-react';
 import { ChatConversation } from '../../types/superApp';
 
@@ -22,6 +26,7 @@ interface ChatDetailsDrawerProps {
   onReportUser: () => void;
   onOpenEmail: () => void;
   onStartCall: (video: boolean) => void;
+  onToggleFriend?: () => void;
 }
 
 export const ChatDetailsDrawer: React.FC<ChatDetailsDrawerProps> = ({
@@ -31,9 +36,14 @@ export const ChatDetailsDrawer: React.FC<ChatDetailsDrawerProps> = ({
   onBlockUser,
   onReportUser,
   onOpenEmail,
-  onStartCall
+  onStartCall,
+  onToggleFriend
 }) => {
   if (!isOpen) return null;
+
+  const isDirect = !chat.conversationType || chat.conversationType === 'direct';
+  const isFriend = chat.isFriend ?? false;
+  const isBlocked = chat.isBlocked ?? false;
 
   return (
     <div className="fixed inset-0 z-50 overflow-hidden bg-slate-950/70 backdrop-blur-sm animate-in fade-in">
@@ -69,23 +79,44 @@ export const ChatDetailsDrawer: React.FC<ChatDetailsDrawerProps> = ({
               <div>
                 <h2 className="text-lg font-extrabold text-white">{chat.participantName}</h2>
                 <p className="text-xs text-indigo-300 font-semibold">{chat.roleOrContext}</p>
-                <p className="text-[11px] text-slate-400 font-mono mt-0.5">
-                  {chat.isOnline ? 'Online • WebRTC Ready' : 'Last seen today'}
-                </p>
+                <div className="flex items-center justify-center gap-2 mt-1">
+                  {isDirect && (
+                    isFriend ? (
+                      <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                        <UserCheck className="w-3 h-3" />
+                        <span>Friend (Unlimited Chat)</span>
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                        <UserPlus className="w-3 h-3" />
+                        <span>Non-Friend (3 Daily Messages)</span>
+                      </span>
+                    )
+                  )}
+
+                  {isBlocked && (
+                    <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30">
+                      <Ban className="w-3 h-3" />
+                      <span>Blocked</span>
+                    </span>
+                  )}
+                </div>
               </div>
 
               {/* Quick Actions Row */}
               <div className="flex items-center justify-center gap-2 pt-1">
                 <button
                   onClick={() => onStartCall(false)}
-                  className="p-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-indigo-400"
+                  disabled={isBlocked}
+                  className="p-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-indigo-400 disabled:opacity-40"
                   title="Voice Call"
                 >
                   <Phone className="w-4 h-4" />
                 </button>
                 <button
                   onClick={() => onStartCall(true)}
-                  className="p-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white shadow-md"
+                  disabled={isBlocked}
+                  className="p-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white shadow-md disabled:opacity-40"
                   title="Video Call"
                 >
                   <Video className="w-4 h-4" />
@@ -99,6 +130,43 @@ export const ChatDetailsDrawer: React.FC<ChatDetailsDrawerProps> = ({
                 </button>
               </div>
             </div>
+
+            {/* Friend Management Section */}
+            {isDirect && onToggleFriend && (
+              <div className="p-3.5 rounded-2xl bg-slate-950 border border-slate-800 space-y-2">
+                <span className="text-xs font-bold text-slate-300 uppercase tracking-wider block">
+                  Friend Status & Privileges
+                </span>
+                
+                {isFriend ? (
+                  <div className="space-y-2">
+                    <p className="text-[11px] text-slate-400">
+                      You are friends with {chat.participantName}. You have unlimited daily messaging.
+                    </p>
+                    <button
+                      onClick={onToggleFriend}
+                      className="w-full py-2 px-3 rounded-xl bg-rose-950/40 hover:bg-rose-900/60 border border-rose-500/30 text-rose-300 font-bold text-xs flex items-center justify-center gap-1.5 transition-all"
+                    >
+                      <UserMinus className="w-3.5 h-3.5" />
+                      <span>Unfriend {chat.participantName}</span>
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <p className="text-[11px] text-slate-400">
+                      Add {chat.participantName} as friend to unlock unlimited messaging without the 3-message daily limit.
+                    </p>
+                    <button
+                      onClick={onToggleFriend}
+                      className="w-full py-2 px-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-md shadow-indigo-600/30 transition-all hover:scale-[1.02]"
+                    >
+                      <UserPlus className="w-3.5 h-3.5" />
+                      <span>Add as Friend (Unlimited)</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Shared Media & Files Section */}
             <div className="space-y-3 pt-2 border-t border-slate-800">
@@ -139,14 +207,27 @@ export const ChatDetailsDrawer: React.FC<ChatDetailsDrawerProps> = ({
               </p>
             </div>
 
-            {/* Security & Blocking Controls */}
+            {/* Security, Block & Unblock Controls */}
             <div className="space-y-2 pt-2 border-t border-slate-800">
               <button
                 onClick={onBlockUser}
-                className="w-full p-2.5 rounded-xl text-left text-xs font-bold text-slate-300 hover:bg-slate-800 flex items-center gap-2 transition-colors"
+                className={`w-full p-2.5 rounded-xl text-left text-xs font-bold flex items-center gap-2 transition-colors ${
+                  isBlocked
+                    ? 'text-emerald-400 hover:bg-emerald-950/30'
+                    : 'text-amber-400 hover:bg-amber-950/30'
+                }`}
               >
-                <Ban className="w-4 h-4 text-amber-400" />
-                <span>Block {chat.participantName}</span>
+                {isBlocked ? (
+                  <>
+                    <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                    <span>Unblock {chat.participantName}</span>
+                  </>
+                ) : (
+                  <>
+                    <Ban className="w-4 h-4 text-amber-400" />
+                    <span>Block {chat.participantName}</span>
+                  </>
+                )}
               </button>
 
               <button
