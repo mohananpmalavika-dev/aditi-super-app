@@ -12,12 +12,7 @@ interface GroupCreateModalProps {
   }) => void;
 }
 
-const AVAILABLE_MEMBERS = [
-  { id: 'usr-1', name: 'Malavika Mohanan', role: 'Design Lead', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80' },
-  { id: 'usr-2', name: 'Sarah Chen', role: 'AI & Python Tutor', avatar: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=300&auto=format&fit=crop&q=80' },
-  { id: 'usr-3', name: 'Rajesh Nair', role: 'Real Estate Consultant', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&auto=format&fit=crop&q=80' },
-  { id: 'usr-4', name: 'Elena Rostova', role: 'UI Engineer', avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=300&auto=format&fit=crop&q=80' }
-];
+const AVAILABLE_MEMBERS: Array<{ id: string; name: string; role: string; avatar: string }> = [];
 
 const GROUP_ICONS = ['👥', '🚀', '🌟', '💻', '🎨', '🏡', '📚', '⚡'];
 
@@ -29,7 +24,7 @@ export const GroupCreateModal: React.FC<GroupCreateModalProps> = ({
   const [groupName, setGroupName] = useState('');
   const [groupDesc, setGroupDesc] = useState('');
   const [selectedIcon, setSelectedIcon] = useState(GROUP_ICONS[0]);
-  const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>(['usr-1', 'usr-2']);
+  const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([]);
 
   if (!isOpen) return null;
 

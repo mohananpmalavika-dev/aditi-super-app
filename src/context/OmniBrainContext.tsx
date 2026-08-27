@@ -21,13 +21,13 @@ const INITIAL_BRAIN_MESSAGES: BrainMessage[] = [
   {
     id: 'msg-init-1',
     sender: 'brain',
-    text: 'Namaste & Hello Dhanya! 🧠 I am **Aditi Brain**, your personal AI Core. I coordinate across your Real Estate, Matrimony, Tutors, Creative Studio, Astrology, Social Feed, and Digital Wallet. How can I assist you today?',
+    text: 'Hello! I am Aditi Brain, your personal AI assistant. I can help with tasks, search, recommendations, and app actions. How can I assist you today?',
     timestamp: 'Just now',
     suggestedPrompts: [
-      'Generate a futuristic cyberpunk wallpaper',
-      'Find me top Python & AI tutors',
-      'Show 3BHK luxury properties with pool',
-      'What is today\'s Tarot & Horoscope reading?'
+      'Create a new workflow',
+      'Show recent updates',
+      'Find a relevant service',
+      'Summarize my priorities'
     ]
   }
 ];

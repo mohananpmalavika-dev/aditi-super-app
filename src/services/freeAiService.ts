@@ -75,18 +75,18 @@ export async function queryOmniBrain(
   if (queryLower.includes('tutor') || queryLower.includes('learn') || queryLower.includes('code') || queryLower.includes('python') || queryLower.includes('math')) {
     thoughts.push({
       step: 'Vertical Dispatch: Tutor & Academy',
-      details: 'Identified educational query. Searching verified tutors in coding, math, and languages.',
+      details: 'Identified educational query. Searching relevant tutors and study options.',
       timestamp: new Date().toLocaleTimeString()
     });
-    responseText = `I found top-rated tutors matching your interest! Sarah Chen (Senior Python & AI Specialist, $45/hr) and David Miller (Fullstack Web Dev, $40/hr) are available this week. Would you like me to book a 1-on-1 session?`;
+    responseText = 'I can help you find suitable tutors and study resources based on your goals. Tell me the subject, budget, and preferred schedule and I will narrow it down.';
     dispatchedAction = {
       vertical: 'tutor',
-      actionSummary: 'Filtered available tech and coding tutors'
+      actionSummary: 'Filtered relevant learning options'
     };
     suggestedPrompts = [
-      'Book a Python trial with Sarah Chen',
-      'Show math tutors under $35/hr',
-      'View my upcoming study sessions'
+      'Find a Python tutor',
+      'Show math help options',
+      'View my learning plan'
     ];
   } else if (queryLower.includes('house') || queryLower.includes('rent') || queryLower.includes('buy') || queryLower.includes('apartment') || queryLower.includes('property') || queryLower.includes('real estate')) {
     thoughts.push({
@@ -94,15 +94,15 @@ export async function queryOmniBrain(
       details: 'Identified real estate inquiry. Querying active property database for top listings and price metrics.',
       timestamp: new Date().toLocaleTimeString()
     });
-    responseText = `I've opened the Real Estate portal. We have 8 curated listings matching your criteria, including a 3BHK Penthouse in Skyline Towers ($850,000) and a luxury 2BHK rental ($2,400/mo). I can also calculate your monthly EMI or schedule a virtual viewing.`;
+    responseText = 'I can help you explore suitable property options, compare prices, and narrow down matching listings for your budget and location preferences.';
     dispatchedAction = {
       vertical: 'realestate',
-      actionSummary: 'Opened Real Estate listings and mortgage calculator'
+      actionSummary: 'Opened property search and comparison flow'
     };
     suggestedPrompts = [
-      'Calculate EMI for $500k loan at 6.5%',
-      'Show 3BHK apartments with swimming pool',
-      'Schedule a tour for Skyline Penthouse'
+      'Find apartments in my preferred area',
+      'Compare rental options',
+      'Calculate affordability for a property'
     ];
   } else if (queryLower.includes('match') || queryLower.includes('marry') || queryLower.includes('matrimony') || queryLower.includes('dating') || queryLower.includes('bride') || queryLower.includes('groom')) {
     thoughts.push({
@@ -110,15 +110,15 @@ export async function queryOmniBrain(
       details: 'Analyzing partner compatibility based on education, lifestyle, and astrological harmony.',
       timestamp: new Date().toLocaleTimeString()
     });
-    responseText = `Exploring our verified Matrimony network. You have 4 profiles with over 90% compatibility score! I've highlighted verified profiles in Tech, Medicine, and Design. You can send interest or request an icebreaker.`;
+    responseText = 'I can help you review compatible profiles, sort by shared interests, and prepare a respectful introduction based on your preferences.';
     dispatchedAction = {
       vertical: 'matrimony',
-      actionSummary: 'Filtered 90%+ compatibility matrimony profiles'
+      actionSummary: 'Filtered relevant matchmaking options'
     };
     suggestedPrompts = [
-      'Show profiles in New York & San Francisco',
-      'Draft a polite icebreaker message',
-      'Check horoscope compatibility with match'
+      'Show top matches',
+      'Draft a polite introduction',
+      'Compare compatibility preferences'
     ];
   } else if (queryLower.includes('horoscope') || queryLower.includes('astrology') || queryLower.includes('zodiac') || queryLower.includes('kundali') || queryLower.includes('tarot')) {
     thoughts.push({
@@ -126,15 +126,15 @@ export async function queryOmniBrain(
       details: 'Calculating celestial transits, Moon signs, and drawing cards from the Major Arcana.',
       timestamp: new Date().toLocaleTimeString()
     });
-    responseText = `The stars indicate powerful creative and financial momentum for you today! Jupiter's favorable aspect brings opportunities in new collaborations. Would you like a 3-Card Tarot reading or your Vedic Kundali birth chart analysis?`;
+    responseText = 'I can help with daily insights, life guidance, and general astrology readings based on your birth details and current preferences.';
     dispatchedAction = {
       vertical: 'astrology',
-      actionSummary: 'Computed daily horoscope & opened Tarot reader'
+      actionSummary: 'Prepared astrology guidance'
     };
     suggestedPrompts = [
-      'Draw 3 Tarot cards for today',
-      'Generate my Vedic Kundali chart',
-      'Check Leo and Sagittarius compatibility'
+      'Read my horoscope',
+      'Generate a Tarot reading',
+      'Check compatibility insights'
     ];
   } else if (queryLower.includes('image') || queryLower.includes('draw') || queryLower.includes('generate') || queryLower.includes('video') || queryLower.includes('art')) {
     thoughts.push({
@@ -142,15 +142,15 @@ export async function queryOmniBrain(
       details: 'Connecting to Pollinations.ai high-speed FLUX engine for zero-cost creative synthesis.',
       timestamp: new Date().toLocaleTimeString()
     });
-    responseText = `Welcome to the AI Creative Studio! I can generate ultra-high-definition images in Cyberpunk, Anime, or Photorealistic styles, create dynamic motion video snippets, or help you edit clips on the web timeline.`;
+    responseText = 'I can help you create visual concepts, image prompts, and media ideas for your creative workflow or campaign needs.';
     dispatchedAction = {
       vertical: 'media_studio',
-      actionSummary: 'Prepared AI Image & Video Studio'
+      actionSummary: 'Prepared AI media workflow'
     };
     suggestedPrompts = [
-      'Generate a cyberpunk city at sunset in 16:9',
-      'Create an anime illustration of a coffee shop in the rain',
-      'Open the Video Editor timeline'
+      'Generate a concept image',
+      'Create a video storyboard',
+      'Open the media editor'
     ];
   } else {
     thoughts.push({
@@ -158,7 +158,7 @@ export async function queryOmniBrain(
       details: 'Synthesized global assistant response with multi-vertical shortcuts.',
       timestamp: new Date().toLocaleTimeString()
     });
-    responseText = `Hello ${appContext.userName}! I am **Aditi Brain**, your personal AI Core. I have complete context across all modules of Aditi. I can manage your tasks, find properties, search tutors, match matrimony profiles, generate AI images, read your horoscope, or launch video calls. What shall we do first?`;
+    responseText = `Hello ${appContext.userName}! I am Aditi Brain, your personal AI assistant. I can help with work, planning, recommendations, and cross-app actions. What would you like to do first?`;
     suggestedPrompts = [
       'Generate a futuristic neon city wallpaper',
       'Show 3BHK villas for rent',

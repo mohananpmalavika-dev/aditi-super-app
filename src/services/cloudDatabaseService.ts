@@ -1,16 +1,5 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { 
-  MOCK_ALERTS, 
-  MOCK_CHATS, 
-  MOCK_HABITS, 
-  MOCK_MATRIMONY_PROFILES, 
-  MOCK_PROPERTIES, 
-  MOCK_SOCIAL_POSTS, 
-  MOCK_TASKS, 
-  MOCK_TRANSACTIONS, 
-  MOCK_TUTORS 
-} from '../data/mockData';
-import { 
   ChatConversation, 
   ChatMessage,
   HabitItem, 
@@ -65,16 +54,16 @@ const GUEST_USER: UserProfile = {
 // In-Memory state for active authenticated session
 let cloudState = {
   user: { ...GUEST_USER },
-  properties: isSupabaseConfigured ? [] : [...MOCK_PROPERTIES],
-  matrimonyProfiles: isSupabaseConfigured ? [] : [...MOCK_MATRIMONY_PROFILES],
-  tutors: isSupabaseConfigured ? [] : [...MOCK_TUTORS],
+  properties: [] as RealEstateProperty[],
+  matrimonyProfiles: [] as MatrimonyProfile[],
+  tutors: [] as TutorProfile[],
   bookings: [] as TutorBooking[],
-  posts: isSupabaseConfigured ? [] : [...MOCK_SOCIAL_POSTS],
-  chats: isSupabaseConfigured ? [] : [...MOCK_CHATS],
+  posts: [] as SocialPost[],
+  chats: [] as ChatConversation[],
   walletBalance: 0.00,
   transactions: [] as WalletTransaction[],
-  tasks: isSupabaseConfigured ? [] : [...MOCK_TASKS],
-  habits: isSupabaseConfigured ? [] : [...MOCK_HABITS],
+  tasks: [] as TaskItem[],
+  habits: [] as HabitItem[],
   alerts: [] as ProactiveAlert[]
 };
 

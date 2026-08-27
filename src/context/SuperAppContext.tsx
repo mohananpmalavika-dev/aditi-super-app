@@ -1,16 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import confetti from 'canvas-confetti';
 import {
-  INITIAL_USER,
-  MOCK_ALERTS,
-  MOCK_CHATS,
-  MOCK_HABITS,
-  MOCK_MATRIMONY_PROFILES,
-  MOCK_PROPERTIES,
-  MOCK_SOCIAL_POSTS,
-  MOCK_STORIES,
-  MOCK_TASKS,
-  MOCK_TUTORS
+  INITIAL_USER
 } from '../data/mockData';
 import {
   addCloudComment,
@@ -189,14 +180,14 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const [activeMiniApp, setActiveMiniApp] = useState<MiniAppId>('home');
   const [user, setUser] = useState<UserProfile>(INITIAL_USER);
-  const [properties, setProperties] = useState<RealEstateProperty[]>(MOCK_PROPERTIES);
-  const [matrimonyProfiles, setMatrimonyProfiles] = useState<MatrimonyProfile[]>(MOCK_MATRIMONY_PROFILES);
-  const [tutors, setTutors] = useState<TutorProfile[]>(MOCK_TUTORS);
+  const [properties, setProperties] = useState<RealEstateProperty[]>([]);
+  const [matrimonyProfiles, setMatrimonyProfiles] = useState<MatrimonyProfile[]>([]);
+  const [tutors, setTutors] = useState<TutorProfile[]>([]);
   const [bookings, setBookings] = useState<TutorBooking[]>([]);
-  const [posts, setPosts] = useState<SocialPost[]>(MOCK_SOCIAL_POSTS);
-  const [stories] = useState<SocialStory[]>(MOCK_STORIES);
-  const [chats, setChats] = useState<ChatConversation[]>(MOCK_CHATS);
-  const [activeChatId, setActiveChatId] = useState<string>('chat-brain');
+  const [posts, setPosts] = useState<SocialPost[]>([]);
+  const [stories] = useState<SocialStory[]>([]);
+  const [chats, setChats] = useState<ChatConversation[]>([]);
+  const [activeChatId, setActiveChatId] = useState<string>('');
 
   const [scheduledMessages, setScheduledMessages] = useState<ScheduledMessage[]>(() => {
     try {
@@ -234,9 +225,9 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     localStorage.setItem('omnilife_chat_reminders', JSON.stringify(chatReminders));
   }, [chatReminders]);
 
-  const [tasks, setTasks] = useState<TaskItem[]>(MOCK_TASKS);
-  const [habits, setHabits] = useState<HabitItem[]>(MOCK_HABITS);
-  const [alerts, setAlerts] = useState<ProactiveAlert[]>(MOCK_ALERTS);
+  const [tasks, setTasks] = useState<TaskItem[]>([]);
+  const [habits, setHabits] = useState<HabitItem[]>([]);
+  const [alerts, setAlerts] = useState<ProactiveAlert[]>([]);
   const [toast, setToast] = useState<string | null>(null);
 
   // Authoritative Startup Session & Device Lock Verification
@@ -1184,16 +1175,17 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   const resetDefaults = () => {
-    setProperties(MOCK_PROPERTIES);
-    setMatrimonyProfiles(MOCK_MATRIMONY_PROFILES);
-    setTutors(MOCK_TUTORS);
-    setPosts(MOCK_SOCIAL_POSTS);
-    setChats(MOCK_CHATS);
-    setTasks(MOCK_TASKS);
-    setHabits(MOCK_HABITS);
-    setAlerts(MOCK_ALERTS);
+    setProperties([]);
+    setMatrimonyProfiles([]);
+    setTutors([]);
+    setPosts([]);
+    setChats([]);
+    setTasks([]);
+    setHabits([]);
+    setAlerts([]);
     setUser(INITIAL_USER);
-    showToast('♻️ Cloud state reset to clean initial state!');
+    setActiveChatId('');
+    showToast('♻️ Cloud state reset to a clean production state.');
   };
 
   return (

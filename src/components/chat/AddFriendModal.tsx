@@ -26,56 +26,14 @@ interface AddFriendModalProps {
 }
 
 // Global Discoverable Directory
-const DISCOVERABLE_USERS = [
-  {
-    id: 'usr-malavika',
-    name: 'Malavika Mohanan',
-    handle: '@malavika',
-    role: 'Lead UI/UX Designer • Kerala',
-    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80',
-    online: true
-  },
-  {
-    id: 'usr-rajesh',
-    name: 'Dr. Rajesh Nair',
-    handle: '@rajesh_nair',
-    role: 'AI Researcher & Consultant • Kochi',
-    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&auto=format&fit=crop&q=80',
-    online: true
-  },
-  {
-    id: 'usr-sarah',
-    name: 'Sarah Chen',
-    handle: '@sarah_chen',
-    role: 'Senior Python & React Mentor',
-    avatar: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=300&auto=format&fit=crop&q=80',
-    online: false
-  },
-  {
-    id: 'usr-rahul',
-    name: 'Rahul Varma',
-    handle: '@rahul_varma',
-    role: 'Real Estate Developer • Trivandrum',
-    avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=300&auto=format&fit=crop&q=80',
-    online: true
-  },
-  {
-    id: 'usr-ananya',
-    name: 'Ananya Menon',
-    handle: '@ananya_m',
-    role: 'Full Stack Engineer & Astrologer • Kollam',
-    avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=300&auto=format&fit=crop&q=80',
-    online: true
-  },
-  {
-    id: 'usr-elena',
-    name: 'Elena Rostova',
-    handle: '@elena_r',
-    role: 'Creative Media Director • London',
-    avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=300&auto=format&fit=crop&q=80',
-    online: false
-  }
-];
+const DISCOVERABLE_USERS: Array<{
+  id: string;
+  name: string;
+  handle: string;
+  role: string;
+  avatar: string;
+  online: boolean;
+}> = [];
 
 export const AddFriendModal: React.FC<AddFriendModalProps> = ({
   isOpen,

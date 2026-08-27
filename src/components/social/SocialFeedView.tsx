@@ -116,7 +116,7 @@ export const SocialFeedView: React.FC = () => {
                 type="text"
                 value={newPostContent}
                 onChange={(e) => setNewPostContent(e.target.value)}
-                placeholder="What's inspiring you today, Dhanya?"
+                placeholder="What's inspiring you today?"
                 className="flex-1 px-4 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs sm:text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
               />
             </div>
