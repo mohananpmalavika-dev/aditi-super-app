@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { LoginSchema, RegisterSchema } from '../lib/validation/authSchemas';
-import { isDummyOrDisposableAccount } from '../services/cloudDatabaseService';
+import { cloudLoginUser, cloudRegisterUser, isDummyOrDisposableAccount } from '../services/cloudDatabaseService';
 
 describe('Authentication & Registration Validation', () => {
   it('validates genuine login credentials successfully', () => {
@@ -48,6 +48,34 @@ describe('Authentication & Registration Validation', () => {
     expect(isDummyOrDisposableAccount('fakeuser@trashmail.com')).toBe(true);
     expect(isDummyOrDisposableAccount('12345@test.com')).toBe(true);
     expect(isDummyOrDisposableAccount('demo@example.com')).toBe(true);
+    expect(isDummyOrDisposableAccount('abc@gmail.com')).toBe(true);
     expect(isDummyOrDisposableAccount('real.user@gmail.com')).toBe(false);
+  });
+
+  it('only allows login for previously registered local accounts', async () => {
+    const registered = await cloudRegisterUser({
+      name: 'Real User',
+      email: 'real.user@gmail.com',
+      password: 'StrongPassword123!',
+      handle: '@realuser',
+      zodiacSign: 'Leo',
+      avatar: '',
+      location: 'Kozhikode, Kerala'
+    });
+
+    expect(registered.error).toBeUndefined();
+
+    const unregistered = await cloudLoginUser({
+      email: 'stranger.user@gmail.com',
+      password: 'StrongPassword123!'
+    });
+    expect(unregistered.error).toBeTruthy();
+
+    const registeredLogin = await cloudLoginUser({
+      email: 'real.user@gmail.com',
+      password: 'StrongPassword123!'
+    });
+    expect(registeredLogin.error).toBeUndefined();
+    expect(registeredLogin.user.email).toBe('real.user@gmail.com');
   });
 });

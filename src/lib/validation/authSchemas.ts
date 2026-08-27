@@ -15,7 +15,7 @@ export const RegisterSchema = z.object({
   placeOfBirth: z.string().optional(),
   gender: z.enum(['Male', 'Female', 'Non-Binary', 'Other', 'Prefer not to say']).optional(),
   zodiacSign: z.string().optional(),
-  avatar: z.string().url().or(z.string().startsWith('data:image/')).optional(),
+  avatar: z.string().url().or(z.string().startsWith('data:image/')).or(z.literal('')).optional(),
   location: z.string().optional(),
   bio: z.string().max(300).optional()
 });

@@ -75,6 +75,15 @@ const DUMMY_KEYWORDS = [
   'foo.com', '12345', 'admin@admin', 'user@user'
 ];
 
+const GENERIC_PLACEHOLDER_LOCAL_PARTS = new Set([
+  'abc', 'abcd', 'abc123', 'test', 'demo', 'dummy', 'fake', 'sample', 'user', 'admin',
+  'guest', 'temp', 'example', 'placeholder', 'newuser', 'username', 'person', 'person1'
+]);
+
+const normalizedEmail = (email: string) => email.trim().toLowerCase();
+
+const registeredUsers = new Map<string, { password: string; user: UserProfile }>();
+
 export function isDummyOrDisposableAccount(email: string, name?: string, handle?: string): boolean {
   if (!email || typeof email !== 'string') return true;
   const cleanEmail = email.trim().toLowerCase();
@@ -91,7 +100,9 @@ export function isDummyOrDisposableAccount(email: string, name?: string, handle?
   const [localPart] = cleanEmail.split('@');
   if (!localPart || localPart.length < 3) return true;
   if (/^[0-9]+$/.test(localPart)) return true;
-  if (localPart === 'asdf' || localPart === 'qwerty' || localPart === 'user' || localPart === 'admin') return true;
+  if (GENERIC_PLACEHOLDER_LOCAL_PARTS.has(localPart)) return true;
+  if (/^(asdf|qwerty|password|letmein|welcome|hello|world|user|admin|guest)$/i.test(localPart)) return true;
+  if (/^(abc|test|demo|sample|user|admin|guest)(?:\d+)?$/i.test(localPart)) return true;
 
   return false;
 }
@@ -153,6 +164,7 @@ export async function cloudRegisterUser(creds: RegisterCredentials): Promise<{ u
   }
 
   // Local development session
+  const normalizedEmailAddress = normalizedEmail(creds.email);
   const localUser: UserProfile = {
     id: `usr-${crypto.randomUUID()}`,
     name: creds.name,
@@ -165,6 +177,7 @@ export async function cloudRegisterUser(creds: RegisterCredentials): Promise<{ u
     isVerified: true,
     createdAt: new Date().toISOString()
   };
+  registeredUsers.set(normalizedEmailAddress, { password: creds.password, user: localUser });
   cloudState.user = localUser;
   return { user: localUser };
 }
@@ -183,6 +196,28 @@ export async function cloudLoginUser(creds: LoginCredentials): Promise<{ user: U
       user: cloudState.user,
       error: '❌ Dummy, Demo & Test account logins are strictly blocked. Please sign in with your verified real account.'
     };
+  }
+
+  const normalizedEmailAddress = normalizedEmail(creds.email);
+
+  if (!supabase) {
+    const localAccount = registeredUsers.get(normalizedEmailAddress);
+    if (!localAccount) {
+      return {
+        user: cloudState.user,
+        error: '❌ Account not found. Please register before signing in.'
+      };
+    }
+
+    if (localAccount.password !== creds.password) {
+      return {
+        user: cloudState.user,
+        error: '❌ Invalid login credentials. Please check your email and password.'
+      };
+    }
+
+    cloudState.user = localAccount.user;
+    return { user: localAccount.user };
   }
 
   if (supabase) {
