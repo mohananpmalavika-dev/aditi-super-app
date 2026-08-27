@@ -251,6 +251,9 @@ export interface ChatMessage {
   timestamp: string;
   isUser: boolean;
   mediaUrl?: string;
+  expiresAt?: number; // timestamp in milliseconds when message will permanently self-destruct
+  expiresDuration?: number; // duration in seconds (5, 30, 60, 3600, etc.)
+  isDisappearing?: boolean;
 }
 
 export interface ChatConversation {

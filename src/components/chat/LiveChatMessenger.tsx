@@ -113,6 +113,13 @@ export const LiveChatMessenger: React.FC = () => {
 
   // Audio Playback
   const [playingAudioId, setPlayingAudioId] = useState<string | null>(null);
+  const [now, setNow] = useState(Date.now());
+
+  // Real-time 1s ticking clock for disappearing countdown badges
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -154,7 +161,7 @@ export const LiveChatMessenger: React.FC = () => {
       fullMsg = `↩️ Replying to [${replyingMessage.senderName}: "${replyingMessage.text.slice(0, 30)}..."]\n${fullMsg}`;
     }
 
-    sendChatMessage(activeChat.id, fullMsg);
+    sendChatMessage(activeChat.id, fullMsg, { expiresDuration: secretTimer });
     setInputText('');
     setReplyingMessage(null);
     setShowEmojiPicker(false);
@@ -168,7 +175,7 @@ export const LiveChatMessenger: React.FC = () => {
   const handleSendAudio = (audioData: { duration: number; bars: number[] }) => {
     if (!activeChat) return;
     const voiceMsg = `🎙️ Voice Note (${audioData.duration}s)`;
-    sendChatMessage(activeChat.id, voiceMsg);
+    sendChatMessage(activeChat.id, voiceMsg, { expiresDuration: secretTimer });
     setIsRecordingAudio(false);
     showToast('🎙️ Voice memo delivered via MediaRecorder!');
   };
@@ -177,7 +184,7 @@ export const LiveChatMessenger: React.FC = () => {
   const handleSendSnap = (snapUrl: string, duration: number) => {
     if (!activeChat) return;
     const snapMsg = `🔥 Ephemeral Snap (${duration}s self-destruct timer)`;
-    sendChatMessage(activeChat.id, snapMsg);
+    sendChatMessage(activeChat.id, snapMsg, { expiresDuration: duration || secretTimer });
     confetti({ particleCount: 50, spread: 60 });
     showToast('🔥 Ephemeral snap sent!');
   };
@@ -185,7 +192,7 @@ export const LiveChatMessenger: React.FC = () => {
   // Send Location (OpenStreetMap GPS)
   const handleSendLocation = (locationText: string, mapUrl: string, isLive?: boolean, duration?: number) => {
     if (!activeChat) return;
-    sendChatMessage(activeChat.id, `${locationText}\n🔗 OpenStreetMap: ${mapUrl}`);
+    sendChatMessage(activeChat.id, `${locationText}\n🔗 OpenStreetMap: ${mapUrl}`, { expiresDuration: secretTimer });
     showToast(isLive ? '🔴 Live GPS broadcast active!' : '📍 Map point shared!');
   };
 
@@ -199,7 +206,8 @@ export const LiveChatMessenger: React.FC = () => {
     if (!activeChat) return;
     sendChatMessage(
       activeChat.id,
-      `📧 Direct Email Sent to [${emailData.to}]\nSubject: ${emailData.subject}\n"${emailData.body.slice(0, 60)}..."`
+      `📧 Direct Email Sent to [${emailData.to}]\nSubject: ${emailData.subject}\n"${emailData.body.slice(0, 60)}..."`,
+      { expiresDuration: secretTimer }
     );
     showToast(`📧 Outbound email dispatched to ${emailData.to}!`);
   };
@@ -499,7 +507,7 @@ export const LiveChatMessenger: React.FC = () => {
           </div>
         )}
 
-        {/* Secret Disappearing Timer Bar */}
+        {/* Secret Disappearing Timer Configuration Bar */}
         {showSecretBar && (
           <SecretTimerBar
             currentTimer={secretTimer}
@@ -511,6 +519,26 @@ export const LiveChatMessenger: React.FC = () => {
           />
         )}
 
+        {/* Active Disappearing Message Banner */}
+        {secretTimer !== null && (
+          <div className="px-4 py-2 bg-rose-950/70 border-b border-rose-500/30 flex items-center justify-between text-xs animate-in slide-in-from-top-1 text-rose-300">
+            <div className="flex items-center gap-2 truncate">
+              <Flame className="w-4 h-4 text-rose-400 fill-rose-400 animate-pulse flex-shrink-0" />
+              <span className="font-bold">Disappearing Messages Active ({secretTimer >= 60 ? `${secretTimer / 60}m` : `${secretTimer}s`})</span>
+              <span className="text-[11px] text-rose-400/80 hidden sm:inline">— Messages will auto self-destruct</span>
+            </div>
+            <button
+              onClick={() => {
+                setSecretTimer(null);
+                showToast('Disappearing messages turned off');
+              }}
+              className="px-2 py-0.5 rounded-lg bg-rose-900/60 hover:bg-rose-800 text-white font-bold text-[11px] border border-rose-500/40 transition-colors flex-shrink-0"
+            >
+              Turn Off
+            </button>
+          </div>
+        )}
+
         {/* Message Stream */}
         <div className="flex-1 overflow-y-auto p-3.5 sm:p-5 space-y-3.5">
           {activeChat.messages.map((msg) => {
@@ -520,6 +548,7 @@ export const LiveChatMessenger: React.FC = () => {
             const isLocation = msg.text.includes('OpenStreetMap') || msg.text.startsWith('📍') || msg.text.startsWith('🔴');
             const isFile = msg.text.startsWith('📁');
             const isEmail = msg.text.startsWith('📧');
+            const remainingSecs = msg.expiresAt ? Math.max(0, Math.ceil((msg.expiresAt - now) / 1000)) : null;
 
             return (
               <div
@@ -613,6 +642,19 @@ export const LiveChatMessenger: React.FC = () => {
                       </div>
                     ) : (
                       <p className="whitespace-pre-wrap">{msg.text}</p>
+                    )}
+
+                    {/* Disappearing Message Live Countdown Badge */}
+                    {msg.isDisappearing && remainingSecs !== null && (
+                      <div className="mt-2 pt-1.5 border-t border-white/15 flex items-center justify-between gap-2 text-[10px] font-mono">
+                        <div className="flex items-center gap-1 text-rose-300 font-bold animate-pulse">
+                          <Flame className="w-3.5 h-3.5 text-rose-400 fill-rose-400" />
+                          <span>Disappearing in {remainingSecs}s</span>
+                        </div>
+                        <span className="text-[9px] text-white/70 bg-rose-950/80 px-1.5 py-0.5 rounded border border-rose-500/30">
+                          Self-destruct
+                        </span>
+                      </div>
                     )}
 
                     {/* Quick Hover Message Action Bar */}

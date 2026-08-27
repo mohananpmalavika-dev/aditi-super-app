@@ -42,6 +42,7 @@ import {
 } from '../services/cloudDatabaseService';
 import {
   ChatConversation,
+  ChatMessage,
   HabitItem,
   LoginCredentials,
   MatrimonyProfile,
@@ -105,7 +106,7 @@ interface SuperAppContextType {
   chats: ChatConversation[];
   activeChatId: string;
   setActiveChatId: (id: string) => void;
-  sendChatMessage: (chatId: string, text: string) => Promise<void>;
+  sendChatMessage: (chatId: string, text: string, options?: { expiresDuration?: number | null }) => Promise<void>;
   startNewChatWith: (name: string, avatar: string, role: string, initialMessage?: string) => string;
   
   // Productivity
@@ -392,16 +393,49 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     showToast('🚀 Cloud: Story published to global feed!');
   };
 
+  // Real-time Disappearing Messages auto-cleanup worker (1 second precision)
+  useEffect(() => {
+    const cleaner = setInterval(() => {
+      const now = Date.now();
+      setChats((prevChats) => {
+        let hasExpired = false;
+        const nextChats = prevChats.map((chat) => {
+          const expiredExists = chat.messages.some((m) => m.expiresAt && m.expiresAt <= now);
+          if (expiredExists) {
+            hasExpired = true;
+            const remaining = chat.messages.filter((m) => !m.expiresAt || m.expiresAt > now);
+            return {
+              ...chat,
+              lastMessage: remaining.length > 0 ? remaining[remaining.length - 1].text : 'Disappearing message expired 🔥',
+              messages: remaining
+            };
+          }
+          return chat;
+        });
+
+        return hasExpired ? nextChats : prevChats;
+      });
+    }, 1000);
+
+    return () => clearInterval(cleaner);
+  }, []);
+
   // Chat Actions
-  const sendChatMessage = async (chatId: string, text: string) => {
+  const sendChatMessage = async (chatId: string, text: string, options?: { expiresDuration?: number | null }) => {
     if (!text.trim()) return;
-    const userMsg = {
+
+    const expiresAt = options?.expiresDuration ? Date.now() + options.expiresDuration * 1000 : undefined;
+
+    const userMsg: ChatMessage = {
       id: `m-${Date.now()}`,
       senderId: 'user',
       senderName: user.name,
       text,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      isUser: true
+      isUser: true,
+      expiresAt,
+      expiresDuration: options?.expiresDuration || undefined,
+      isDisappearing: Boolean(options?.expiresDuration)
     };
 
     const updated = await sendCloudMessage(chatId, userMsg);
@@ -409,13 +443,17 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     if (chatId !== 'chat-brain') {
       setTimeout(async () => {
-        const replyMsg = {
+        const replyExpiresAt = options?.expiresDuration ? Date.now() + options.expiresDuration * 1000 : undefined;
+        const replyMsg: ChatMessage = {
           id: `m-${Date.now() + 1}`,
           senderId: 'contact',
           senderName: 'Contact',
           text: 'Got your message! Let me check the details and get back to you shortly. 👍',
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          isUser: false
+          isUser: false,
+          expiresAt: replyExpiresAt,
+          expiresDuration: options?.expiresDuration || undefined,
+          isDisappearing: Boolean(options?.expiresDuration)
         };
         const res = await sendCloudMessage(chatId, replyMsg);
         setChats(res);
