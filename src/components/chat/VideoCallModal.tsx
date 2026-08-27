@@ -151,13 +151,30 @@ export const VideoCallModal: React.FC<VideoCallModalProps> = ({
   const handleScreenShare = async () => {
     if (isScreenSharing) {
       setIsScreenSharing(false);
+      showToast('🖥️ Screen sharing stopped. Switched back to camera.');
       const stream = await webrtcManagerRef.current?.startLocalMedia(!isVideoOff, !isAudioMuted);
       mergeEngineRef.current?.setLocalStream(stream || null);
     } else {
-      const screenStream = await webrtcManagerRef.current?.startScreenShare();
-      if (screenStream) {
-        setIsScreenSharing(true);
-        mergeEngineRef.current?.setLocalStream(screenStream);
+      try {
+        const screenStream = await webrtcManagerRef.current?.startScreenShare();
+        if (screenStream && screenStream.getVideoTracks().length > 0) {
+          setIsScreenSharing(true);
+          mergeEngineRef.current?.setLocalStream(screenStream);
+          showToast('🖥️ Screen sharing active! Broadcasting full desktop/app window (1080p).');
+          
+          // Revert when user clicks browser's native stop share button
+          screenStream.getVideoTracks()[0].onended = async () => {
+            setIsScreenSharing(false);
+            showToast('🖥️ Screen sharing ended.');
+            const camStream = await webrtcManagerRef.current?.startLocalMedia(!isVideoOff, !isAudioMuted);
+            mergeEngineRef.current?.setLocalStream(camStream || null);
+          };
+        } else {
+          showToast('Screen share cancelled or not supported on this device.');
+        }
+      } catch (err) {
+        console.warn('Screen share error:', err);
+        showToast('Screen share permission denied or unsupported.');
       }
     }
   };
@@ -425,11 +442,29 @@ export const VideoCallModal: React.FC<VideoCallModalProps> = ({
             </div>
           )}
 
+          {/* Screen Sharing Live Broadcast Floating HUD */}
+          {isScreenSharing && (
+            <div className="absolute top-4 left-1/2 -translate-x-1/2 px-4 py-1.5 rounded-full bg-indigo-950/90 border border-emerald-500/50 backdrop-blur-md shadow-2xl flex items-center gap-3 z-30 animate-in slide-in-from-top-2">
+              <div className="flex items-center gap-2 text-emerald-300 font-extrabold text-xs">
+                <Monitor className="w-4 h-4 text-emerald-400 animate-pulse" />
+                <span>You are sharing your screen (Full HD)</span>
+              </div>
+              <button
+                onClick={handleScreenShare}
+                className="px-2.5 py-0.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-extrabold text-[10px] transition-colors"
+              >
+                Stop Sharing
+              </button>
+            </div>
+          )}
+
           {/* Floating Call Info Tag */}
           <div className="absolute bottom-3 left-3 px-3 py-1 rounded-xl bg-black/70 backdrop-blur-md text-xs text-slate-200 border border-white/10 flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
             <span>
-              {mergedParticipants.length === 0
+              {isScreenSharing
+                ? 'Desktop Screen Broadcast Active (1080p 60fps)'
+                : mergedParticipants.length === 0
                 ? 'Dual Stream Combined (Canvas 30 FPS)'
                 : `Merged Conference (${totalCallersCount} Participants)`}
             </span>
@@ -467,6 +502,24 @@ export const VideoCallModal: React.FC<VideoCallModalProps> = ({
             </button>
           )}
 
+          {/* Screen Share (1080p Screen / Window / Tab Sharing) */}
+          {isVideo && (
+            <button
+              onClick={handleScreenShare}
+              className={`p-3 sm:p-3.5 rounded-2xl transition-all flex items-center gap-1.5 ${
+                isScreenSharing
+                  ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/40 ring-2 ring-emerald-400 animate-pulse'
+                  : 'bg-slate-800 hover:bg-slate-700 text-slate-200'
+              }`}
+              title={isScreenSharing ? 'Stop Screen Share' : 'Share Screen (Full Desktop / Window / Browser Tab)'}
+            >
+              <Monitor className="w-5 h-5" />
+              <span className="text-xs font-bold hidden md:inline">
+                {isScreenSharing ? 'Stop Share' : 'Share Screen'}
+              </span>
+            </button>
+          )}
+
           {/* Merge Call / Add Contact Button */}
           <button
             onClick={() => setIsMergeDrawerOpen(true)}
@@ -476,21 +529,6 @@ export const VideoCallModal: React.FC<VideoCallModalProps> = ({
             <UserPlus className="w-5 h-5" />
             <span className="text-xs font-bold hidden md:inline">Merge Call</span>
           </button>
-
-          {/* Screen Share */}
-          {isVideo && (
-            <button
-              onClick={handleScreenShare}
-              className={`p-3 sm:p-3.5 rounded-2xl transition-all ${
-                isScreenSharing
-                  ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30'
-                  : 'bg-slate-800 hover:bg-slate-700 text-slate-200'
-              }`}
-              title={isScreenSharing ? 'Stop Screen Share' : 'Share Screen'}
-            >
-              <Monitor className="w-5 h-5" />
-            </button>
-          )}
 
           {/* Native Browser Picture-in-Picture */}
           {isVideo && (
