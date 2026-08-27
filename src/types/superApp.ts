@@ -279,6 +279,20 @@ export interface ChatMessage {
   audioDuration?: number;
   fileName?: string;
   fileSize?: string;
+  voiceCloneAvailable?: boolean;
+  voiceProfile?: Partial<UserVoiceProfile>;
+}
+
+export interface UserVoiceProfile {
+  id: string;
+  isEnrolled: boolean;
+  voiceName: string;
+  pitch: number; // 0.5 to 2.0 (default 1.0)
+  rate: number;  // 0.5 to 2.0 (default 1.0)
+  timbre: 'warm' | 'deep' | 'crisp' | 'energetic' | 'calm';
+  language: 'ml-IN' | 'en-IN' | 'hi-IN';
+  sampleAudioUrl?: string;
+  enrolledDate?: string;
 }
 
 export interface ScheduledMessage {

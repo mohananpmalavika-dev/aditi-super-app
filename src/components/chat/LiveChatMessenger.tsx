@@ -79,6 +79,8 @@ import { ForwardModal } from './ForwardModal';
 import { StarredMessagesDrawer } from './StarredMessagesDrawer';
 import { WallpaperModal } from './WallpaperModal';
 import { LiveBackgroundCamera } from './LiveBackgroundCamera';
+import { VoiceCloneStudioModal } from './VoiceCloneStudioModal';
+import { playTextInSenderVoice } from '../../services/voiceCloneService';
 import confetti from 'canvas-confetti';
 
 const emojis = ['😀', '😂', '😍', '🔥', '👍', '🎉', '🚀', '❤️', '🙌', '💯', '✨', '🙏', '😎', '🥳'];
@@ -132,6 +134,34 @@ export const LiveChatMessenger: React.FC = () => {
   const [scheduledQueueDrawerOpen, setScheduledQueueDrawerOpen] = useState(false);
   const [schedulerInitialText, setSchedulerInitialText] = useState('');
   const [schedulerInitialMode, setSchedulerInitialMode] = useState<'schedule' | 'reminder'>('schedule');
+
+  // AI Voice Avatar & Voice Cloning Narration
+  const [voiceStudioOpen, setVoiceStudioOpen] = useState(false);
+  const [activePlayingVoiceMsgId, setActivePlayingVoiceMsgId] = useState<string | null>(null);
+  const stopVoiceRef = useRef<(() => void) | null>(null);
+
+  const handlePlayMessageInSenderVoice = (msg: ChatMessage) => {
+    if (activePlayingVoiceMsgId === msg.id) {
+      stopVoiceRef.current?.();
+      setActivePlayingVoiceMsgId(null);
+      return;
+    }
+
+    stopVoiceRef.current?.();
+    setActivePlayingVoiceMsgId(msg.id);
+
+    const stopper = playTextInSenderVoice(
+      msg.text,
+      msg.voiceProfile,
+      () => setActivePlayingVoiceMsgId(msg.id),
+      () => setActivePlayingVoiceMsgId(null),
+      () => {
+        setActivePlayingVoiceMsgId(null);
+      }
+    );
+    stopVoiceRef.current = stopper;
+    showToast(`🔊 Speaking in ${msg.senderName}'s AI voice avatar...`);
+  };
 
   // Message Actions state
   const [replyingMessage, setReplyingMessage] = useState<{ id: string; text: string; senderName: string } | null>(null);
@@ -1094,6 +1124,45 @@ export const LiveChatMessenger: React.FC = () => {
                       <p className="whitespace-pre-wrap">{msg.text}</p>
                     )}
 
+                    {/* Receiver AI Voice Narration Chip */}
+                    {!msg.mediaType && !msg.poll && !isSnap && !isLocation && msg.text.trim() && (
+                      <div className="mt-2 pt-1.5 border-t border-white/10 flex items-center justify-between gap-2 flex-wrap">
+                        <button
+                          type="button"
+                          onClick={() => handlePlayMessageInSenderVoice(msg)}
+                          className={`px-2.5 py-1 rounded-xl text-[11px] font-extrabold flex items-center gap-1.5 transition-all shadow-sm ${
+                            activePlayingVoiceMsgId === msg.id
+                              ? 'bg-purple-600 text-white shadow-purple-600/40 ring-2 ring-purple-400 animate-pulse'
+                              : isUser
+                              ? 'bg-indigo-950/80 hover:bg-indigo-900 border border-indigo-500/30 text-indigo-200'
+                              : 'bg-slate-900/90 hover:bg-slate-800 border border-purple-500/30 text-purple-300'
+                          }`}
+                          title="Listen to this text message spoken aloud in sender's AI voice avatar"
+                        >
+                          {activePlayingVoiceMsgId === msg.id ? (
+                            <>
+                              <Pause className="w-3 h-3 text-white" />
+                              <span>Speaking in {isUser ? 'your voice' : `${msg.senderName.split(' ')[0]}'s voice`}...</span>
+                              <div className="flex items-center gap-0.5 ml-1">
+                                {[40, 90, 60, 100, 50].map((h, i) => (
+                                  <div
+                                    key={i}
+                                    className="w-0.5 bg-white rounded-full animate-pulse"
+                                    style={{ height: `${h * 0.12}px`, animationDelay: `${i * 0.1}s` }}
+                                  />
+                                ))}
+                              </div>
+                            </>
+                          ) : (
+                            <>
+                              <Volume2 className="w-3 h-3 text-purple-400" />
+                              <span>Hear in {isUser ? 'My Voice' : `${msg.senderName.split(' ')[0]}'s Voice`}</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    )}
+
                     {/* Disappearing Message Live Countdown Badge */}
                     {msg.isDisappearing && remainingSecs !== null && (
                       <div className="mt-2 pt-1.5 border-t border-white/15 flex items-center justify-between gap-2 text-[10px] font-mono">
@@ -1381,6 +1450,16 @@ export const LiveChatMessenger: React.FC = () => {
                   title="Stickers & Trending GIFs (WhatsApp, Telegram & Viber)"
                 >
                   <Sparkles className="w-4 h-4 sm:w-5 sm:h-5" />
+                </button>
+
+                {/* AI Voice Avatar & Voice Cloning Studio */}
+                <button
+                  type="button"
+                  onClick={() => setVoiceStudioOpen(true)}
+                  className="p-2 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-purple-400 transition-colors"
+                  title="AI Voice Avatar & Cloning Studio (നിങ്ങളുടെ സ്വന്തം AI ശബ്ദം)"
+                >
+                  <Volume2 className="w-4 h-4 sm:w-5 sm:h-5" />
                 </button>
 
                 {/* Message Scheduler & In-Chat Reminder (Telegram & WhatsApp) */}
@@ -1719,6 +1798,13 @@ export const LiveChatMessenger: React.FC = () => {
         onClose={() => setWallpaperModalOpen(false)}
         currentWallpaper={activeChat.customWallpaper || ''}
         onSelectWallpaper={(themeClass) => setChatWallpaper(activeChat.id, themeClass)}
+      />
+
+      {/* AI Voice Avatar & Voice Cloning Studio Modal */}
+      <VoiceCloneStudioModal
+        isOpen={voiceStudioOpen}
+        onClose={() => setVoiceStudioOpen(false)}
+        onProfileUpdated={() => showToast('🎙️ AI Voice Avatar updated successfully!')}
       />
 
     </div>
