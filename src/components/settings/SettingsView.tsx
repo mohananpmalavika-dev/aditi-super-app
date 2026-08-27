@@ -8,15 +8,19 @@ import {
   Sun, 
   Moon, 
   ShieldCheck, 
-  Sparkles,
-  Zap,
-  CheckCircle2,
-  Camera
+  Sparkles, 
+  Zap, 
+  CheckCircle2, 
+  Camera,
+  Lock,
+  Smartphone,
+  KeyRound
 } from 'lucide-react';
 import { useSuperApp } from '../../context/SuperAppContext';
 import { useTheme } from '../../context/ThemeContext';
 import { exportBackupJSON, importBackupJSON } from '../../services/storageService';
 import { PhotoCaptureModal } from '../auth/PhotoCaptureModal';
+import { isDeviceLockEnabled, setDeviceLockEnabled, verifyDeviceLock } from '../../services/deviceLockService';
 import confetti from 'canvas-confetti';
 
 import { searchLocations, LocationSuggestion } from '../../services/locationService';
@@ -440,6 +444,62 @@ export const SettingsView: React.FC = () => {
               >
                 <RotateCcw className="w-3.5 h-3.5" />
                 <span>Reset Factory Defaults</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Real Device Screen Lock & Biometrics (Face ID / Fingerprint / PIN) */}
+          <div className="p-5 rounded-3xl bg-slate-900/80 border border-indigo-500/30 shadow-xl space-y-3">
+            <h4 className="font-extrabold text-xs text-white uppercase tracking-wider flex items-center gap-1.5">
+              <Lock className="w-4 h-4 text-indigo-400" />
+              <span>App Lock & Device Security</span>
+            </h4>
+
+            <p className="text-xs text-slate-400 leading-relaxed">
+              When enabled, closing the app without logging out will protect your session with your phone/PC's native <strong>Face ID</strong>, <strong>Touch ID</strong>, <strong>Windows Hello</strong>, or <strong>Device PIN</strong> upon reopening.
+            </p>
+
+            <div className="pt-2 space-y-2">
+              <div className="flex items-center justify-between p-3 rounded-2xl bg-slate-950 border border-slate-800">
+                <div className="flex items-center gap-2">
+                  <Smartphone className="w-4 h-4 text-indigo-400" />
+                  <span className="text-xs font-bold text-white">Device Screen Lock on App Reopen</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const next = !isDeviceLockEnabled();
+                    setDeviceLockEnabled(next);
+                    showToast(next ? '🛡️ Device Screen Lock enabled on app reopen' : 'Device Screen Lock turned off');
+                  }}
+                  className={`w-12 h-6 rounded-full transition-colors relative p-0.5 ${
+                    isDeviceLockEnabled() ? 'bg-indigo-600' : 'bg-slate-800'
+                  }`}
+                >
+                  <div
+                    className={`w-5 h-5 rounded-full bg-white transition-transform ${
+                      isDeviceLockEnabled() ? 'translate-x-6' : 'translate-x-0'
+                    }`}
+                  />
+                </button>
+              </div>
+
+              <button
+                type="button"
+                onClick={async () => {
+                  showToast('Checking device hardware biometrics...');
+                  const res = await verifyDeviceLock();
+                  if (res.success) {
+                    confetti({ particleCount: 50, spread: 60 });
+                    showToast('✅ Device hardware authentication verified successfully!');
+                  } else {
+                    showToast(`⚠️ ${res.error || 'Verification failed'}`);
+                  }
+                }}
+                className="w-full py-2.5 rounded-xl bg-slate-950 hover:bg-slate-800 border border-indigo-500/40 text-indigo-300 text-xs font-bold flex items-center justify-center gap-2 transition-colors"
+              >
+                <KeyRound className="w-4 h-4 text-indigo-400" />
+                <span>Test Hardware Device Lock (Face ID / Fingerprint / PIN)</span>
               </button>
             </div>
           </div>

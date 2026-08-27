@@ -56,10 +56,21 @@ import {
   TutorProfile,
   UserProfile
 } from '../types/superApp';
+import {
+  DeviceSessionUser,
+  getStoredActiveSession,
+  saveActiveSession,
+  clearActiveSession,
+  isDeviceLockEnabled,
+  registerDeviceLock
+} from '../services/deviceLockService';
 
 interface SuperAppContextType {
-  // Authentication
+  // Authentication & Device Security Lock
   isAuthenticated: boolean;
+  isDeviceLocked: boolean;
+  sessionUser: DeviceSessionUser | null;
+  unlockDevice: () => void;
   login: (creds: LoginCredentials) => Promise<{ success: boolean; error?: string }>;
   register: (creds: RegisterCredentials) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
@@ -122,6 +133,9 @@ const SuperAppContext = createContext<SuperAppContextType | undefined>(undefined
 
 export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [isDeviceLocked, setIsDeviceLocked] = useState<boolean>(false);
+  const [sessionUser, setSessionUser] = useState<DeviceSessionUser | null>(null);
+
   const [activeMiniApp, setActiveMiniApp] = useState<MiniAppId>('home');
   const [user, setUser] = useState<UserProfile>(INITIAL_USER);
   const [properties, setProperties] = useState<RealEstateProperty[]>(MOCK_PROPERTIES);
@@ -136,6 +150,16 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [habits, setHabits] = useState<HabitItem[]>(MOCK_HABITS);
   const [alerts, setAlerts] = useState<ProactiveAlert[]>(MOCK_ALERTS);
   const [toast, setToast] = useState<string | null>(null);
+
+  // Check on startup if returning user has active session protected by device screen lock
+  useEffect(() => {
+    const savedSession = getStoredActiveSession();
+    if (savedSession && isDeviceLockEnabled()) {
+      setSessionUser(savedSession);
+      setIsDeviceLocked(true);
+      setIsAuthenticated(false);
+    }
+  }, []);
 
   // Initial Load from Cloud Database API
   useEffect(() => {
@@ -173,7 +197,14 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     setTimeout(() => setToast(null), 3500);
   };
 
-  /* ==================== AUTHENTICATION ACTIONS ==================== */
+  /* ==================== AUTHENTICATION & DEVICE LOCK ACTIONS ==================== */
+  const unlockDevice = () => {
+    setIsDeviceLocked(false);
+    setIsAuthenticated(true);
+    confetti({ particleCount: 60, spread: 60 });
+    showToast('🔓 Device Screen Lock Verified! Welcome back.');
+  };
+
   const login = async (creds: LoginCredentials): Promise<{ success: boolean; error?: string }> => {
     try {
       const res = await cloudLoginUser(creds);
@@ -182,6 +213,19 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         return { success: false, error: res.error };
       }
       setUser(res.user);
+      
+      const sessionUserObj: DeviceSessionUser = {
+        id: res.user.id || res.user.email,
+        name: res.user.name,
+        email: res.user.email,
+        avatar: res.user.avatar,
+        handle: res.user.handle
+      };
+      saveActiveSession(sessionUserObj);
+      registerDeviceLock(sessionUserObj);
+      setSessionUser(sessionUserObj);
+
+      setIsDeviceLocked(false);
       setIsAuthenticated(true);
       setActiveMiniApp('home');
       confetti({ particleCount: 70, spread: 60, origin: { y: 0.6 } });
@@ -201,6 +245,19 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         return { success: false, error: res.error };
       }
       setUser(res.user);
+
+      const sessionUserObj: DeviceSessionUser = {
+        id: res.user.id || res.user.email,
+        name: res.user.name,
+        email: res.user.email,
+        avatar: res.user.avatar,
+        handle: res.user.handle
+      };
+      saveActiveSession(sessionUserObj);
+      registerDeviceLock(sessionUserObj);
+      setSessionUser(sessionUserObj);
+
+      setIsDeviceLocked(false);
       setIsAuthenticated(true);
       setActiveMiniApp('home');
       confetti({ particleCount: 90, spread: 80, origin: { y: 0.6 } });
@@ -214,6 +271,9 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const logout = async (): Promise<void> => {
     await cloudLogoutUser();
+    clearActiveSession();
+    setSessionUser(null);
+    setIsDeviceLocked(false);
     setIsAuthenticated(false);
     showToast('👋 You have been logged out securely.');
   };
@@ -456,6 +516,9 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     <SuperAppContext.Provider
       value={{
         isAuthenticated,
+        isDeviceLocked,
+        sessionUser,
+        unlockDevice,
         login,
         register,
         logout,

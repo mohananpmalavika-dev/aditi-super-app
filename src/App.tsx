@@ -21,10 +21,25 @@ import { LiveChatMessenger } from './components/chat/LiveChatMessenger';
 import { TasksAndCalendar } from './components/productivity/TasksAndCalendar';
 import { UtilitiesView } from './components/utilities/UtilitiesView';
 import { SettingsView } from './components/settings/SettingsView';
+import { DeviceLockScreen } from './components/auth/DeviceLockScreen';
 
 const SuperAppContent: React.FC = () => {
-  const { activeMiniApp, isAuthenticated } = useSuperApp();
+  const { activeMiniApp, isAuthenticated, isDeviceLocked, sessionUser, unlockDevice, logout } = useSuperApp();
   const [isLauncherOpen, setIsLauncherOpen] = useState(false);
+
+  // If user closed app without logging out, prompt real Device Screen Lock
+  if (isDeviceLocked && sessionUser) {
+    return (
+      <>
+        <DeviceLockScreen
+          sessionUser={sessionUser}
+          onUnlockSuccess={unlockDevice}
+          onSwitchAccount={logout}
+        />
+        <ToastContainer />
+      </>
+    );
+  }
 
   // If user is not authenticated, show the Login/Registration screen
   if (!isAuthenticated) {
