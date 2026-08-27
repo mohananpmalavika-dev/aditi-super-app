@@ -239,14 +239,74 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [alerts, setAlerts] = useState<ProactiveAlert[]>(MOCK_ALERTS);
   const [toast, setToast] = useState<string | null>(null);
 
-  // Check on startup if returning user has active session protected by device screen lock
+  // Authoritative Startup Session & Device Lock Verification
   useEffect(() => {
-    const savedSession = getStoredActiveSession();
-    if (savedSession && isDeviceLockEnabled()) {
-      setSessionUser(savedSession);
-      setIsDeviceLocked(true);
-      setIsAuthenticated(false);
+    async function initAuthSession() {
+      if (supabase) {
+        try {
+          const { data: sessionData } = await supabase.auth.getSession();
+          if (sessionData.session) {
+            const { data: userData } = await supabase.auth.getUser();
+            if (userData.user) {
+              const { data: profile } = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('id', userData.user.id)
+                .single();
+
+              const verifiedUser: UserProfile = {
+                id: userData.user.id,
+                name: profile?.name || userData.user.user_metadata?.name || userData.user.email?.split('@')[0] || 'User',
+                email: userData.user.email || '',
+                handle: profile?.handle || userData.user.user_metadata?.handle || `@${userData.user.email?.split('@')[0]}`,
+                avatar: profile?.avatar_url || userData.user.user_metadata?.avatar || INITIAL_USER.avatar,
+                zodiacSign: profile?.zodiac_sign || userData.user.user_metadata?.zodiacSign || 'Leo',
+                bio: profile?.bio || userData.user.user_metadata?.bio || 'Aditi Verified Member 🚀',
+                location: profile?.location || userData.user.user_metadata?.location || 'Kozhikode, Kerala, India',
+                isVerified: true
+              };
+
+              setUser(verifiedUser);
+              const sessionUserObj: DeviceSessionUser = {
+                id: verifiedUser.id,
+                name: verifiedUser.name,
+                email: verifiedUser.email,
+                avatar: verifiedUser.avatar,
+                handle: verifiedUser.handle
+              };
+              setSessionUser(sessionUserObj);
+
+              if (isDeviceLockEnabled()) {
+                setIsDeviceLocked(true);
+                setIsAuthenticated(false);
+              } else {
+                setIsDeviceLocked(false);
+                setIsAuthenticated(true);
+              }
+              return;
+            }
+          } else {
+            // No valid remote session exists -> clear local session state
+            clearActiveSession();
+            setSessionUser(null);
+            setIsAuthenticated(false);
+            setIsDeviceLocked(false);
+          }
+        } catch (err) {
+          console.warn('Supabase startup session verification error:', err);
+        }
+      } else {
+        // Fallback for local development without Supabase credentials
+        const savedSession = getStoredActiveSession();
+        if (savedSession && isDeviceLockEnabled()) {
+          setSessionUser(savedSession);
+          setIsDeviceLocked(true);
+          setIsAuthenticated(false);
+        }
+      }
     }
+
+    initAuthSession();
   }, []);
 
   // Initial Load from Cloud Database API
@@ -264,7 +324,7 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           getCloudTasks(),
           getCloudHabits()
         ]);
-        setUser(u);
+        if (u && u.email) setUser(u);
         setProperties(p);
         setMatrimonyProfiles(m);
         setTutors(t);
