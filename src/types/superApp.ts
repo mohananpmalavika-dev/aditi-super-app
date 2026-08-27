@@ -281,6 +281,29 @@ export interface ChatMessage {
   fileSize?: string;
 }
 
+export interface ScheduledMessage {
+  id: string;
+  chatId: string;
+  text: string;
+  scheduledTimestamp: number;
+  scheduledTimeStr: string;
+  targetContactName: string;
+  targetContactAvatar: string;
+  isSent: boolean;
+}
+
+export interface ChatReminder {
+  id: string;
+  chatId: string;
+  messageId?: string;
+  messageSnippet: string;
+  remindAtTimestamp: number;
+  remindAtStr: string;
+  contactName: string;
+  note?: string;
+  isTriggered: boolean;
+}
+
 export interface ChatConversation {
   id: string;
   participantName: string;

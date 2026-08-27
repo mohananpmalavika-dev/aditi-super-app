@@ -43,6 +43,7 @@ import {
 import {
   ChatConversation,
   ChatMessage,
+  ChatReminder,
   HabitItem,
   LoginCredentials,
   MatrimonyProfile,
@@ -50,6 +51,7 @@ import {
   ProactiveAlert,
   RealEstateProperty,
   RegisterCredentials,
+  ScheduledMessage,
   SocialPost,
   SocialStory,
   TaskItem,
@@ -120,6 +122,15 @@ interface SuperAppContextType {
   setChatWallpaper: (chatId: string, wallpaper: string) => void;
   clearChatHistory: (chatId: string) => void;
   
+  // Scheduled Messages & Reminders
+  scheduledMessages: ScheduledMessage[];
+  chatReminders: ChatReminder[];
+  scheduleChatMessage: (chatId: string, text: string, deliverAtMs: number, deliverAtStr: string) => void;
+  cancelScheduledMessage: (id: string) => void;
+  sendScheduledMessageNow: (id: string) => void;
+  setChatReminder: (chatId: string, messageSnippet: string, remindAtMs: number, remindAtStr: string, note?: string) => void;
+  dismissChatReminder: (id: string) => void;
+  
   // Productivity
   tasks: TaskItem[];
   addTask: (task: Omit<TaskItem, 'id'>) => Promise<void>;
@@ -158,6 +169,33 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [stories] = useState<SocialStory[]>(MOCK_STORIES);
   const [chats, setChats] = useState<ChatConversation[]>(MOCK_CHATS);
   const [activeChatId, setActiveChatId] = useState<string>('chat-brain');
+
+  const [scheduledMessages, setScheduledMessages] = useState<ScheduledMessage[]>(() => {
+    try {
+      const saved = localStorage.getItem('omnilife_scheduled_messages');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const [chatReminders, setChatReminders] = useState<ChatReminder[]>(() => {
+    try {
+      const saved = localStorage.getItem('omnilife_chat_reminders');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  useEffect(() => {
+    localStorage.setItem('omnilife_scheduled_messages', JSON.stringify(scheduledMessages));
+  }, [scheduledMessages]);
+
+  useEffect(() => {
+    localStorage.setItem('omnilife_chat_reminders', JSON.stringify(chatReminders));
+  }, [chatReminders]);
+
   const [tasks, setTasks] = useState<TaskItem[]>(MOCK_TASKS);
   const [habits, setHabits] = useState<HabitItem[]>(MOCK_HABITS);
   const [alerts, setAlerts] = useState<ProactiveAlert[]>(MOCK_ALERTS);
@@ -404,10 +442,12 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     showToast('🚀 Cloud: Story published to global feed!');
   };
 
-  // Real-time Disappearing Messages auto-cleanup worker (1 second precision)
+  // Real-time Disappearing Messages & Scheduled Deliveries & Chat Reminders worker (1 second precision)
   useEffect(() => {
     const cleaner = setInterval(() => {
       const now = Date.now();
+
+      // 1. Clean disappearing messages
       setChats((prevChats) => {
         let hasExpired = false;
         const nextChats = prevChats.map((chat) => {
@@ -426,6 +466,47 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
         return hasExpired ? nextChats : prevChats;
       });
+
+      // 2. Deliver scheduled messages
+      setScheduledMessages((prev) => {
+        let changed = false;
+        const next = prev.map((sMsg) => {
+          if (now >= sMsg.scheduledTimestamp && !sMsg.isSent) {
+            changed = true;
+            sendChatMessage(sMsg.chatId, `⏰ [Scheduled Delivery]:\n${sMsg.text}`);
+            confetti({ particleCount: 50, spread: 60 });
+            showToast(`🔔 Scheduled message delivered to ${sMsg.targetContactName}!`);
+            return { ...sMsg, isSent: true };
+          }
+          return sMsg;
+        });
+        return changed ? next : prev;
+      });
+
+      // 3. Trigger chat reminders
+      setChatReminders((prev) => {
+        let changed = false;
+        const next = prev.map((rem) => {
+          if (now >= rem.remindAtTimestamp && !rem.isTriggered) {
+            changed = true;
+            const alertObj: ProactiveAlert = {
+              id: `alert-rem-${Date.now()}`,
+              category: 'productivity',
+              title: `⏰ Chat Reminder: ${rem.contactName}`,
+              message: rem.note ? `${rem.note} (Re: "${rem.messageSnippet}")` : `Reminder: "${rem.messageSnippet}"`,
+              actionMiniApp: 'chat',
+              timestamp: 'Just now',
+              priority: 'important'
+            };
+            setAlerts((prevAlerts) => [alertObj, ...prevAlerts]);
+            showToast(`⏰ Chat Reminder for ${rem.contactName}: "${rem.messageSnippet}"!`);
+            return { ...rem, isTriggered: true };
+          }
+          return rem;
+        });
+        return changed ? next : prev;
+      });
+
     }, 1000);
 
     return () => clearInterval(cleaner);
@@ -765,6 +846,58 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     showToast('🗑️ Chat history cleared.');
   };
 
+  // Scheduled Messages & Chat Reminders Actions
+  const scheduleChatMessage = (chatId: string, text: string, deliverAtMs: number, deliverAtStr: string) => {
+    const targetChat = chats.find((c) => c.id === chatId);
+    const newScheduled: ScheduledMessage = {
+      id: `sched-${Date.now()}`,
+      chatId,
+      text,
+      scheduledTimestamp: deliverAtMs,
+      scheduledTimeStr: deliverAtStr,
+      targetContactName: targetChat?.participantName || 'Contact',
+      targetContactAvatar: targetChat?.participantAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100',
+      isSent: false
+    };
+    setScheduledMessages((prev) => [newScheduled, ...prev]);
+    showToast(`⏰ Message scheduled for ${deliverAtStr}!`);
+  };
+
+  const cancelScheduledMessage = (id: string) => {
+    setScheduledMessages((prev) => prev.filter((m) => m.id !== id));
+    showToast('Scheduled message cancelled.');
+  };
+
+  const sendScheduledMessageNow = (id: string) => {
+    const msg = scheduledMessages.find((m) => m.id === id);
+    if (msg) {
+      sendChatMessage(msg.chatId, `⏰ [Scheduled Delivery]:\n${msg.text}`);
+      setScheduledMessages((prev) => prev.filter((m) => m.id !== id));
+      showToast(`🚀 Sent immediately to ${msg.targetContactName}!`);
+    }
+  };
+
+  const setChatReminder = (chatId: string, messageSnippet: string, remindAtMs: number, remindAtStr: string, note?: string) => {
+    const targetChat = chats.find((c) => c.id === chatId);
+    const newRem: ChatReminder = {
+      id: `rem-${Date.now()}`,
+      chatId,
+      messageSnippet,
+      remindAtTimestamp: remindAtMs,
+      remindAtStr: remindAtStr,
+      contactName: targetChat?.participantName || 'Contact',
+      note,
+      isTriggered: false
+    };
+    setChatReminders((prev) => [newRem, ...prev]);
+    showToast(`🔔 Reminder set for ${remindAtStr}!`);
+  };
+
+  const dismissChatReminder = (id: string) => {
+    setChatReminders((prev) => prev.filter((r) => r.id !== id));
+    showToast('Reminder dismissed.');
+  };
+
   // Tasks
   const addTask = async (taskData: Omit<TaskItem, 'id'>) => {
     const newTask: TaskItem = {
@@ -859,6 +992,13 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         toggleMuteChat,
         setChatWallpaper,
         clearChatHistory,
+        scheduledMessages,
+        chatReminders,
+        scheduleChatMessage,
+        cancelScheduledMessage,
+        sendScheduledMessageNow,
+        setChatReminder,
+        dismissChatReminder,
         tasks,
         addTask,
         toggleTaskStatus,

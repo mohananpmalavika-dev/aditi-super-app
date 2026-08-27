@@ -63,6 +63,7 @@ import { FloatingCallWidget } from './FloatingCallWidget';
 import { SnapCameraModal } from './SnapCameraModal';
 import { LocationShareModal } from './LocationShareModal';
 import { SchedulerModal } from './SchedulerModal';
+import { ScheduledQueueDrawer } from './ScheduledQueueDrawer';
 import { SecretTimerBar } from './SecretTimerBar';
 import { EmailComposerModal } from './EmailComposerModal';
 import { GroupCreateModal } from './GroupCreateModal';
@@ -99,6 +100,13 @@ export const LiveChatMessenger: React.FC = () => {
     toggleMuteChat,
     setChatWallpaper,
     clearChatHistory,
+    scheduledMessages,
+    chatReminders,
+    scheduleChatMessage,
+    cancelScheduledMessage,
+    sendScheduledMessageNow,
+    setChatReminder,
+    dismissChatReminder,
     user,
     showToast
   } = useSuperApp();
@@ -115,6 +123,11 @@ export const LiveChatMessenger: React.FC = () => {
   const [isLiveBgActive, setIsLiveBgActive] = useState(false);
   const [isLocationTagged, setIsLocationTagged] = useState(false);
   const [currentLiveLocation, setCurrentLiveLocation] = useState('📍 Kozhikode, Kerala (11.2588° N, 75.7804° E)');
+
+  // Scheduler & Reminders state
+  const [scheduledQueueDrawerOpen, setScheduledQueueDrawerOpen] = useState(false);
+  const [schedulerInitialText, setSchedulerInitialText] = useState('');
+  const [schedulerInitialMode, setSchedulerInitialMode] = useState<'schedule' | 'reminder'>('schedule');
 
   // Message Actions state
   const [replyingMessage, setReplyingMessage] = useState<{ id: string; text: string; senderName: string } | null>(null);
@@ -401,6 +414,18 @@ export const LiveChatMessenger: React.FC = () => {
             </div>
             
             <div className="flex items-center gap-1">
+              <button
+                onClick={() => setScheduledQueueDrawerOpen(true)}
+                className="p-1.5 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 text-amber-400 border border-amber-500/30 transition-colors relative"
+                title="Scheduled Deliveries & Reminders Queue"
+              >
+                <Clock className="w-3.5 h-3.5" />
+                {scheduledMessages.filter((m) => !m.isSent).length + chatReminders.filter((r) => !r.isTriggered).length > 0 && (
+                  <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-amber-500 text-[9px] font-extrabold text-slate-950 flex items-center justify-center">
+                    {scheduledMessages.filter((m) => !m.isSent).length + chatReminders.filter((r) => !r.isTriggered).length}
+                  </span>
+                )}
+              </button>
               <button
                 onClick={() => setStarredDrawerOpen(true)}
                 className="p-1.5 rounded-xl bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 transition-colors"
@@ -1113,6 +1138,17 @@ export const LiveChatMessenger: React.FC = () => {
                       </button>
                       <button
                         onClick={() => {
+                          setSchedulerInitialText(msg.text);
+                          setSchedulerInitialMode('reminder');
+                          setSchedulerModalOpen(true);
+                        }}
+                        className="p-1 hover:text-amber-400 text-slate-400"
+                        title="Set Reminder for this Message (WhatsApp & Telegram)"
+                      >
+                        <Clock className="w-3 h-3" />
+                      </button>
+                      <button
+                        onClick={() => {
                           setPinnedMessage(msg.text);
                           showToast('📌 Message pinned!');
                         }}
@@ -1343,6 +1379,20 @@ export const LiveChatMessenger: React.FC = () => {
                   <Sparkles className="w-4 h-4 sm:w-5 sm:h-5" />
                 </button>
 
+                {/* Message Scheduler & In-Chat Reminder (Telegram & WhatsApp) */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSchedulerInitialText(inputText);
+                    setSchedulerInitialMode('schedule');
+                    setSchedulerModalOpen(true);
+                  }}
+                  className="p-2 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-amber-400 transition-colors"
+                  title="Schedule Message / Set Chat Reminder"
+                >
+                  <Clock className="w-4 h-4 sm:w-5 sm:h-5" />
+                </button>
+
                 {/* Live Poll Creator Button (WhatsApp & Telegram) */}
                 <button
                   type="button"
@@ -1486,12 +1536,33 @@ export const LiveChatMessenger: React.FC = () => {
         onSendLocation={handleSendLocation}
       />
 
-      {/* Scheduler Modal */}
+      {/* Scheduler & In-Chat Reminder Modal */}
       <SchedulerModal
         isOpen={schedulerModalOpen}
         contactName={activeChat.participantName}
+        chatId={activeChat.id}
+        initialText={schedulerInitialText}
+        initialMode={schedulerInitialMode}
         onClose={() => setSchedulerModalOpen(false)}
-        onScheduleMessage={handleScheduleMessage}
+        onScheduleMessage={(text, deliverAtMs, deliverAtStr) => {
+          scheduleChatMessage(activeChat.id, text, deliverAtMs, deliverAtStr);
+          setInputText('');
+        }}
+        onSetReminder={(snippet, remindAtMs, remindAtStr, note) => {
+          setChatReminder(activeChat.id, snippet, remindAtMs, remindAtStr, note);
+        }}
+      />
+
+      {/* Scheduled Queue & Reminders Drawer */}
+      <ScheduledQueueDrawer
+        isOpen={scheduledQueueDrawerOpen}
+        onClose={() => setScheduledQueueDrawerOpen(false)}
+        chatId={activeChat.id}
+        scheduledMessages={scheduledMessages}
+        chatReminders={chatReminders}
+        onSendNow={(id) => sendScheduledMessageNow(id)}
+        onCancelScheduled={(id) => cancelScheduledMessage(id)}
+        onDismissReminder={(id) => dismissChatReminder(id)}
       />
 
       {/* Direct SMTP Email Composer */}
