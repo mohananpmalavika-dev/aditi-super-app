@@ -4,6 +4,7 @@ import {
   Phone,
   Video,
   Search,
+  MessageSquare,
   Paperclip,
   Smile,
   Mic,
@@ -225,10 +226,10 @@ export const LiveChatMessenger: React.FC = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const activeChat = chats.find((c) => c.id === activeChatId) || chats[0];
+  const activeChat = (chats && chats.length > 0) ? (chats.find((c) => c.id === activeChatId) || chats[0]) : null;
 
   // Helper to count consecutive messages sent by the user since the last incoming message from the participant
-  const getConsecutiveUserSentCount = (chat: ChatConversation | undefined): number => {
+  const getConsecutiveUserSentCount = (chat: ChatConversation | null | undefined): number => {
     if (!chat || !chat.messages || chat.messages.length === 0) return 0;
     let count = 0;
     for (let i = chat.messages.length - 1; i >= 0; i--) {
@@ -247,7 +248,7 @@ export const LiveChatMessenger: React.FC = () => {
   const isFriend = activeChat?.isFriend ?? false;
   const isBlocked = activeChat?.isBlocked ?? false;
   const isNonFriendDirect = isDirectChat && !isFriend && !isBlocked;
-  const consecutiveSentCount = isNonFriendDirect ? getConsecutiveUserSentCount(activeChat) : 0;
+  const consecutiveSentCount = isNonFriendDirect && activeChat ? getConsecutiveUserSentCount(activeChat) : 0;
   const remainingNonFriendMessages = Math.max(0, 3 - consecutiveSentCount);
   const isNonFriendBlocked = isNonFriendDirect && consecutiveSentCount >= 3;
 
@@ -378,7 +379,7 @@ export const LiveChatMessenger: React.FC = () => {
 
   // Convert Chat Message to Email
   const handleMessageToEmail = (msgText: string) => {
-    setEmailInitialSubject(`Aditi Conversation with ${activeChat.participantName}`);
+    setEmailInitialSubject(`Aditi Conversation with ${activeChat?.participantName || 'Contact'}`);
     setEmailInitialBody(msgText);
     setEmailModalOpen(true);
   };
@@ -627,117 +628,145 @@ export const LiveChatMessenger: React.FC = () => {
       {/* ========================================================================= */}
       {/* RIGHT MAIN CHAT WINDOW */}
       {/* ========================================================================= */}
-      <div className={`flex-1 flex flex-col ${activeChat.customWallpaper || 'bg-slate-950/40'} relative ${mobileView === 'list' ? 'hidden md:flex' : 'flex'}`}>
+      <div className={`flex-1 flex flex-col ${activeChat?.customWallpaper || 'bg-slate-950/40'} relative ${mobileView === 'list' ? 'hidden md:flex' : 'flex'}`}>
         
-        {/* Live Real-time Camera & Audio Environment Background with GPS Tagging (Walk & Chat Mode) */}
-        <LiveBackgroundCamera
-          isActive={isLiveBgActive}
-          onClose={() => setIsLiveBgActive(false)}
-          onLocationUpdate={(loc) => setCurrentLiveLocation(loc)}
-          isLocationTagged={isLocationTagged}
-          onToggleLocationTag={() => {
-            const next = !isLocationTagged;
-            setIsLocationTagged(next);
-            showToast(next ? '📍 Live GPS Location Tagging active on chat background!' : 'Location tagging deactivated');
-          }}
-        />
-
-        {/* Top Active Chat Header */}
-        <div className="px-3.5 sm:px-5 py-3 bg-slate-950/90 border-b border-slate-800 backdrop-blur-xl flex items-center justify-between z-20">
-          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-            
-            {/* Mobile Back Button */}
-            <button
-              onClick={() => setMobileView('list')}
-              className="md:hidden p-1.5 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-white transition-colors"
-              title="Back to conversations"
-            >
-              <ChevronLeft className="w-5 h-5" />
-            </button>
-
-            <div className="relative flex-shrink-0 cursor-pointer" onClick={() => setDetailsDrawerOpen(true)}>
-              <img
-                src={activeChat.participantAvatar}
-                alt={activeChat.participantName}
-                className="w-10 h-10 rounded-2xl object-cover ring-2 ring-indigo-500/40"
-              />
-              {activeChat.isOnline && (
-                <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-400 border-2 border-slate-950" />
-              )}
+        {!activeChat ? (
+          <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-slate-950/40">
+            <div className="w-16 h-16 rounded-3xl bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400 mb-4 shadow-xl shadow-indigo-500/10">
+              <MessageSquare className="w-8 h-8" />
             </div>
+            <h3 className="text-base font-extrabold text-white mb-1">Select a Conversation</h3>
+            <p className="text-xs text-slate-400 max-w-sm mb-6">
+              Choose an existing chat from the left sidebar or start a new group, channel, or broadcast.
+            </p>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setGroupModalOpen(true)}
+                className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-xs font-bold text-white transition-all shadow-lg shadow-indigo-600/30"
+              >
+                + New Group
+              </button>
+              <button
+                type="button"
+                onClick={() => setChannelModalOpen(true)}
+                className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-xs font-bold text-white transition-all shadow-lg shadow-purple-600/30"
+              >
+                + New Channel
+              </button>
+            </div>
+          </div>
+        ) : (
+          <>
+            {/* Live Real-time Camera & Audio Environment Background with GPS Tagging (Walk & Chat Mode) */}
+            <LiveBackgroundCamera
+              isActive={isLiveBgActive}
+              onClose={() => setIsLiveBgActive(false)}
+              onLocationUpdate={(loc) => setCurrentLiveLocation(loc)}
+              isLocationTagged={isLocationTagged}
+              onToggleLocationTag={() => {
+                const next = !isLocationTagged;
+                setIsLocationTagged(next);
+                showToast(next ? '📍 Live GPS Location Tagging active on chat background!' : 'Location tagging deactivated');
+              }}
+            />
 
-            <div className="min-w-0 cursor-pointer" onClick={() => setDetailsDrawerOpen(true)}>
-              <div className="flex items-center gap-1.5 sm:gap-2">
-                <h3 className="font-extrabold text-xs sm:text-sm text-white truncate">{activeChat.participantName}</h3>
-                <span className="hidden sm:inline-block text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-800 text-indigo-300 truncate">
-                  {activeChat.roleOrContext}
-                </span>
+            {/* Top Active Chat Header */}
+            <div className="px-3.5 sm:px-5 py-3 bg-slate-950/90 border-b border-slate-800 backdrop-blur-xl flex items-center justify-between z-20">
+              <div className="flex items-center gap-2 sm:gap-3 min-w-0">
                 
-                {/* Friend / Non-friend / Blocked Badges */}
-                {isDirectChat && (
-                  isBlocked ? (
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        toggleBlockStatus(activeChat.id);
-                      }}
-                      className="text-[10px] font-extrabold px-2 py-0.5 rounded-lg bg-rose-500/20 text-rose-300 border border-rose-500/40 hover:bg-rose-500/30 flex items-center gap-1 transition-all"
-                      title="Click to unblock this contact"
-                    >
-                      <Ban className="w-2.5 h-2.5" />
-                      <span>Blocked (Unblock)</span>
-                    </button>
-                  ) : isFriend ? (
-                    <div className="flex items-center gap-1">
-                      <span className="hidden sm:inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                        <UserCheck className="w-2.5 h-2.5" />
-                        <span>Friend</span>
-                      </span>
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          toggleFriendStatus(activeChat.id);
-                        }}
-                        className="hidden sm:inline-flex text-[10px] font-semibold px-2 py-0.5 rounded-lg hover:bg-rose-950/40 text-slate-400 hover:text-rose-300 items-center gap-1 transition-colors"
-                        title="Unfriend this contact"
-                      >
-                        <UserMinus className="w-2.5 h-2.5" />
-                        <span>Unfriend</span>
-                      </button>
-                    </div>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        toggleFriendStatus(activeChat.id);
-                      }}
-                      className="text-[10px] font-extrabold px-2 py-0.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 flex items-center gap-1 shadow-sm transition-all hover:scale-105"
-                    >
-                      <UserPlus className="w-2.5 h-2.5" />
-                      <span>+ Add Friend</span>
-                    </button>
-                  )
-                )}
+                {/* Mobile Back Button */}
+                <button
+                  onClick={() => setMobileView('list')}
+                  className="md:hidden p-1.5 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-white transition-colors"
+                  title="Back to conversations"
+                >
+                  <ChevronLeft className="w-5 h-5" />
+                </button>
 
-                {secretTimer && (
-                  <span className="flex items-center text-[10px] font-bold px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/40">
-                    <Lock className="w-2.5 h-2.5 mr-1" />
-                    {secretTimer}s
-                  </span>
-                )}
-              </div>
-              <p className="text-[10px] sm:text-[11px] text-slate-400 font-mono truncate">
-                {isTyping ? (
-                  <span className="text-emerald-400 font-bold animate-pulse">Typing a message...</span>
-                ) : activeChat.isOnline ? (
-                  'Online • WebRTC & STUN E2EE'
-                ) : (
-                  'Active today'
-                )}
-              </p>
+                <div className="relative flex-shrink-0 cursor-pointer" onClick={() => setDetailsDrawerOpen(true)}>
+                  <img
+                    src={activeChat.participantAvatar}
+                    alt={activeChat.participantName}
+                    className="w-10 h-10 rounded-2xl object-cover ring-2 ring-indigo-500/40"
+                  />
+                  {activeChat.isOnline && (
+                    <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-400 border-2 border-slate-950" />
+                  )}
+                </div>
+
+                <div className="min-w-0 cursor-pointer" onClick={() => setDetailsDrawerOpen(true)}>
+                  <div className="flex items-center gap-1.5 sm:gap-2">
+                    <h3 className="font-extrabold text-xs sm:text-sm text-white truncate">{activeChat.participantName}</h3>
+                    <span className="hidden sm:inline-block text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-800 text-indigo-300 truncate">
+                      {activeChat.roleOrContext}
+                    </span>
+                    
+                    {/* Friend / Non-friend / Blocked Badges */}
+                    {isDirectChat && (
+                      isBlocked ? (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleBlockStatus(activeChat.id);
+                          }}
+                          className="text-[10px] font-extrabold px-2 py-0.5 rounded-lg bg-rose-500/20 text-rose-300 border border-rose-500/40 hover:bg-rose-500/30 flex items-center gap-1 transition-all"
+                          title="Click to unblock this contact"
+                        >
+                          <Ban className="w-2.5 h-2.5" />
+                          <span>Blocked (Unblock)</span>
+                        </button>
+                      ) : isFriend ? (
+                        <div className="flex items-center gap-1">
+                          <span className="hidden sm:inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                            <UserCheck className="w-2.5 h-2.5" />
+                            <span>Friend</span>
+                          </span>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleFriendStatus(activeChat.id);
+                            }}
+                            className="hidden sm:inline-flex text-[10px] font-semibold px-2 py-0.5 rounded-lg hover:bg-rose-950/40 text-slate-400 hover:text-rose-300 items-center gap-1 transition-colors"
+                            title="Unfriend this contact"
+                          >
+                            <UserMinus className="w-2.5 h-2.5" />
+                            <span>Unfriend</span>
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleFriendStatus(activeChat.id);
+                          }}
+                          className="text-[10px] font-extrabold px-2 py-0.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 flex items-center gap-1 shadow-sm transition-all hover:scale-105"
+                        >
+                          <UserPlus className="w-2.5 h-2.5" />
+                          <span>+ Add Friend</span>
+                        </button>
+                      )
+                    )}
+
+                    {secretTimer && (
+                      <span className="flex items-center text-[10px] font-bold px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/40">
+                        <Lock className="w-2.5 h-2.5 mr-1" />
+                        {secretTimer}s
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[10px] sm:text-[11px] text-slate-400 font-mono truncate">
+                    {isTyping ? (
+                      <span className="text-emerald-400 font-bold animate-pulse">Typing a message...</span>
+                    ) : activeChat.isOnline ? (
+                      'Online • WebRTC & STUN E2EE'
+                    ) : (
+                      'Active today'
+                    )}
+                  </p>
             </div>
           </div>
 
@@ -1566,7 +1595,7 @@ export const LiveChatMessenger: React.FC = () => {
                   type="text"
                   value={inputText}
                   onChange={(e) => setInputText(e.target.value)}
-                  placeholder={`Message ${activeChat.participantName}...`}
+                  placeholder={`Message ${activeChat?.participantName || 'contact'}...`}
                   className="flex-1 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl bg-slate-900 border border-slate-800 text-xs sm:text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 min-w-0"
                 />
 
@@ -1593,6 +1622,8 @@ export const LiveChatMessenger: React.FC = () => {
             )}
           </div>
         )}
+        </>
+        )}
 
       </div>
 
@@ -1603,8 +1634,8 @@ export const LiveChatMessenger: React.FC = () => {
       {/* WebRTC Video Call Modal with Dual Merge & Native PiP */}
       <VideoCallModal
         isOpen={callModalOpen}
-        contactName={activeChat.participantName}
-        contactAvatar={activeChat.participantAvatar}
+        contactName={activeChat?.participantName || 'Aditi Contact'}
+        contactAvatar={activeChat?.participantAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300'}
         isVideo={isVideoCall}
         onClose={() => {
           setCallModalOpen(false);
@@ -1618,8 +1649,8 @@ export const LiveChatMessenger: React.FC = () => {
       {/* Floating Call PiP Mini Widget */}
       {floatingCallActive && (
         <FloatingCallWidget
-          contactName={activeChat.participantName}
-          contactAvatar={activeChat.participantAvatar}
+          contactName={activeChat?.participantName || 'Aditi Contact'}
+          contactAvatar={activeChat?.participantAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300'}
           isVideo={isVideoCall}
           isMuted={isCallMuted}
           isVideoOff={isCallVideoOff}
@@ -1651,17 +1682,21 @@ export const LiveChatMessenger: React.FC = () => {
       {/* Scheduler & In-Chat Reminder Modal */}
       <SchedulerModal
         isOpen={schedulerModalOpen}
-        contactName={activeChat.participantName}
-        chatId={activeChat.id}
+        contactName={activeChat?.participantName || 'Aditi Contact'}
+        chatId={activeChat?.id || ''}
         initialText={schedulerInitialText}
         initialMode={schedulerInitialMode}
         onClose={() => setSchedulerModalOpen(false)}
         onScheduleMessage={(text, deliverAtMs, deliverAtStr, deliveryType, audioUrl, audioDuration) => {
-          scheduleChatMessage(activeChat.id, text, deliverAtMs, deliverAtStr, deliveryType, audioUrl, audioDuration);
-          setInputText('');
+          if (activeChat) {
+            scheduleChatMessage(activeChat.id, text, deliverAtMs, deliverAtStr, deliveryType, audioUrl, audioDuration);
+            setInputText('');
+          }
         }}
         onSetReminder={(snippet, remindAtMs, remindAtStr, note) => {
-          setChatReminder(activeChat.id, snippet, remindAtMs, remindAtStr, note);
+          if (activeChat) {
+            setChatReminder(activeChat.id, snippet, remindAtMs, remindAtStr, note);
+          }
         }}
       />
 
@@ -1669,7 +1704,7 @@ export const LiveChatMessenger: React.FC = () => {
       <ScheduledQueueDrawer
         isOpen={scheduledQueueDrawerOpen}
         onClose={() => setScheduledQueueDrawerOpen(false)}
-        chatId={activeChat.id}
+        chatId={activeChat?.id || ''}
         scheduledMessages={scheduledMessages}
         chatReminders={chatReminders}
         onSendNow={(id) => sendScheduledMessageNow(id)}
@@ -1698,7 +1733,7 @@ export const LiveChatMessenger: React.FC = () => {
       {/* Direct SMTP Email Composer */}
       <EmailComposerModal
         isOpen={emailModalOpen}
-        initialRecipientEmail={`${activeChat.participantName.toLowerCase().replace(/\s+/g, '')}@malabarbazaar.shop`}
+        initialRecipientEmail={`${(activeChat?.participantName || 'contact').toLowerCase().replace(/\s+/g, '')}@malabarbazaar.shop`}
         initialSubject={emailInitialSubject}
         initialBody={emailInitialBody}
         onClose={() => setEmailModalOpen(false)}
@@ -1715,18 +1750,24 @@ export const LiveChatMessenger: React.FC = () => {
       {/* Contact Details Drawer */}
       <ChatDetailsDrawer
         isOpen={detailsDrawerOpen}
-        chat={activeChat}
+        chat={activeChat || chats[0]}
         onClose={() => setDetailsDrawerOpen(false)}
         onBlockUser={() => {
-          toggleBlockStatus(activeChat.id);
-          setDetailsDrawerOpen(false);
+          if (activeChat) {
+            toggleBlockStatus(activeChat.id);
+            setDetailsDrawerOpen(false);
+          }
         }}
         onToggleFriend={() => {
-          toggleFriendStatus(activeChat.id);
+          if (activeChat) {
+            toggleFriendStatus(activeChat.id);
+          }
         }}
         onReportUser={() => {
-          showToast(`🛡️ Report filed for ${activeChat.participantName}.`);
-          setDetailsDrawerOpen(false);
+          if (activeChat) {
+            showToast(`🛡️ Report filed for ${activeChat.participantName}.`);
+            setDetailsDrawerOpen(false);
+          }
         }}
         onOpenEmail={() => {
           setDetailsDrawerOpen(false);
@@ -1770,8 +1811,10 @@ export const LiveChatMessenger: React.FC = () => {
         isOpen={pollModalOpen}
         onClose={() => setPollModalOpen(false)}
         onCreatePoll={(poll: ChatPoll) => {
-          sendChatMessage(activeChat.id, '', { poll });
-          showToast('📊 Live poll created and broadcasted!');
+          if (activeChat) {
+            sendChatMessage(activeChat.id, '', { poll });
+            showToast('📊 Live poll created and broadcasted!');
+          }
         }}
       />
 
@@ -1780,8 +1823,10 @@ export const LiveChatMessenger: React.FC = () => {
         isOpen={stickerModalOpen}
         onClose={() => setStickerModalOpen(false)}
         onSelectMedia={(mediaUrl, mediaType) => {
-          sendChatMessage(activeChat.id, '', { mediaUrl, mediaType });
-          showToast(mediaType === 'sticker' ? '🌟 Sticker sent!' : '🎬 Animated GIF sent!');
+          if (activeChat) {
+            sendChatMessage(activeChat.id, '', { mediaUrl, mediaType });
+            showToast(mediaType === 'sticker' ? '🌟 Sticker sent!' : '🎬 Animated GIF sent!');
+          }
         }}
       />
 
@@ -1790,13 +1835,15 @@ export const LiveChatMessenger: React.FC = () => {
         isOpen={videoNoteModalOpen}
         onClose={() => setVideoNoteModalOpen(false)}
         onSendVideoNote={(videoUrl, duration) => {
-          sendChatMessage(activeChat.id, '', {
-            mediaUrl: videoUrl,
-            mediaType: 'video_note',
-            expiresDuration: secretTimer
-          });
-          confetti({ particleCount: 40, spread: 60 });
-          showToast('⭕ Circular video note dispatched!');
+          if (activeChat) {
+            sendChatMessage(activeChat.id, '', {
+              mediaUrl: videoUrl,
+              mediaType: 'video_note',
+              expiresDuration: secretTimer
+            });
+            confetti({ particleCount: 40, spread: 60 });
+            showToast('⭕ Circular video note dispatched!');
+          }
         }}
       />
 
@@ -1825,8 +1872,12 @@ export const LiveChatMessenger: React.FC = () => {
       <WallpaperModal
         isOpen={wallpaperModalOpen}
         onClose={() => setWallpaperModalOpen(false)}
-        currentWallpaper={activeChat.customWallpaper || ''}
-        onSelectWallpaper={(themeClass) => setChatWallpaper(activeChat.id, themeClass)}
+        currentWallpaper={activeChat?.customWallpaper || ''}
+        onSelectWallpaper={(themeClass) => {
+          if (activeChat) {
+            setChatWallpaper(activeChat.id, themeClass);
+          }
+        }}
       />
 
       {/* AI Voice Avatar & Voice Cloning Studio Modal */}

@@ -316,14 +316,14 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           getCloudHabits()
         ]);
         if (u && u.email) setUser(u);
-        setProperties(p);
-        setMatrimonyProfiles(m);
-        setTutors(t);
-        setBookings(b);
-        setPosts(pos);
-        setChats(ch);
-        setTasks(tsk);
-        setHabits(h);
+        if (p && p.length > 0) setProperties(p);
+        if (m && m.length > 0) setMatrimonyProfiles(m);
+        if (t && t.length > 0) setTutors(t);
+        if (b && b.length > 0) setBookings(b);
+        if (pos && pos.length > 0) setPosts(pos);
+        if (ch && ch.length > 0) setChats(ch);
+        if (tsk && tsk.length > 0) setTasks(tsk);
+        if (h && h.length > 0) setHabits(h);
       } catch (e) {
         console.warn('Cloud database sync initialized with remote state');
       }

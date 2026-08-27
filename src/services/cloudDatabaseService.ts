@@ -655,7 +655,43 @@ export async function getCloudChats(): Promise<ChatConversation[]> {
         .from('conversations')
         .select('*, messages(*), conversation_members(*)')
         .order('created_at', { ascending: false });
-      if (!error && data && data.length > 0) return data;
+
+      if (!error && data && data.length > 0) {
+        return data.map((c: any) => {
+          const sortedMessages = (c.messages || []).sort(
+            (a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+          );
+          const lastMsg = sortedMessages[sortedMessages.length - 1];
+
+          return {
+            id: c.id,
+            participantName: c.name || 'Community Member',
+            participantAvatar: c.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300',
+            roleOrContext: c.type === 'channel' ? '📢 Channel' : c.type === 'group' ? '👥 Group' : '💬 Direct Chat',
+            lastMessage: lastMsg?.text || 'Conversation started',
+            lastMessageTime: lastMsg?.created_at
+              ? new Date(lastMsg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+              : 'Just now',
+            unreadCount: 0,
+            isOnline: true,
+            conversationType: c.type || 'direct',
+            channelHandle: c.name ? `@${c.name.toLowerCase().replace(/\s+/g, '')}` : undefined,
+            isFriend: true,
+            messages: sortedMessages.map((m: any) => ({
+              id: m.id,
+              senderId: m.sender_id,
+              senderName: m.sender_id === authData.user?.id ? 'You' : (c.name || 'Member'),
+              text: m.text,
+              timestamp: new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              isUser: m.sender_id === authData.user?.id,
+              mediaUrl: m.media_url,
+              mediaType: m.media_type,
+              isDisappearing: m.is_disappearing,
+              expiresAt: m.expires_at ? new Date(m.expires_at).getTime() : undefined
+            }))
+          };
+        });
+      }
     }
   }
   return [...cloudState.chats];
