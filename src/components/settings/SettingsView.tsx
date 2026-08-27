@@ -436,7 +436,7 @@ export const SettingsView: React.FC = () => {
             <div className="pt-3 border-t border-slate-800">
               <button
                 onClick={() => {
-                  if (window.confirm('Reset all demo data back to clean factory state?')) {
+                  if (window.confirm('Reset all data back to clean factory state?')) {
                     resetDefaults();
                   }
                 }}

@@ -494,7 +494,7 @@ export const AuthPage: React.FC = () => {
                           );
                         })}
                       </div>
-                      <p className="text-[10px] text-slate-400 font-mono">Demo Default PIN: 1 2 3 4</p>
+                      <p className="text-[10px] text-slate-400 font-mono">Enter your 4-digit security PIN</p>
                     </div>
 
                     {/* Numeric Keypad Grid */}

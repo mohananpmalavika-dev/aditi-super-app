@@ -614,7 +614,7 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     setHabits(MOCK_HABITS);
     setAlerts(MOCK_ALERTS);
     setUser(INITIAL_USER);
-    showToast('♻️ Cloud state reset to clean initial demo data!');
+    showToast('♻️ Cloud state reset to clean initial state!');
   };
 
   return (
