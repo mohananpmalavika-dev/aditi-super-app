@@ -9,16 +9,21 @@ import {
   RotateCcw, 
   Compass, 
   Sun, 
-  ShieldCheck,
-  Zap,
-  HelpCircle,
-  Clock,
-  Calendar,
-  Send,
-  Flame,
-  CheckCircle2,
-  Navigation,
-  Globe
+  ShieldCheck, 
+  Zap, 
+  HelpCircle, 
+  Clock, 
+  Calendar, 
+  Send, 
+  Flame, 
+  CheckCircle2, 
+  Navigation, 
+  Globe, 
+  Grid3X3, 
+  Award, 
+  Check, 
+  X, 
+  AlertCircle 
 } from 'lucide-react';
 import { calculateVedicKundali, TAROT_DECK } from '../../services/astrologyEngine';
 import { 
@@ -28,6 +33,12 @@ import {
   PrashnaResult,
   getLiveMalayalamPanchangam 
 } from '../../services/malayalamAstroService';
+import { 
+  generateKeralaRashiChakra, 
+  calculate10Porutham, 
+  KERALA_NAKSHATRAS, 
+  TenPoruthamResult 
+} from '../../services/keralaAstroEngine';
 import { TarotCardData } from '../../types/superApp';
 import { useSuperApp } from '../../context/SuperAppContext';
 import confetti from 'canvas-confetti';
@@ -39,17 +50,18 @@ export const AstrologyView: React.FC = () => {
   const [lang, setLang] = useState<'ml' | 'en'>('ml');
   const [activeTab, setActiveTab] = useState<'horoscope' | 'prashnam' | 'kundali' | 'tarot' | 'compatibility'>('horoscope');
   const [horoscopePeriod, setHoroscopePeriod] = useState<'daily' | 'weekly' | 'monthly' | 'yearly'>('daily');
+  const [kundaliChartMode, setKundaliChartMode] = useState<'keralaGrid' | 'bhavaList'>('keralaGrid');
 
   // Selected Malayalam Rashi
   const [selectedRashi, setSelectedRashi] = useState<MalayalamRashiInfo>(() => {
     const userZodiac = (user.zodiacSign || 'Leo').toLowerCase();
-    return MALAYALAM_RASHIS.find((r) => r.nameEnglish.toLowerCase() === userZodiac) || MALAYALAM_RASHIS[4]; // Default Leo (ചിങ്ങം)
+    return MALAYALAM_RASHIS.find((r) => r.nameEnglish.toLowerCase() === userZodiac) || MALAYALAM_RASHIS[4];
   });
 
   // Live Panchangam
   const panchangam = getLiveMalayalamPanchangam();
 
-  /* ========== QUESTION-BASED PRASHNAM (പ്രശ്ന ജ്യോതിഷം) STATE ========== */
+  /* ========== 1. QUESTION-BASED PRASHNAM (പ്രശ്ന ജ്യോതിഷം) STATE ========== */
   const [questionInput, setQuestionInput] = useState('');
   const [prashnaResult, setPrashnaResult] = useState<PrashnaResult | null>(() => 
     calculateAstrologicalPrashnam('എന്റെ പുതിയ സംരംഭം വിജയകരമാകുമോ? (Will my new venture prosper?)')
@@ -71,16 +83,26 @@ export const AstrologyView: React.FC = () => {
       setIsCalculatingPrashnam(false);
       confetti({ particleCount: 60, spread: 60 });
       showToast(lang === 'ml' ? '🔮 പ്രശ്നഫലം വിജയകരമായി ഗണിച്ചു!' : '🔮 Horary Prashna Chart Calculated!');
-    }, 600);
+    }, 500);
   };
 
-  /* ========== KUNDALI GENERATOR STATE ========== */
+  /* ========== 2. KUNDALI GENERATOR STATE ========== */
   const [birthName, setBirthName] = useState(user.name);
   const [birthDate, setBirthDate] = useState(user.dateOfBirth || '1998-08-15');
   const [birthTime, setBirthTime] = useState(user.timeOfBirth || '10:30');
   const [birthPlace, setBirthPlace] = useState(user.placeOfBirth || 'Kollam, Kerala, India');
+  
   const [kundaliReport, setKundaliReport] = useState(() =>
     calculateVedicKundali(
+      user.name, 
+      user.dateOfBirth || '1998-08-15', 
+      user.timeOfBirth || '10:30', 
+      user.placeOfBirth || 'Kollam, Kerala, India'
+    )
+  );
+
+  const [keralaChakra, setKeralaChakra] = useState(() => 
+    generateKeralaRashiChakra(
       user.name, 
       user.dateOfBirth || '1998-08-15', 
       user.timeOfBirth || '10:30', 
@@ -91,12 +113,29 @@ export const AstrologyView: React.FC = () => {
   const handleComputeKundali = (e: React.FormEvent) => {
     e.preventDefault();
     const result = calculateVedicKundali(birthName, birthDate, birthTime, birthPlace);
+    const chakra = generateKeralaRashiChakra(birthName, birthDate, birthTime, birthPlace);
     setKundaliReport(result);
+    setKeralaChakra(chakra);
     confetti({ particleCount: 50, spread: 60 });
-    showToast(lang === 'ml' ? '✨ ജാതക ഗണിത ഫലം തയ്യാറായി!' : '✨ Vedic Kundali Birth Chart Calculated!');
+    showToast(lang === 'ml' ? '✨ ജാതക ഗണിതവും ചക്രവും തയ്യാറായി!' : '✨ Vedic Kundali Birth Chart Calculated!');
   };
 
-  /* ========== 3-CARD TAROT READER STATE ========== */
+  /* ========== 3. 10-PORUTHAM MATCHMAKING STATE ========== */
+  const [boyStar, setBoyStar] = useState(KERALA_NAKSHATRAS[0]); // Ashwathi
+  const [girlStar, setGirlStar] = useState(KERALA_NAKSHATRAS[3]); // Rohini
+  const [matchResult, setMatchResult] = useState<TenPoruthamResult>(() => 
+    calculate10Porutham(KERALA_NAKSHATRAS[0], KERALA_NAKSHATRAS[3])
+  );
+
+  const handleCalculateMatch = (e: React.FormEvent) => {
+    e.preventDefault();
+    const res = calculate10Porutham(boyStar, girlStar);
+    setMatchResult(res);
+    confetti({ particleCount: 70, spread: 65 });
+    showToast(lang === 'ml' ? '💑 പത്തു പൊരുത്ത ഫലം കണക്കാക്കി!' : '💑 10-Porutham Match Calculated!');
+  };
+
+  /* ========== 4. 3-CARD TAROT READER STATE ========== */
   const [drawnCards, setDrawnCards] = useState<Array<{ card: TarotCardData; isFlipped: boolean; position: string }>>([
     { card: TAROT_DECK[0], isFlipped: true, position: 'Past Influences' },
     { card: TAROT_DECK[1], isFlipped: true, position: 'Present Situation' },
@@ -114,10 +153,6 @@ export const AstrologyView: React.FC = () => {
     showToast(lang === 'ml' ? '🃏 ടാരോ കാർഡുകൾ വെളിപ്പെട്ടു!' : '🔮 Mystical 3-Card Spread Revealed!');
   };
 
-  /* ========== ZODIAC COMPATIBILITY STATE ========== */
-  const [compatSign1, setCompatSign1] = useState('ചിങ്ങം (Leo)');
-  const [compatSign2, setCompatSign2] = useState('ധനു (Sagittarius)');
-
   const popularKeralaQuestions = [
     { ml: 'എനിക്ക് എപ്പോഴാണ് പുതിയ ജോലി ലഭിക്കുക?', en: 'When will I get a new job promotion?' },
     { ml: 'വിദേശത്ത് ജോലി അല്ലെങ്കിൽ പഠനം സാധ്യമാകുമോ?', en: 'Will my foreign study or visa succeed?' },
@@ -129,7 +164,7 @@ export const AstrologyView: React.FC = () => {
   return (
     <div className="space-y-5 pb-20">
       
-      {/* Studio Header with Bilingual Toggle */}
+      {/* Studio Header with Bilingual Switcher */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 p-5 sm:p-6 rounded-3xl bg-slate-900/90 border border-slate-800 shadow-xl backdrop-blur-xl">
         <div className="flex items-center gap-3">
           <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-amber-500 via-purple-600 to-indigo-600 flex items-center justify-center text-white shadow-lg shadow-purple-500/25">
@@ -146,13 +181,13 @@ export const AstrologyView: React.FC = () => {
             </div>
             <p className="text-xs text-slate-400">
               {lang === 'ml' 
-                ? 'ദിവസഫലം, വാരഫലം, മാസഫലം, 2026 വർഷഫലം, പ്രശ്ന ജ്യോതിഷം, പഞ്ചാംഗം & ജാതക ഗണിതം.' 
-                : 'Daily, Weekly, Monthly, 2026 Yearly Horoscopes, Horary Prashna Oracle & Kundali.'}
+                ? 'ദിവസഫലം, വാരഫലം, മാസഫലം, 2026 വർഷഫലം, പ്രശ്ന ജ്യോതിഷം, പഞ്ചാംഗം, കട്ട ചാർട്ട് & പത്തു പൊരുത്തം.' 
+                : 'Daily, Weekly, Monthly, 2026 Yearly Horoscopes, Prashna Marga Oracle, Kerala Chart & 10-Porutham Match.'}
             </p>
           </div>
         </div>
 
-        {/* Language Switcher & Tab Bar */}
+        {/* Language Switcher & Tab Navigation */}
         <div className="flex flex-wrap items-center gap-2">
           
           {/* Language Toggle Button */}
@@ -214,7 +249,19 @@ export const AstrologyView: React.FC = () => {
               }`}
             >
               <Compass className="w-3.5 h-3.5" />
-              <span>{lang === 'ml' ? 'ജാതകം' : 'Kundali'}</span>
+              <span>{lang === 'ml' ? 'ജാതകം (കട്ട ചാർട്ട്)' : 'Kundali Chart'}</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('compatibility')}
+              className={`flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
+                activeTab === 'compatibility'
+                  ? 'bg-rose-600 text-white shadow-md'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <Heart className="w-3.5 h-3.5" />
+              <span>{lang === 'ml' ? 'പത്തു പൊരുത്തം' : '10-Porutham'}</span>
             </button>
 
             <button
@@ -228,24 +275,12 @@ export const AstrologyView: React.FC = () => {
               <Layers className="w-3.5 h-3.5" />
               <span>{lang === 'ml' ? 'ടാരോ' : 'Tarot'}</span>
             </button>
-
-            <button
-              onClick={() => setActiveTab('compatibility')}
-              className={`flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
-                activeTab === 'compatibility'
-                  ? 'bg-rose-600 text-white shadow-md'
-                  : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              <Heart className="w-3.5 h-3.5" />
-              <span>{lang === 'ml' ? 'പൊരുത്തം' : 'Match'}</span>
-            </button>
           </div>
 
         </div>
       </div>
 
-      {/* Live Malayalam Daily Panchangam Bar */}
+      {/* Live Malayalam Daily Panchangam Ticker */}
       <div className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-amber-950/40 via-slate-900 to-purple-950/40 border border-amber-500/30 text-xs shadow-lg">
         <div className="flex flex-wrap items-center justify-between gap-2.5">
           <div className="flex items-center gap-2">
@@ -745,11 +780,12 @@ export const AstrologyView: React.FC = () => {
       )}
 
       {/* ========================================================================= */}
-      {/* 3. VEDIC KUNDALI BIRTH CHART TAB */}
+      {/* 3. VEDIC KUNDALI & TRADITIONAL KERALA RASHI CHAKRA (കട്ട ചാർട്ട്) TAB */}
       {/* ========================================================================= */}
       {activeTab === 'kundali' && (
         <div className="space-y-5 animate-in fade-in">
           
+          {/* Form */}
           <form onSubmit={handleComputeKundali} className="p-5 sm:p-6 rounded-3xl bg-slate-900/80 border border-slate-800 shadow-xl space-y-4">
             <h3 className="font-extrabold text-sm text-white flex items-center gap-2">
               <Compass className="w-4 h-4 text-indigo-400" />
@@ -785,7 +821,7 @@ export const AstrologyView: React.FC = () => {
                 />
               </div>
               <div className="space-y-1">
-                <label className="text-[11px] font-bold text-slate-400">{lang === 'ml' ? 'ജനിച്ച സ്ഥലം' : 'Birth City / Place'}</label>
+                <label className="text-[11px] font-bold text-slate-400">{lang === 'ml' ? 'ജനിച്ച സ്ഥലം' : 'Birth Place'}</label>
                 <input
                   type="text"
                   value={birthPlace}
@@ -795,7 +831,29 @@ export const AstrologyView: React.FC = () => {
               </div>
             </div>
 
-            <div className="flex justify-end pt-1">
+            <div className="flex justify-between items-center pt-1">
+              {/* Chart Mode Toggle */}
+              <div className="flex items-center p-1 rounded-xl bg-slate-950 border border-slate-800 text-xs">
+                <button
+                  type="button"
+                  onClick={() => setKundaliChartMode('keralaGrid')}
+                  className={`px-3 py-1 rounded-lg font-bold transition-all ${
+                    kundaliChartMode === 'keralaGrid' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  {lang === 'ml' ? '📐 പരമ്പരാഗത കട്ട ചാർട്ട്' : '📐 Traditional Kerala Grid'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setKundaliChartMode('bhavaList')}
+                  className={`px-3 py-1 rounded-lg font-bold transition-all ${
+                    kundaliChartMode === 'bhavaList' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  {lang === 'ml' ? '🏛️ 12 ഭാവങ്ങൾ' : '🏛️ 12 Houses'}
+                </button>
+              </div>
+
               <button
                 type="submit"
                 className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 text-white text-xs font-bold flex items-center gap-2 shadow-md shadow-indigo-500/25"
@@ -806,42 +864,121 @@ export const AstrologyView: React.FC = () => {
             </div>
           </form>
 
-          {/* Computed Kundali Report */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-            <div className="p-5 sm:p-6 rounded-3xl bg-slate-900/80 border border-slate-800 shadow-xl space-y-4">
-              <h4 className="font-bold text-xs text-slate-300 uppercase tracking-wider">
-                {lang === 'ml' ? 'ലഗ്നവും ഗ്രഹനിലയും' : 'Lagna & Planetary Alignments'}
-              </h4>
-              
-              <div className="space-y-2.5">
-                <div className="p-3 rounded-2xl bg-slate-950 border border-slate-800 flex items-center justify-between">
-                  <span className="text-xs text-slate-400 font-semibold">{lang === 'ml' ? 'ലഗ്നം (Ascendant)' : 'Ascendant (Lagna)'}</span>
-                  <span className="text-xs font-black text-indigo-400">{kundaliReport.ascendant}</span>
-                </div>
-                <div className="p-3 rounded-2xl bg-slate-950 border border-slate-800 flex items-center justify-between">
-                  <span className="text-xs text-slate-400 font-semibold">{lang === 'ml' ? 'ചന്ദ്ര രാശി (Moon Sign)' : 'Moon Sign (Rashi)'}</span>
-                  <span className="text-xs font-black text-purple-400">{kundaliReport.moonSign}</span>
-                </div>
-                <div className="p-3 rounded-2xl bg-slate-950 border border-slate-800 flex items-center justify-between">
-                  <span className="text-xs text-slate-400 font-semibold">{lang === 'ml' ? 'സൂര്യ രാശി (Sun Sign)' : 'Sun Sign (Surya)'}</span>
-                  <span className="text-xs font-black text-amber-400">{kundaliReport.sunSign}</span>
-                </div>
-              </div>
-
-              <div className="p-4 rounded-2xl bg-indigo-950/30 border border-indigo-800/40 space-y-1">
-                <div className="flex items-center gap-1.5 text-xs font-bold text-indigo-300">
-                  <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                  <span>{lang === 'ml' ? 'ദോഷ നിർണ്ണയം' : 'Dosha Analysis'}</span>
-                </div>
-                <p className="text-xs text-slate-300">{kundaliReport.doshaReport}</p>
-              </div>
-
-              <p className="text-[11px] text-slate-400 italic bg-slate-950/80 p-3 rounded-2xl border border-slate-800">
-                "{kundaliReport.lifeRecommendation}"
-              </p>
+          {/* Dasha & Basic Info Bar */}
+          <div className="p-4 rounded-2xl bg-indigo-950/40 border border-indigo-500/30 grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+            <div className="p-2.5 rounded-xl bg-slate-950/60 border border-indigo-800/30">
+              <span className="text-slate-400 block text-[10px] uppercase font-bold">{lang === 'ml' ? 'ലഗ്നം (Ascendant)' : 'Ascendant (Lagna)'}</span>
+              <span className="text-indigo-300 font-extrabold text-sm">{keralaChakra.lagnaRashiMalayalam}</span>
             </div>
+            <div className="p-2.5 rounded-xl bg-slate-950/60 border border-indigo-800/30">
+              <span className="text-slate-400 block text-[10px] uppercase font-bold">{lang === 'ml' ? 'നിലവിലെ ദശ' : 'Current Dasha'}</span>
+              <span className="text-amber-300 font-extrabold text-sm">{keralaChakra.currentDasha}</span>
+            </div>
+            <div className="p-2.5 rounded-xl bg-slate-950/60 border border-indigo-800/30">
+              <span className="text-slate-400 block text-[10px] uppercase font-bold">{lang === 'ml' ? 'ദശാശിഷ്ടം' : 'Dasha Balance'}</span>
+              <span className="text-emerald-300 font-semibold text-xs truncate block">{lang === 'ml' ? keralaChakra.dashaBalanceMalayalam : keralaChakra.dashaBalanceEnglish}</span>
+            </div>
+          </div>
 
-            <div className="lg:col-span-2 p-5 sm:p-6 rounded-3xl bg-slate-900/80 border border-slate-800 shadow-xl space-y-4">
+          {/* 1. TRADITIONAL KERALA SOUTH INDIAN RASHI CHAKRA (12-BOX SQUARE GRID) */}
+          {kundaliChartMode === 'keralaGrid' && (
+            <div className="p-6 rounded-3xl bg-slate-900/90 border border-indigo-500/40 shadow-2xl space-y-4">
+              <div className="flex items-center justify-between">
+                <h4 className="font-black text-sm text-white flex items-center gap-2">
+                  <Grid3X3 className="w-4 h-4 text-amber-400" />
+                  <span>{lang === 'ml' ? 'കേരള പരമ്പരാഗത രാശി ചക്രം (South Indian Kundali Grid)' : 'Traditional Kerala Rashi Chakra Grid'}</span>
+                </h4>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                  {birthName}
+                </span>
+              </div>
+
+              {/* Authentic 4x4 South Indian Grid with hollow 2x2 center */}
+              <div className="grid grid-cols-4 gap-2 max-w-2xl mx-auto p-3 bg-slate-950 rounded-2xl border-2 border-indigo-800/60 text-xs">
+                
+                {/* Row 1: Meenam (0), Medam (1), Edavam (2), Mithunam (3) */}
+                {[0, 1, 2, 3].map((boxIdx) => {
+                  const box = keralaChakra.grid[boxIdx];
+                  return (
+                    <div key={boxIdx} className="aspect-square p-2 rounded-xl bg-slate-900 border border-slate-800 flex flex-col justify-between hover:border-amber-400 transition-colors">
+                      <span className="text-[10px] font-black text-indigo-400">{box.nameMalayalam}</span>
+                      <div className="space-y-0.5">
+                        {box.planets.map((p, i) => (
+                          <span key={i} className="text-[10px] font-extrabold text-amber-300 block leading-tight">{p}</span>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {/* Row 2: Kumbham (11) on Left, Center Hollow 2x2, Karkkidakam (4) on Right */}
+                <div className="aspect-square p-2 rounded-xl bg-slate-900 border border-slate-800 flex flex-col justify-between hover:border-amber-400 transition-colors">
+                  <span className="text-[10px] font-black text-indigo-400">{keralaChakra.grid[11].nameMalayalam}</span>
+                  <div className="space-y-0.5">
+                    {keralaChakra.grid[11].planets.map((p, i) => (
+                      <span key={i} className="text-[10px] font-extrabold text-amber-300 block leading-tight">{p}</span>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Center 2x2 Info Plate */}
+                <div className="col-span-2 row-span-2 p-3 rounded-2xl bg-gradient-to-br from-indigo-950 via-slate-950 to-purple-950 border border-indigo-500/40 flex flex-col items-center justify-center text-center space-y-1">
+                  <span className="text-xl">🕉️</span>
+                  <span className="font-extrabold text-xs text-white">{birthName}</span>
+                  <span className="text-[10px] text-amber-300 font-mono">{birthDate} • {birthTime}</span>
+                  <span className="text-[9px] text-slate-400">{birthPlace}</span>
+                </div>
+
+                <div className="aspect-square p-2 rounded-xl bg-slate-900 border border-slate-800 flex flex-col justify-between hover:border-amber-400 transition-colors">
+                  <span className="text-[10px] font-black text-indigo-400">{keralaChakra.grid[4].nameMalayalam}</span>
+                  <div className="space-y-0.5">
+                    {keralaChakra.grid[4].planets.map((p, i) => (
+                      <span key={i} className="text-[10px] font-extrabold text-amber-300 block leading-tight">{p}</span>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Row 3: Makaram (10) on Left, Simham (5) on Right */}
+                <div className="aspect-square p-2 rounded-xl bg-slate-900 border border-slate-800 flex flex-col justify-between hover:border-amber-400 transition-colors">
+                  <span className="text-[10px] font-black text-indigo-400">{keralaChakra.grid[10].nameMalayalam}</span>
+                  <div className="space-y-0.5">
+                    {keralaChakra.grid[10].planets.map((p, i) => (
+                      <span key={i} className="text-[10px] font-extrabold text-amber-300 block leading-tight">{p}</span>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="aspect-square p-2 rounded-xl bg-slate-900 border border-slate-800 flex flex-col justify-between hover:border-amber-400 transition-colors">
+                  <span className="text-[10px] font-black text-indigo-400">{keralaChakra.grid[5].nameMalayalam}</span>
+                  <div className="space-y-0.5">
+                    {keralaChakra.grid[5].planets.map((p, i) => (
+                      <span key={i} className="text-[10px] font-extrabold text-amber-300 block leading-tight">{p}</span>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Row 4: Dhanu (9), Vrischikam (8), Thulam (7), Kanni (6) */}
+                {[9, 8, 7, 6].map((boxIdx) => {
+                  const box = keralaChakra.grid[boxIdx];
+                  return (
+                    <div key={boxIdx} className="aspect-square p-2 rounded-xl bg-slate-900 border border-slate-800 flex flex-col justify-between hover:border-amber-400 transition-colors">
+                      <span className="text-[10px] font-black text-indigo-400">{box.nameMalayalam}</span>
+                      <div className="space-y-0.5">
+                        {box.planets.map((p, i) => (
+                          <span key={i} className="text-[10px] font-extrabold text-amber-300 block leading-tight">{p}</span>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+
+              </div>
+            </div>
+          )}
+
+          {/* 2. 12 BHAVA HOUSES LIST */}
+          {kundaliChartMode === 'bhavaList' && (
+            <div className="p-6 rounded-3xl bg-slate-900/80 border border-slate-800 shadow-xl space-y-4">
               <h4 className="font-bold text-xs text-slate-300 uppercase tracking-wider flex items-center gap-2">
                 <Layers className="w-4 h-4 text-indigo-400" />
                 <span>{lang === 'ml' ? '12 ഭാവങ്ങളും ഗ്രഹസ്ഥിതിയും' : '12 Bhava (Houses) Planetary Positions'}</span>
@@ -876,13 +1013,118 @@ export const AstrologyView: React.FC = () => {
                 ))}
               </div>
             </div>
+          )}
+
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* 4. KERALA 10-PORUTHAM MATCHMAKING (പത്തു പൊരുത്തം) TAB */}
+      {/* ========================================================================= */}
+      {activeTab === 'compatibility' && (
+        <div className="space-y-5 animate-in fade-in">
+          
+          {/* Star Selection Card */}
+          <form onSubmit={handleCalculateMatch} className="p-5 sm:p-6 rounded-3xl bg-slate-900/90 border border-rose-800/40 shadow-xl space-y-4">
+            <h3 className="font-extrabold text-sm text-white flex items-center gap-2">
+              <Heart className="w-4 h-4 text-rose-400" />
+              <span>{lang === 'ml' ? 'കേരള പരമ്പരാഗത പത്തു പൊരുത്ത നിർണ്ണയം (10-Porutham Matchmaker)' : 'Authentic Kerala 10-Porutham Matchmaker'}</span>
+            </h3>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+                  <Award className="w-3.5 h-3.5 text-indigo-400" />
+                  <span>{lang === 'ml' ? 'വരന്റെ നക്ഷത്രം (Groom Star)' : 'Boy / Groom Nakshatra'}</span>
+                </label>
+                <select
+                  value={boyStar}
+                  onChange={(e) => setBoyStar(e.target.value)}
+                  className="w-full p-3 rounded-xl bg-slate-950 border border-slate-700 text-xs text-white focus:outline-none focus:border-rose-500"
+                >
+                  {KERALA_NAKSHATRAS.map((nak, i) => (
+                    <option key={i} value={nak}>{nak}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+                  <Award className="w-3.5 h-3.5 text-pink-400" />
+                  <span>{lang === 'ml' ? 'വധുവിന്റെ നക്ഷത്രം (Bride Star)' : 'Girl / Bride Nakshatra'}</span>
+                </label>
+                <select
+                  value={girlStar}
+                  onChange={(e) => setGirlStar(e.target.value)}
+                  className="w-full p-3 rounded-xl bg-slate-950 border border-slate-700 text-xs text-white focus:outline-none focus:border-rose-500"
+                >
+                  {KERALA_NAKSHATRAS.map((nak, i) => (
+                    <option key={i} value={nak}>{nak}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="flex justify-end pt-1">
+              <button
+                type="submit"
+                className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-rose-600 to-purple-600 hover:from-rose-500 text-white text-xs font-bold flex items-center gap-2 shadow-md shadow-rose-500/25"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>{lang === 'ml' ? 'പൊരുത്തം ഗണിക്കുക' : 'Calculate 10 Poruthams'}</span>
+              </button>
+            </div>
+          </form>
+
+          {/* 10 Porutham Results & Detailed Scorecard */}
+          <div className="p-6 rounded-3xl bg-slate-900/90 border border-slate-800 shadow-2xl space-y-5">
+            
+            {/* Score Banner */}
+            <div className="p-5 rounded-2xl bg-gradient-to-r from-rose-950/60 via-purple-950/60 to-slate-950 border border-rose-500/40 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 uppercase tracking-wider">
+                  {lang === 'ml' ? 'ദാമ്പത്യ പൊരുത്ത ഫലം' : 'Marital Porutham Score'}
+                </span>
+                <h4 className="text-xl sm:text-2xl font-black text-white mt-1">
+                  {matchResult.totalScore} / 10 {lang === 'ml' ? 'പൊരുത്തങ്ങൾ ഉത്തമം' : 'Poruthams Match'} ({matchResult.percentage}%)
+                </h4>
+                <p className="text-xs text-slate-300 mt-0.5">
+                  {lang === 'ml' ? matchResult.verdictMalayalam : matchResult.verdictEnglish}
+                </p>
+              </div>
+
+              <div className="text-right flex-shrink-0 space-y-1">
+                <span className="text-xs font-bold text-emerald-400 block">{matchResult.kujaDoshaMalayalam}</span>
+                <span className="text-xs text-indigo-300 block">{matchResult.papasamyaMalayalam}</span>
+              </div>
+            </div>
+
+            {/* 10 Porutham Individual Table */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {matchResult.poruthams.map((p, idx) => (
+                <div key={idx} className="p-3.5 rounded-2xl bg-slate-950 border border-slate-800 space-y-1.5 flex flex-col justify-between">
+                  <div className="flex items-center justify-between">
+                    <span className="font-extrabold text-xs text-white">{lang === 'ml' ? p.nameMalayalam : p.nameEnglish}</span>
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                      p.points === 1 ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                    }`}>
+                      {lang === 'ml' ? p.statusMalayalam : p.statusEnglish} ({p.points}/{p.maxPoints})
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-400">
+                    {lang === 'ml' ? p.descriptionMalayalam : p.descriptionEnglish}
+                  </p>
+                </div>
+              ))}
+            </div>
+
           </div>
 
         </div>
       )}
 
       {/* ========================================================================= */}
-      {/* 4. 3-CARD TAROT DECK TAB */}
+      {/* 5. 3-CARD TAROT DECK TAB */}
       {/* ========================================================================= */}
       {activeTab === 'tarot' && (
         <div className="p-5 sm:p-6 rounded-3xl bg-slate-900/80 border border-slate-800 shadow-xl space-y-5 animate-in fade-in">
@@ -944,62 +1186,6 @@ export const AstrologyView: React.FC = () => {
                 </div>
               </div>
             ))}
-          </div>
-        </div>
-      )}
-
-      {/* ========================================================================= */}
-      {/* 5. ZODIAC COMPATIBILITY TAB */}
-      {/* ========================================================================= */}
-      {activeTab === 'compatibility' && (
-        <div className="p-5 sm:p-6 rounded-3xl bg-slate-900/80 border border-slate-800 shadow-xl space-y-5 animate-in fade-in">
-          <h3 className="font-extrabold text-sm text-white flex items-center gap-2">
-            <Heart className="w-4 h-4 text-rose-400" />
-            <span>{lang === 'ml' ? 'രാശിപ്പൊരുത്ത നിർണ്ണയ എൻജിൻ' : 'Zodiac Love & Relationship Compatibility Engine'}</span>
-          </h3>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-xl mx-auto">
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-400">{lang === 'ml' ? 'ആദ്യത്തെ പങ്കാളിയുടെ രാശി' : 'First Partner Sign'}</label>
-              <select
-                value={compatSign1}
-                onChange={(e) => setCompatSign1(e.target.value)}
-                className="w-full p-3 rounded-xl bg-slate-950 border border-slate-700 text-xs text-white focus:outline-none focus:border-rose-500"
-              >
-                {MALAYALAM_RASHIS.map((r) => (
-                  <option key={r.id} value={`${r.nameMalayalam} (${r.nameEnglish})`}>
-                    {r.symbol} {r.nameMalayalam} ({r.nameEnglish}) - {r.elementMalayalam}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-400">{lang === 'ml' ? 'രണ്ടാമത്തെ പങ്കാളിയുടെ രാശി' : 'Second Partner Sign'}</label>
-              <select
-                value={compatSign2}
-                onChange={(e) => setCompatSign2(e.target.value)}
-                className="w-full p-3 rounded-xl bg-slate-950 border border-slate-700 text-xs text-white focus:outline-none focus:border-rose-500"
-              >
-                {MALAYALAM_RASHIS.map((r) => (
-                  <option key={r.id} value={`${r.nameMalayalam} (${r.nameEnglish})`}>
-                    {r.symbol} {r.nameMalayalam} ({r.nameEnglish}) - {r.elementMalayalam}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          <div className="p-6 rounded-3xl bg-gradient-to-r from-rose-950/40 via-purple-950/40 to-slate-900 border border-rose-800/40 max-w-xl mx-auto text-center space-y-3">
-            <span className="text-3xl font-black text-rose-400">94% {lang === 'ml' ? 'ഉത്തമ പൊരുത്തം' : 'Compatibility'}</span>
-            <h4 className="font-extrabold text-sm text-white">
-              {lang === 'ml' ? 'ജ്യോതിഷപരമായി അതിശ്രേഷ്ഠമായ ഗ്രഹപ്പൊരുത്തം 🔥' : 'Dynamic Harmonic Cosmic Connection 🔥'}
-            </h4>
-            <p className="text-xs text-slate-300 leading-relaxed">
-              {lang === 'ml'
-                ? `${compatSign1}, ${compatSign2} എന്നീ രാശിക്കാർ തമ്മിൽ പരസ്പര ധാരണയും ആത്മബന്ധവും വർദ്ധിക്കും. ജീവിതത്തിൽ സന്തോഷവും ഐശ്വര്യവും നിലനിൽക്കും.`
-                : `${compatSign1} and ${compatSign2} share exceptional enthusiasm, mutual inspiration, and boundless creative energy. Their shared optimism fuels long-lasting growth.`}
-            </p>
           </div>
         </div>
       )}
