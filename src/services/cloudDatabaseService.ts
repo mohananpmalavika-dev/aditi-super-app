@@ -82,7 +82,23 @@ const GENERIC_PLACEHOLDER_LOCAL_PARTS = new Set([
 
 const normalizedEmail = (email: string) => email.trim().toLowerCase();
 
-const registeredUsers = new Map<string, { password: string; user: UserProfile }>();
+const LOCAL_ACCOUNTS_STORAGE_KEY = 'aditi-local-accounts';
+
+const getLocalAccounts = (): Record<string, { password: string; user: UserProfile }> => {
+  if (typeof localStorage === 'undefined') return {};
+  try {
+    return JSON.parse(localStorage.getItem(LOCAL_ACCOUNTS_STORAGE_KEY) || '{}');
+  } catch {
+    return {};
+  }
+};
+
+const saveLocalAccount = (email: string, account: { password: string; user: UserProfile }) => {
+  if (typeof localStorage === 'undefined') return;
+  const accounts = getLocalAccounts();
+  accounts[email] = account;
+  localStorage.setItem(LOCAL_ACCOUNTS_STORAGE_KEY, JSON.stringify(accounts));
+};
 
 export function isDummyOrDisposableAccount(email: string, name?: string, handle?: string): boolean {
   if (!email || typeof email !== 'string') return true;
@@ -143,6 +159,13 @@ export async function cloudRegisterUser(creds: RegisterCredentials): Promise<{ u
       });
       if (error) return { user: cloudState.user, error: error.message };
       if (data.user) {
+        if (!data.session) {
+          return {
+            user: cloudState.user,
+            error: 'Registration successful. Please verify your email from the confirmation link before signing in.'
+          };
+        }
+
         const newUser: UserProfile = {
           id: data.user.id,
           name: creds.name,
@@ -177,7 +200,7 @@ export async function cloudRegisterUser(creds: RegisterCredentials): Promise<{ u
     isVerified: true,
     createdAt: new Date().toISOString()
   };
-  registeredUsers.set(normalizedEmailAddress, { password: creds.password, user: localUser });
+  saveLocalAccount(normalizedEmailAddress, { password: creds.password, user: localUser });
   cloudState.user = localUser;
   return { user: localUser };
 }
@@ -201,7 +224,7 @@ export async function cloudLoginUser(creds: LoginCredentials): Promise<{ user: U
   const normalizedEmailAddress = normalizedEmail(creds.email);
 
   if (!supabase) {
-    const localAccount = registeredUsers.get(normalizedEmailAddress);
+    const localAccount = getLocalAccounts()[normalizedEmailAddress];
     if (!localAccount) {
       return {
         user: cloudState.user,
