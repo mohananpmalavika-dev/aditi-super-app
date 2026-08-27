@@ -26,6 +26,12 @@ import {
   UserProfile, 
   WalletTransaction 
 } from '../types/superApp';
+import { 
+  hashPassword, 
+  dbRegisterUser, 
+  dbVerifyAndLoginUser, 
+  dbFindUserByEmail 
+} from './databaseEngine';
 
 /**
  * Cloud Database Service (Supabase PostgreSQL / Cloud Backend API)
@@ -99,34 +105,12 @@ export function isDummyOrDisposableAccount(email: string, name?: string, handle?
     if (handle && handle.toLowerCase().includes(keyword)) return true;
   }
 
-  const [localPart, domain] = cleanEmail.split('@');
+  const [localPart] = cleanEmail.split('@');
   if (!localPart || localPart.length < 3) return true;
   if (/^[0-9]+$/.test(localPart)) return true; // all-numeric local part
   if (localPart === 'asdf' || localPart === 'qwerty' || localPart === 'user' || localPart === 'admin') return true;
 
   return false;
-}
-
-// Local registry of legitimate registered accounts
-const REGISTERED_USERS_KEY = 'omnilife_registered_users_registry';
-
-function getRegisteredUsersRegistry(): Record<string, { user: UserProfile; passwordHash: string }> {
-  try {
-    const saved = localStorage.getItem(REGISTERED_USERS_KEY);
-    return saved ? JSON.parse(saved) : {};
-  } catch {
-    return {};
-  }
-}
-
-function saveRegisteredUserToRegistry(email: string, user: UserProfile, passwordHash: string): void {
-  try {
-    const reg = getRegisteredUsersRegistry();
-    reg[email.toLowerCase().trim()] = { user, passwordHash };
-    localStorage.setItem(REGISTERED_USERS_KEY, JSON.stringify(reg));
-  } catch (err) {
-    console.error('Failed to save to user registry:', err);
-  }
 }
 
 /* ==================== AUTH & REGISTRATION CLOUD APIS ==================== */
@@ -155,6 +139,10 @@ export async function cloudRegisterUser(creds: RegisterCredentials): Promise<{ u
     };
   }
 
+  // 4. Generate secure cryptographic hash
+  const passwordHash = await hashPassword(creds.password);
+
+  // 5. If Supabase is configured, write user to remote Supabase DB
   if (supabase) {
     try {
       const { data, error } = await supabase.auth.signUp({
@@ -172,45 +160,22 @@ export async function cloudRegisterUser(creds: RegisterCredentials): Promise<{ u
         }
       });
       if (error) return { user: cloudState.user, error: error.message };
-      if (data.user) {
-        const newUser: UserProfile = {
-          id: data.user.id,
-          name: creds.name,
-          email: creds.email,
-          handle: creds.handle,
-          avatar: creds.avatar,
-          zodiacSign: creds.zodiacSign,
-          bio: creds.bio || 'Aditi Verified Member 🚀',
-          location: creds.location || 'Kozhikode, Kerala, India',
-          isVerified: true,
-          createdAt: new Date().toISOString()
-        };
-        cloudState.user = newUser;
-        saveRegisteredUserToRegistry(creds.email, newUser, creds.password);
-        return { user: newUser };
-      }
     } catch (e: any) {
-      console.warn('Supabase auth fallback:', e);
+      console.warn('Supabase auth write fallback:', e);
     }
   }
 
-  // Direct Verified registered account
-  const newUser: UserProfile = {
-    id: `usr-${Date.now()}`,
-    name: creds.name,
-    email: creds.email,
-    handle: creds.handle.startsWith('@') ? creds.handle : `@${creds.handle}`,
-    avatar: creds.avatar || INITIAL_USER.avatar,
-    zodiacSign: creds.zodiacSign || 'Leo',
-    bio: creds.bio || 'Aditi Verified Member 🚀',
-    location: creds.location || 'Kozhikode, Kerala, India',
-    isVerified: true,
-    createdAt: new Date().toISOString()
-  };
+  // 6. Write and persist user directly into Database
+  const dbResult = await dbRegisterUser(creds, passwordHash);
+  if (!dbResult.success || !dbResult.user) {
+    return {
+      user: cloudState.user,
+      error: dbResult.error || '❌ Database write failed. User was not created.'
+    };
+  }
 
-  cloudState.user = newUser;
-  saveRegisteredUserToRegistry(creds.email, newUser, creds.password);
-  return { user: newUser };
+  cloudState.user = dbResult.user;
+  return { user: dbResult.user };
 }
 
 export async function cloudLoginUser(creds: LoginCredentials): Promise<{ user: UserProfile; error?: string }> {
@@ -222,6 +187,7 @@ export async function cloudLoginUser(creds: LoginCredentials): Promise<{ user: U
     };
   }
 
+  // 2. If Supabase is configured, verify against Supabase DB
   if (supabase) {
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
@@ -249,32 +215,17 @@ export async function cloudLoginUser(creds: LoginCredentials): Promise<{ user: U
     }
   }
 
-  // Check verified account registry
-  const registry = getRegisteredUsersRegistry();
-  const registeredAccount = registry[creds.email.toLowerCase().trim()];
-
-  if (registeredAccount) {
-    if (registeredAccount.passwordHash && registeredAccount.passwordHash !== creds.password) {
-      return {
-        user: cloudState.user,
-        error: '❌ Incorrect password. Please enter your valid credentials.'
-      };
-    }
-    cloudState.user = registeredAccount.user;
-    return { user: registeredAccount.user };
+  // 3. Strict Database Verification (Queries DB & verifies hashed password)
+  const dbResult = await dbVerifyAndLoginUser(creds);
+  if (!dbResult.success || !dbResult.user) {
+    return {
+      user: cloudState.user,
+      error: dbResult.error || '❌ Database authentication verification failed.'
+    };
   }
 
-  // If first-time genuine login matching user profile
-  const loggedInUser: UserProfile = {
-    ...cloudState.user,
-    email: creds.email,
-    name: creds.email.split('@')[0].replace(/[\._]/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
-    handle: `@${creds.email.split('@')[0]}`
-  };
-
-  cloudState.user = loggedInUser;
-  saveRegisteredUserToRegistry(creds.email, loggedInUser, creds.password);
-  return { user: loggedInUser };
+  cloudState.user = dbResult.user;
+  return { user: dbResult.user };
 }
 
 export async function cloudLogoutUser(): Promise<void> {
