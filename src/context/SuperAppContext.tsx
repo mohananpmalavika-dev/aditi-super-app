@@ -108,6 +108,8 @@ interface SuperAppContextType {
   setActiveChatId: (id: string) => void;
   sendChatMessage: (chatId: string, text: string, options?: { expiresDuration?: number | null }) => Promise<void>;
   startNewChatWith: (name: string, avatar: string, role: string, initialMessage?: string) => string;
+  createChannel: (channelData: { name: string; handle: string; description: string; avatar: string; isPrivate: boolean; initialPost?: string }) => string;
+  sendBroadcast: (recipientChatIds: string[], text: string) => Promise<void>;
   
   // Productivity
   tasks: TaskItem[];
@@ -499,6 +501,71 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return newChatId;
   };
 
+  const createChannel = (channelData: {
+    name: string;
+    handle: string;
+    description: string;
+    avatar: string;
+    isPrivate: boolean;
+    initialPost?: string;
+  }): string => {
+    const newChannelId = `channel-${Date.now()}`;
+    const initialMsg: ChatMessage[] = channelData.initialPost
+      ? [
+          {
+            id: `m-${Date.now()}`,
+            senderId: 'user',
+            senderName: user.name,
+            text: channelData.initialPost,
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            isUser: true
+          }
+        ]
+      : [];
+
+    const newChannel: ChatConversation = {
+      id: newChannelId,
+      participantName: channelData.name,
+      participantAvatar: channelData.avatar,
+      roleOrContext: `📢 ${channelData.isPrivate ? 'Private' : 'Public'} Channel`,
+      lastMessage: channelData.initialPost || 'Channel created',
+      lastMessageTime: 'Just now',
+      unreadCount: 0,
+      isOnline: true,
+      conversationType: 'channel',
+      channelHandle: channelData.handle,
+      subscriberCount: 1,
+      isOwner: true,
+      description: channelData.description,
+      isPrivate: channelData.isPrivate,
+      messages: initialMsg
+    };
+
+    setChats((prev) => [newChannel, ...prev]);
+    setActiveChatId(newChannelId);
+    setActiveMiniApp('chat');
+    return newChannelId;
+  };
+
+  const sendBroadcast = async (recipientChatIds: string[], text: string) => {
+    if (!text.trim() || recipientChatIds.length === 0) return;
+
+    for (const chatId of recipientChatIds) {
+      const broadcastMsg: ChatMessage = {
+        id: `m-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+        senderId: 'user',
+        senderName: user.name,
+        text,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        isUser: true
+      };
+      await sendCloudMessage(chatId, broadcastMsg);
+    }
+
+    const updatedChats = await getCloudChats();
+    setChats(updatedChats);
+  };
+
   // Tasks
   const addTask = async (taskData: Omit<TaskItem, 'id'>) => {
     const newTask: TaskItem = {
@@ -582,6 +649,8 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         setActiveChatId,
         sendChatMessage,
         startNewChatWith,
+        createChannel,
+        sendBroadcast,
         tasks,
         addTask,
         toggleTaskStatus,

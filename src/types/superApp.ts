@@ -266,6 +266,12 @@ export interface ChatConversation {
   unreadCount: number;
   messages: ChatMessage[];
   isOnline: boolean;
+  conversationType?: 'direct' | 'group' | 'channel' | 'broadcast';
+  channelHandle?: string; // e.g., '@malabar_deals'
+  subscriberCount?: number;
+  isOwner?: boolean;
+  description?: string;
+  isPrivate?: boolean;
 }
 
 /* ==================== DIGITAL WALLET ==================== */

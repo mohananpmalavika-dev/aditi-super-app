@@ -40,7 +40,9 @@ import {
   ExternalLink,
   ShieldCheck,
   Radio,
-  Square
+  Square,
+  Megaphone,
+  Hash
 } from 'lucide-react';
 import { useSuperApp } from '../../context/SuperAppContext';
 import { ChatConversation } from '../../types/superApp';
@@ -53,6 +55,8 @@ import { SchedulerModal } from './SchedulerModal';
 import { SecretTimerBar } from './SecretTimerBar';
 import { EmailComposerModal } from './EmailComposerModal';
 import { GroupCreateModal } from './GroupCreateModal';
+import { ChannelCreateModal } from './ChannelCreateModal';
+import { BroadcastModal } from './BroadcastModal';
 import { ChatDetailsDrawer } from './ChatDetailsDrawer';
 import { AddFriendModal } from './AddFriendModal';
 import confetti from 'canvas-confetti';
@@ -73,10 +77,11 @@ interface RichMessage {
 }
 
 export const LiveChatMessenger: React.FC = () => {
-  const { chats, activeChatId, setActiveChatId, sendChatMessage, user, showToast } = useSuperApp();
+  const { chats, activeChatId, setActiveChatId, sendChatMessage, createChannel, sendBroadcast, user, showToast } = useSuperApp();
   
   const [inputText, setInputText] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  const [chatFilterTab, setChatFilterTab] = useState<'all' | 'direct' | 'group' | 'channel'>('all');
   const [isRecordingAudio, setIsRecordingAudio] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showSecretBar, setShowSecretBar] = useState(false);
@@ -104,6 +109,8 @@ export const LiveChatMessenger: React.FC = () => {
   const [schedulerModalOpen, setSchedulerModalOpen] = useState(false);
   const [emailModalOpen, setEmailModalOpen] = useState(false);
   const [groupModalOpen, setGroupModalOpen] = useState(false);
+  const [channelModalOpen, setChannelModalOpen] = useState(false);
+  const [broadcastModalOpen, setBroadcastModalOpen] = useState(false);
   const [addFriendModalOpen, setAddFriendModalOpen] = useState(false);
   const [detailsDrawerOpen, setDetailsDrawerOpen] = useState(false);
 
@@ -141,11 +148,26 @@ export const LiveChatMessenger: React.FC = () => {
     return () => clearInterval(timer);
   }, [callModalOpen, floatingCallActive]);
 
-  const filteredChats = chats.filter(
-    (c) =>
+  const filteredChats = chats.filter((c) => {
+    const matchesSearch =
       c.participantName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      c.roleOrContext.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+      c.roleOrContext.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (c.channelHandle && c.channelHandle.toLowerCase().includes(searchQuery.toLowerCase()));
+
+    if (!matchesSearch) return false;
+
+    if (chatFilterTab === 'direct') {
+      return !c.conversationType || c.conversationType === 'direct';
+    }
+    if (chatFilterTab === 'group') {
+      return c.conversationType === 'group';
+    }
+    if (chatFilterTab === 'channel') {
+      return c.conversationType === 'channel';
+    }
+
+    return true;
+  });
 
   const handleSelectChat = (chatId: string) => {
     setActiveChatId(chatId);
@@ -221,16 +243,40 @@ export const LiveChatMessenger: React.FC = () => {
 
   // Create Group Chat
   const handleCreateGroup = (groupData: any) => {
-    showToast(`👥 Group "${groupData.name}" created with ${groupData.members.length} members!`);
+    const newGroupId = `group-${Date.now()}`;
+    const newGroupChat: ChatConversation = {
+      id: newGroupId,
+      participantName: groupData.name,
+      participantAvatar: 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=300&auto=format&fit=crop&q=80',
+      roleOrContext: `👥 Group • ${groupData.members.length + 1} members`,
+      lastMessage: `Group created by ${user.name}`,
+      lastMessageTime: 'Just now',
+      unreadCount: 0,
+      isOnline: true,
+      conversationType: 'group',
+      messages: [
+        {
+          id: `m-${Date.now()}`,
+          senderId: 'user',
+          senderName: user.name,
+          text: `🎉 Welcome to group "${groupData.name}"!`,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          isUser: true
+        }
+      ]
+    };
+    sendChatMessage(newGroupId, `Welcome everyone to ${groupData.name}!`);
+    setActiveChatId(newGroupId);
+    showToast(`👥 Group "${groupData.name}" created!`);
   };
 
   // File Upload
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !activeChat) return;
-    const fileMsg = `📁 Shared Document: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
-    sendChatMessage(activeChat.id, fileMsg);
-    showToast(`📁 File ${file.name} uploaded!`);
+    const fileMsg = `📁 Shared file: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
+    sendChatMessage(activeChat.id, fileMsg, { expiresDuration: secretTimer });
+    showToast(`📁 File ${file.name} attached!`);
   };
 
   // Call Triggers
@@ -249,7 +295,16 @@ export const LiveChatMessenger: React.FC = () => {
   const handleEndFloatingCall = () => {
     setFloatingCallActive(false);
     setCallModalOpen(false);
+    setCallDuration(0);
     showToast('☎ Call terminated.');
+  };
+
+  // End Call Handler
+  const handleEndCall = () => {
+    setCallModalOpen(false);
+    setFloatingCallActive(false);
+    setCallDuration(0);
+    showToast('☎ Call ended.');
   };
 
   const emojis = ['😀', '🔥', '❤️', '🚀', '✨', '🎉', '👍', '🙏', '💯', '😍', '😎', '🥳', '⚡', '👏'];
@@ -259,83 +314,119 @@ export const LiveChatMessenger: React.FC = () => {
     <div className="h-[calc(100dvh-175px)] sm:h-[calc(100dvh-160px)] flex flex-col md:flex-row rounded-3xl bg-slate-900/80 border border-slate-800 shadow-2xl overflow-hidden backdrop-blur-xl relative">
       
       {/* ========================================================================= */}
-      {/* LEFT CHAT SIDEBAR (CONTACTS & CHANNELS) */}
+      {/* LEFT CHAT SIDEBAR (CONTACTS, GROUPS & CHANNELS) */}
       {/* ========================================================================= */}
       <div className={`w-full md:w-80 lg:w-96 border-r border-slate-800 flex flex-col bg-slate-950/75 ${mobileView === 'chat' ? 'hidden md:flex' : 'flex'}`}>
         
-        {/* Top Header & Search */}
-        <div className="p-3.5 sm:p-4 border-b border-slate-800 space-y-3">
+        {/* Top Header & Action Buttons */}
+        <div className="p-3 sm:p-3.5 border-b border-slate-800 space-y-2.5">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5">
               <h2 className="font-extrabold text-base text-white">AditiChat</h2>
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-400 border border-indigo-500/30">
-                P2P Live
+              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-indigo-500/20 text-indigo-400 border border-indigo-500/30">
+                P2P
               </span>
             </div>
 
-            <div className="flex items-center gap-1.5">
-              {/* Add & Invite Friend Button */}
+            <div className="flex items-center gap-1">
+              {/* Add Friend Button */}
               <button
                 onClick={() => setAddFriendModalOpen(true)}
-                className="px-2.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-md shadow-indigo-600/30 transition-all hover:scale-105"
-                title="Add New Friend / Invite Friends"
+                className="p-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs flex items-center gap-1 shadow-md shadow-indigo-600/30 transition-all hover:scale-105"
+                title="Add New Contact"
               >
                 <UserPlus className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline text-[11px]">Add Friend</span>
+                <span className="hidden sm:inline text-[10px]">Add</span>
+              </button>
+
+              {/* Create Channel Button */}
+              <button
+                onClick={() => setChannelModalOpen(true)}
+                className="p-1.5 rounded-xl bg-purple-950/80 hover:bg-purple-900 border border-purple-500/40 text-purple-300 font-bold text-xs flex items-center gap-1 transition-all hover:scale-105"
+                title="Create Telegram/WhatsApp Broadcast Channel"
+              >
+                <Megaphone className="w-3.5 h-3.5 text-purple-400" />
+                <span className="hidden sm:inline text-[10px]">Channel</span>
+              </button>
+
+              {/* Broadcast Message Button */}
+              <button
+                onClick={() => setBroadcastModalOpen(true)}
+                className="p-1.5 rounded-xl bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-500/40 text-emerald-300 font-bold text-xs flex items-center gap-1 transition-all hover:scale-105"
+                title="Send Broadcast Announcement to Multiple Contacts"
+              >
+                <Radio className="w-3.5 h-3.5 text-emerald-400" />
+                <span className="hidden sm:inline text-[10px]">Broadcast</span>
               </button>
 
               {/* Create Group Button */}
               <button
                 onClick={() => setGroupModalOpen(true)}
-                className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-purple-400 hover:text-purple-300 transition-colors"
+                className="p-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors"
                 title="New Group Chat"
               >
-                <Users className="w-4 h-4" />
-              </button>
-
-              {/* Direct Email Compose */}
-              <button
-                onClick={() => {
-                  setEmailInitialSubject('');
-                  setEmailInitialBody('');
-                  setEmailModalOpen(true);
-                }}
-                className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-emerald-400 hover:text-emerald-300 transition-colors"
-                title="Compose SMTP Email"
-              >
-                <Mail className="w-4 h-4" />
-              </button>
-
-              {/* Instant Call */}
-              <button
-                onClick={() => handleStartCall(true)}
-                className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors hidden sm:block"
-                title="Quick Video Call"
-              >
-                <Video className="w-4 h-4" />
+                <Users className="w-3.5 h-3.5" />
               </button>
             </div>
           </div>
 
+          {/* Search Box */}
           <div className="relative">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search chats, contacts, messages..."
-              className="w-full pl-9 pr-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+              placeholder="Search chats, channels, messages..."
+              className="w-full pl-8 pr-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
             />
           </div>
 
-          {/* Quick Invite Bar */}
-          <div className="flex items-center gap-1.5">
+          {/* Category Filter Tabs */}
+          <div className="flex items-center gap-1 p-0.5 rounded-xl bg-slate-950 border border-slate-800 text-[11px] font-bold">
             <button
-              onClick={() => setAddFriendModalOpen(true)}
-              className="flex-1 py-1.5 px-2 rounded-xl bg-slate-950/80 hover:bg-indigo-950/50 border border-indigo-500/30 text-[11px] font-semibold text-indigo-300 flex items-center justify-center gap-1.5 transition-colors"
+              type="button"
+              onClick={() => setChatFilterTab('all')}
+              className={`flex-1 py-1 rounded-lg transition-all text-center ${
+                chatFilterTab === 'all'
+                  ? 'bg-indigo-600 text-white shadow-sm'
+                  : 'text-slate-400 hover:text-white'
+              }`}
             >
-              <Share2 className="w-3 h-3 text-indigo-400" />
-              <span>Invite via WhatsApp / Link</span>
+              All
+            </button>
+            <button
+              type="button"
+              onClick={() => setChatFilterTab('direct')}
+              className={`flex-1 py-1 rounded-lg transition-all text-center ${
+                chatFilterTab === 'direct'
+                  ? 'bg-indigo-600 text-white shadow-sm'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              Direct
+            </button>
+            <button
+              type="button"
+              onClick={() => setChatFilterTab('group')}
+              className={`flex-1 py-1 rounded-lg transition-all text-center ${
+                chatFilterTab === 'group'
+                  ? 'bg-indigo-600 text-white shadow-sm'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              Groups
+            </button>
+            <button
+              type="button"
+              onClick={() => setChatFilterTab('channel')}
+              className={`flex-1 py-1 rounded-lg transition-all text-center ${
+                chatFilterTab === 'channel'
+                  ? 'bg-purple-600 text-white shadow-sm'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              Channels
             </button>
           </div>
         </div>
@@ -978,6 +1069,26 @@ export const LiveChatMessenger: React.FC = () => {
         isOpen={addFriendModalOpen}
         onClose={() => setAddFriendModalOpen(false)}
         onSelectChat={(chatId) => handleSelectChat(chatId)}
+      />
+
+      {/* Broadcast Channel Creator Modal */}
+      <ChannelCreateModal
+        isOpen={channelModalOpen}
+        onClose={() => setChannelModalOpen(false)}
+        onCreateChannel={(channelData) => {
+          const newChanId = createChannel(channelData);
+          handleSelectChat(newChanId);
+        }}
+      />
+
+      {/* Broadcast Message to Multiple Contacts Modal */}
+      <BroadcastModal
+        isOpen={broadcastModalOpen}
+        onClose={() => setBroadcastModalOpen(false)}
+        chats={chats}
+        onSendBroadcast={(selectedChatIds, messageText) => {
+          sendBroadcast(selectedChatIds, messageText);
+        }}
       />
 
     </div>
