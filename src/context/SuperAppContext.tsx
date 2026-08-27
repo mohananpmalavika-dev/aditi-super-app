@@ -122,14 +122,33 @@ interface SuperAppContextType {
   setChatWallpaper: (chatId: string, wallpaper: string) => void;
   clearChatHistory: (chatId: string) => void;
   
-  // Scheduled Messages & Reminders
+  // Scheduled Messages & Reminders & Automated Voice Calls
   scheduledMessages: ScheduledMessage[];
   chatReminders: ChatReminder[];
-  scheduleChatMessage: (chatId: string, text: string, deliverAtMs: number, deliverAtStr: string) => void;
+  scheduleChatMessage: (
+    chatId: string,
+    text: string,
+    deliverAtMs: number,
+    deliverAtStr: string,
+    deliveryType?: 'message' | 'call',
+    audioUrl?: string,
+    audioDuration?: number
+  ) => void;
   cancelScheduledMessage: (id: string) => void;
   sendScheduledMessageNow: (id: string) => void;
   setChatReminder: (chatId: string, messageSnippet: string, remindAtMs: number, remindAtStr: string, note?: string) => void;
   dismissChatReminder: (id: string) => void;
+  incomingScheduledCall: {
+    id: string;
+    senderName: string;
+    senderAvatar: string;
+    audioUrl?: string;
+    audioDuration?: number;
+    text?: string;
+    chatId: string;
+  } | null;
+  clearIncomingScheduledCall: () => void;
+  triggerScheduledCallNow: (sMsg: ScheduledMessage) => void;
   
   // Productivity
   tasks: TaskItem[];
@@ -187,6 +206,16 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       return [];
     }
   });
+
+  const [incomingScheduledCall, setIncomingScheduledCall] = useState<{
+    id: string;
+    senderName: string;
+    senderAvatar: string;
+    audioUrl?: string;
+    audioDuration?: number;
+    text?: string;
+    chatId: string;
+  } | null>(null);
 
   useEffect(() => {
     localStorage.setItem('omnilife_scheduled_messages', JSON.stringify(scheduledMessages));
@@ -467,15 +496,36 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         return hasExpired ? nextChats : prevChats;
       });
 
-      // 2. Deliver scheduled messages
+      // 2. Deliver scheduled messages & automated calls
       setScheduledMessages((prev) => {
         let changed = false;
         const next = prev.map((sMsg) => {
           if (now >= sMsg.scheduledTimestamp && !sMsg.isSent) {
             changed = true;
-            sendChatMessage(sMsg.chatId, `⏰ [Scheduled Delivery]:\n${sMsg.text}`);
-            confetti({ particleCount: 50, spread: 60 });
-            showToast(`🔔 Scheduled message delivered to ${sMsg.targetContactName}!`);
+            if (sMsg.deliveryType === 'call') {
+              setIncomingScheduledCall({
+                id: sMsg.id,
+                senderName: sMsg.targetContactName,
+                senderAvatar: sMsg.targetContactAvatar,
+                audioUrl: sMsg.audioUrl,
+                audioDuration: sMsg.audioDuration || 10,
+                text: sMsg.text,
+                chatId: sMsg.chatId
+              });
+              sendChatMessage(sMsg.chatId, `📞 [Automated Voice Call Delivered]:\n${sMsg.text}`, {
+                mediaUrl: sMsg.audioUrl,
+                mediaType: sMsg.audioUrl ? 'audio' : undefined
+              });
+              confetti({ particleCount: 60, spread: 70 });
+              showToast(`📞 Automated Voice Call connected for ${sMsg.targetContactName}!`);
+            } else {
+              sendChatMessage(sMsg.chatId, `⏰ [Scheduled Delivery]:\n${sMsg.text}`, {
+                mediaUrl: sMsg.audioUrl,
+                mediaType: sMsg.audioUrl ? 'audio' : undefined
+              });
+              confetti({ particleCount: 50, spread: 60 });
+              showToast(`🔔 Scheduled message delivered to ${sMsg.targetContactName}!`);
+            }
             return { ...sMsg, isSent: true };
           }
           return sMsg;
@@ -847,7 +897,15 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   // Scheduled Messages & Chat Reminders Actions
-  const scheduleChatMessage = (chatId: string, text: string, deliverAtMs: number, deliverAtStr: string) => {
+  const scheduleChatMessage = (
+    chatId: string,
+    text: string,
+    deliverAtMs: number,
+    deliverAtStr: string,
+    deliveryType: 'message' | 'call' = 'message',
+    audioUrl?: string,
+    audioDuration?: number
+  ) => {
     const targetChat = chats.find((c) => c.id === chatId);
     const newScheduled: ScheduledMessage = {
       id: `sched-${Date.now()}`,
@@ -857,10 +915,34 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       scheduledTimeStr: deliverAtStr,
       targetContactName: targetChat?.participantName || 'Contact',
       targetContactAvatar: targetChat?.participantAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100',
-      isSent: false
+      isSent: false,
+      deliveryType,
+      audioUrl,
+      audioDuration
     };
     setScheduledMessages((prev) => [newScheduled, ...prev]);
-    showToast(`⏰ Message scheduled for ${deliverAtStr}!`);
+    if (deliveryType === 'call') {
+      showToast(`📞 Automated Voice Call scheduled for ${deliverAtStr}!`);
+    } else {
+      showToast(`⏰ Message scheduled for ${deliverAtStr}!`);
+    }
+  };
+
+  const clearIncomingScheduledCall = () => {
+    setIncomingScheduledCall(null);
+  };
+
+  const triggerScheduledCallNow = (sMsg: ScheduledMessage) => {
+    setIncomingScheduledCall({
+      id: sMsg.id,
+      senderName: sMsg.targetContactName,
+      senderAvatar: sMsg.targetContactAvatar,
+      audioUrl: sMsg.audioUrl,
+      audioDuration: sMsg.audioDuration || 10,
+      text: sMsg.text,
+      chatId: sMsg.chatId
+    });
+    setScheduledMessages((prev) => prev.filter((m) => m.id !== sMsg.id));
   };
 
   const cancelScheduledMessage = (id: string) => {
@@ -999,6 +1081,9 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         sendScheduledMessageNow,
         setChatReminder,
         dismissChatReminder,
+        incomingScheduledCall,
+        clearIncomingScheduledCall,
+        triggerScheduledCallNow,
         tasks,
         addTask,
         toggleTaskStatus,

@@ -64,6 +64,7 @@ import { SnapCameraModal } from './SnapCameraModal';
 import { LocationShareModal } from './LocationShareModal';
 import { SchedulerModal } from './SchedulerModal';
 import { ScheduledQueueDrawer } from './ScheduledQueueDrawer';
+import { AutomatedScheduledCallModal } from './AutomatedScheduledCallModal';
 import { SecretTimerBar } from './SecretTimerBar';
 import { EmailComposerModal } from './EmailComposerModal';
 import { GroupCreateModal } from './GroupCreateModal';
@@ -107,6 +108,9 @@ export const LiveChatMessenger: React.FC = () => {
     sendScheduledMessageNow,
     setChatReminder,
     dismissChatReminder,
+    incomingScheduledCall,
+    clearIncomingScheduledCall,
+    triggerScheduledCallNow,
     user,
     showToast
   } = useSuperApp();
@@ -1544,8 +1548,8 @@ export const LiveChatMessenger: React.FC = () => {
         initialText={schedulerInitialText}
         initialMode={schedulerInitialMode}
         onClose={() => setSchedulerModalOpen(false)}
-        onScheduleMessage={(text, deliverAtMs, deliverAtStr) => {
-          scheduleChatMessage(activeChat.id, text, deliverAtMs, deliverAtStr);
+        onScheduleMessage={(text, deliverAtMs, deliverAtStr, deliveryType, audioUrl, audioDuration) => {
+          scheduleChatMessage(activeChat.id, text, deliverAtMs, deliverAtStr, deliveryType, audioUrl, audioDuration);
           setInputText('');
         }}
         onSetReminder={(snippet, remindAtMs, remindAtStr, note) => {
@@ -1561,9 +1565,27 @@ export const LiveChatMessenger: React.FC = () => {
         scheduledMessages={scheduledMessages}
         chatReminders={chatReminders}
         onSendNow={(id) => sendScheduledMessageNow(id)}
+        onTriggerCallNow={(sMsg) => triggerScheduledCallNow(sMsg)}
         onCancelScheduled={(id) => cancelScheduledMessage(id)}
         onDismissReminder={(id) => dismissChatReminder(id)}
       />
+
+      {/* Automated Scheduled Incoming Voice Call Modal */}
+      {incomingScheduledCall && (
+        <AutomatedScheduledCallModal
+          isOpen={!!incomingScheduledCall}
+          senderName={incomingScheduledCall.senderName}
+          senderAvatar={incomingScheduledCall.senderAvatar}
+          audioUrl={incomingScheduledCall.audioUrl}
+          audioDuration={incomingScheduledCall.audioDuration}
+          textSnippet={incomingScheduledCall.text}
+          onClose={clearIncomingScheduledCall}
+          onCallCompleted={() => {
+            clearIncomingScheduledCall();
+            showToast('📞 Scheduled voice call completed.');
+          }}
+        />
+      )}
 
       {/* Direct SMTP Email Composer */}
       <EmailComposerModal

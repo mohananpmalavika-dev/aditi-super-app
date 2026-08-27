@@ -290,6 +290,9 @@ export interface ScheduledMessage {
   targetContactName: string;
   targetContactAvatar: string;
   isSent: boolean;
+  deliveryType?: 'message' | 'call';
+  audioUrl?: string;
+  audioDuration?: number;
 }
 
 export interface ChatReminder {

@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, Clock, Bell, Trash2, Send, Calendar, CheckCircle } from 'lucide-react';
+import { X, Clock, Bell, Trash2, Send, Calendar, CheckCircle, Phone, Mic, Volume2 } from 'lucide-react';
 import { ScheduledMessage, ChatReminder } from '../../types/superApp';
 
 interface ScheduledQueueDrawerProps {
@@ -9,6 +9,7 @@ interface ScheduledQueueDrawerProps {
   scheduledMessages: ScheduledMessage[];
   chatReminders: ChatReminder[];
   onSendNow: (id: string) => void;
+  onTriggerCallNow?: (sMsg: ScheduledMessage) => void;
   onCancelScheduled: (id: string) => void;
   onDismissReminder: (id: string) => void;
 }
@@ -20,6 +21,7 @@ export const ScheduledQueueDrawer: React.FC<ScheduledQueueDrawerProps> = ({
   scheduledMessages,
   chatReminders,
   onSendNow,
+  onTriggerCallNow,
   onCancelScheduled,
   onDismissReminder
 }) => {
@@ -40,8 +42,8 @@ export const ScheduledQueueDrawer: React.FC<ScheduledQueueDrawerProps> = ({
             <div className="flex items-center gap-2 text-indigo-400">
               <Clock className="w-5 h-5" />
               <div>
-                <h3 className="font-extrabold text-sm text-white">Scheduled Queue & Reminders</h3>
-                <p className="text-[10px] text-slate-400">{totalCount} active items pending</p>
+                <h3 className="font-extrabold text-sm text-white">Scheduled Deliveries & Calls</h3>
+                <p className="text-[10px] text-slate-400">{totalCount} active items in queue</p>
               </div>
             </div>
             <button
@@ -55,22 +57,26 @@ export const ScheduledQueueDrawer: React.FC<ScheduledQueueDrawerProps> = ({
           {/* Queue Content */}
           <div className="flex-1 overflow-y-auto p-4 space-y-5">
             
-            {/* Section 1: Pending Scheduled Messages */}
+            {/* Section 1: Pending Scheduled Messages & Voice Calls */}
             <div className="space-y-2.5">
               <div className="flex items-center gap-2 text-xs font-bold text-indigo-300">
                 <Clock className="w-3.5 h-3.5" />
-                <span>Scheduled Messages ({activeScheduled.length})</span>
+                <span>Scheduled Messages & Voice Calls ({activeScheduled.length})</span>
               </div>
 
               {activeScheduled.length === 0 ? (
                 <div className="p-3.5 rounded-2xl bg-slate-950 border border-slate-800/80 text-center text-xs text-slate-500">
-                  No pending scheduled messages.
+                  No pending scheduled deliveries or calls.
                 </div>
               ) : (
                 activeScheduled.map((sMsg) => (
                   <div
                     key={sMsg.id}
-                    className="p-3.5 rounded-2xl bg-slate-950 border border-slate-800 space-y-2 hover:border-indigo-500/40 transition-colors animate-in zoom-in-95"
+                    className={`p-3.5 rounded-2xl bg-slate-950 border space-y-2 transition-colors animate-in zoom-in-95 ${
+                      sMsg.deliveryType === 'call'
+                        ? 'border-emerald-500/40 hover:border-emerald-400'
+                        : 'border-slate-800 hover:border-indigo-500/40'
+                    }`}
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
@@ -83,14 +89,30 @@ export const ScheduledQueueDrawer: React.FC<ScheduledQueueDrawerProps> = ({
                           To: {sMsg.targetContactName}
                         </span>
                       </div>
-                      <span className="text-[10px] px-2 py-0.5 rounded-md bg-indigo-950 border border-indigo-500/30 text-indigo-300 font-mono">
-                        {sMsg.scheduledTimeStr}
-                      </span>
+                      
+                      {sMsg.deliveryType === 'call' ? (
+                        <span className="text-[10px] px-2 py-0.5 rounded-md bg-emerald-950 border border-emerald-500/40 text-emerald-300 font-extrabold flex items-center gap-1">
+                          <Phone className="w-3 h-3" />
+                          <span>Voice Call</span>
+                        </span>
+                      ) : (
+                        <span className="text-[10px] px-2 py-0.5 rounded-md bg-indigo-950 border border-indigo-500/30 text-indigo-300 font-mono">
+                          {sMsg.scheduledTimeStr}
+                        </span>
+                      )}
                     </div>
 
-                    <p className="text-xs text-slate-300 bg-slate-900/80 p-2.5 rounded-xl border border-slate-800/60 leading-relaxed break-words">
-                      {sMsg.text}
+                    <p className="text-xs text-slate-300 bg-slate-900/80 p-2.5 rounded-xl border border-slate-800/60 leading-relaxed break-words flex items-center gap-1.5">
+                      {sMsg.deliveryType === 'call' && <Mic className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />}
+                      <span>{sMsg.text}</span>
                     </p>
+
+                    {sMsg.deliveryType === 'call' && (
+                      <div className="text-[10px] text-slate-400 flex items-center justify-between px-1">
+                        <span>Delivery Time: {sMsg.scheduledTimeStr}</span>
+                        <span className="text-emerald-400 font-mono">Audio: {sMsg.audioDuration || 10}s</span>
+                      </div>
+                    )}
 
                     <div className="flex items-center justify-between pt-1">
                       <button
@@ -102,14 +124,31 @@ export const ScheduledQueueDrawer: React.FC<ScheduledQueueDrawerProps> = ({
                         <span>Cancel</span>
                       </button>
 
-                      <button
-                        type="button"
-                        onClick={() => onSendNow(sMsg.id)}
-                        className="text-[11px] px-3 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold flex items-center gap-1 shadow-md shadow-indigo-600/30 transition-all hover:scale-105"
-                      >
-                        <Send className="w-3 h-3" />
-                        <span>Send Now</span>
-                      </button>
+                      {sMsg.deliveryType === 'call' ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (onTriggerCallNow) {
+                              onTriggerCallNow(sMsg);
+                            } else {
+                              onSendNow(sMsg.id);
+                            }
+                          }}
+                          className="text-[11px] px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold flex items-center gap-1 shadow-md shadow-emerald-600/30 transition-all hover:scale-105"
+                        >
+                          <Phone className="w-3 h-3" />
+                          <span>Call Now</span>
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => onSendNow(sMsg.id)}
+                          className="text-[11px] px-3 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold flex items-center gap-1 shadow-md shadow-indigo-600/30 transition-all hover:scale-105"
+                        >
+                          <Send className="w-3 h-3" />
+                          <span>Send Now</span>
+                        </button>
+                      )}
                     </div>
                   </div>
                 ))
