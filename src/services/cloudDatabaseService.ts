@@ -907,39 +907,272 @@ export async function toggleCloudSaveRequirement(id: string): Promise<PropertyRe
 }
 
 /* ==================== MATRIMONY CLOUD APIS ==================== */
-export async function getCloudMatrimonyProfiles(): Promise<MatrimonyProfile[]> {
-  if (supabase) {
-    const { data, error } = await supabase
-      .from('matrimony_profiles')
-      .select('*, profiles(name, avatar_url)')
-      .eq('is_active', true);
-    if (!error && data && data.length > 0) return data;
+const MATRIMONY_PROFILES_STORAGE_KEY = 'ADITI_SUPER_APP_MATRIMONY_PROFILES';
+
+const INITIAL_MATRIMONY_PROFILES: MatrimonyProfile[] = [
+  {
+    id: 'mat-1',
+    name: 'Dr. Ananya Nair',
+    age: 26,
+    gender: 'Female',
+    height: "5' 5\" (165 cm)",
+    profession: 'Senior Resident Doctor (MBBS, MD)',
+    education: 'MBBS, MD Pediatrics - Govt. Medical College Kozhikode',
+    city: 'Kozhikode',
+    state: 'Kerala',
+    religion: 'Hindu',
+    community: 'Nair',
+    motherTongue: 'Malayalam',
+    zodiac: 'Cancer (Karkidakam)',
+    nakshatra: 'Rohini',
+    photos: ['https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=500&auto=format&fit=crop&q=80'],
+    about: 'Doctor working at a multispecialty hospital in Calicut. Passionate about child healthcare, Carnatic music, and reading. Looking for an understanding, family-loving life partner.',
+    partnerPreferences: 'Doctor, Engineer, or Civil Services professional from a good family background.',
+    annualIncome: '₹18 Lakhs - ₹24 Lakhs',
+    isVerified: true,
+    postedFor: 'Self',
+    maritalStatus: 'Never Married',
+    familyDetails: 'Nuclear family. Father Retired Bank Manager, Mother High School Teacher, younger brother doing B.Tech.',
+    diet: 'Vegetarian',
+    contactPhone: '+91 98471 44556',
+    contactEmail: 'dr.ananya.nair@example.com',
+    compatibilityScore: 96,
+    interestSent: false,
+    isShortlisted: false
+  },
+  {
+    id: 'mat-2',
+    name: 'Rahul Menon',
+    age: 29,
+    gender: 'Male',
+    height: "5' 11\" (180 cm)",
+    profession: 'Lead Cloud Solutions Architect',
+    education: 'B.Tech Computer Science (NIT Calicut), MS (TU Munich)',
+    city: 'Kochi (Ernakulam)',
+    state: 'Kerala',
+    religion: 'Hindu',
+    community: 'Menon',
+    motherTongue: 'Malayalam',
+    zodiac: 'Taurus (Edavam)',
+    nakshatra: 'Makam',
+    photos: ['https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=500&auto=format&fit=crop&q=80'],
+    about: 'Tech enthusiast leading cloud architecture at a global consulting firm in InfoPark Kochi. Enjoys badminton, long drives, photography, and weekend cooking.',
+    partnerPreferences: 'Educated professional with progressive mindset, career aspirations, and good moral values.',
+    annualIncome: '₹35 Lakhs - ₹45 Lakhs',
+    isVerified: true,
+    postedFor: 'Self',
+    maritalStatus: 'Never Married',
+    familyDetails: 'Upper Middle Class. Father Business, Mother Homemaker, Elder sister married and settled in UK.',
+    diet: 'Non-Vegetarian',
+    contactPhone: '+91 94470 88990',
+    contactEmail: 'rahul.menon.tech@example.com',
+    compatibilityScore: 92,
+    interestSent: false,
+    isShortlisted: false
+  },
+  {
+    id: 'mat-3',
+    name: 'Dr. Fathima Zahra',
+    age: 27,
+    gender: 'Female',
+    height: "5' 4\" (162 cm)",
+    profession: 'Dental Surgeon (BDS)',
+    education: 'BDS - Yenepoya Dental College Mangalore',
+    city: 'Kannur',
+    state: 'Kerala',
+    religion: 'Muslim',
+    community: 'Sunni',
+    motherTongue: 'Malayalam',
+    zodiac: 'Virgo (Kanni)',
+    nakshatra: 'Chithira',
+    photos: ['https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=500&auto=format&fit=crop&q=80'],
+    about: 'Practicing Dental Surgeon with own clinic in Kannur. Believes in simple living, Islamic values, travel, and spending quality time with family.',
+    partnerPreferences: 'Doctor, Engineer, or well-settled Businessman in India or Gulf.',
+    annualIncome: '₹14 Lakhs - ₹20 Lakhs',
+    isVerified: true,
+    postedFor: 'Son',
+    maritalStatus: 'Never Married',
+    familyDetails: 'Respected business family in Thalassery. Father Exporter, Mother Homemaker.',
+    diet: 'Non-Vegetarian',
+    contactPhone: '+91 97455 11223',
+    contactEmail: 'fathima.zahra.dent@example.com',
+    compatibilityScore: 89,
+    interestSent: false,
+    isShortlisted: false
+  },
+  {
+    id: 'mat-4',
+    name: 'Geevarghese Thomas',
+    age: 30,
+    gender: 'Male',
+    height: "6' 0\" (183 cm)",
+    profession: 'Product Manager',
+    education: 'B.Tech (CET Trivandrum), MBA (IIM Kozhikode)',
+    city: 'Thiruvananthapuram',
+    state: 'Kerala',
+    religion: 'Christian',
+    community: 'Roman Catholic (Syrian)',
+    motherTongue: 'Malayalam',
+    zodiac: 'Leo (Chingam)',
+    nakshatra: 'Uthram',
+    photos: ['https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=500&auto=format&fit=crop&q=80'],
+    about: 'Product leader at a high-growth fintech startup. Loves hiking in Western Ghats, playing violin, and reading economic history. Looking for an ambitious and cheerful partner.',
+    partnerPreferences: 'Professionally qualified Christian bride (Tech, Management, Banking, Medicine).',
+    annualIncome: '₹40 Lakhs - ₹50 Lakhs',
+    isVerified: true,
+    postedFor: 'Self',
+    maritalStatus: 'Never Married',
+    familyDetails: 'Traditional Syrian Catholic family settled in Trivandrum. Parents both retired Professors.',
+    diet: 'Non-Vegetarian',
+    contactPhone: '+91 98950 33445',
+    contactEmail: 'geevarghese.thomas@example.com',
+    compatibilityScore: 94,
+    interestSent: false,
+    isShortlisted: false
   }
-  return [...cloudState.matrimonyProfiles];
+];
+
+export async function getCloudMatrimonyProfiles(): Promise<MatrimonyProfile[]> {
+  try {
+    const local = localStorage.getItem(MATRIMONY_PROFILES_STORAGE_KEY);
+    if (local) {
+      const parsed = JSON.parse(local);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed;
+      }
+    }
+  } catch {}
+
+  if (supabase && !isTestEnv) {
+    try {
+      const { data, error } = await Promise.race([
+        supabase.from('matrimony_profiles').select('*').eq('is_active', true),
+        new Promise<{ data: any; error: any }>((res) => setTimeout(() => res({ data: null, error: 'timeout' }), 1000))
+      ]);
+      if (!error && data && data.length > 0) return data;
+    } catch {}
+  }
+
+  try {
+    localStorage.setItem(MATRIMONY_PROFILES_STORAGE_KEY, JSON.stringify(INITIAL_MATRIMONY_PROFILES));
+  } catch {}
+
+  return [...INITIAL_MATRIMONY_PROFILES];
+}
+
+export async function createCloudMatrimonyProfile(
+  newProfile: Omit<MatrimonyProfile, 'id'> | MatrimonyProfile
+): Promise<MatrimonyProfile[]> {
+  const profileId = ('id' in newProfile && newProfile.id) ? newProfile.id : `mat-${Date.now()}`;
+  const fullProfile: MatrimonyProfile = {
+    ...newProfile,
+    id: profileId,
+    compatibilityScore: newProfile.compatibilityScore || 90,
+    interestSent: false,
+    isShortlisted: false,
+    createdAt: newProfile.createdAt || 'Just now',
+    isVerified: newProfile.isVerified ?? true
+  };
+
+  let currentList = await getCloudMatrimonyProfiles();
+  currentList = [fullProfile, ...currentList.filter(m => m.id !== profileId)];
+
+  try {
+    localStorage.setItem(MATRIMONY_PROFILES_STORAGE_KEY, JSON.stringify(currentList));
+  } catch {}
+
+  if (supabase && !isTestEnv) {
+    try {
+      await Promise.race([
+        supabase.from('matrimony_profiles').insert({
+          id: profileId,
+          name: fullProfile.name,
+          age: fullProfile.age,
+          gender: fullProfile.gender,
+          height: fullProfile.height,
+          profession: fullProfile.profession,
+          education: fullProfile.education,
+          city: fullProfile.city,
+          state: fullProfile.state,
+          religion: fullProfile.religion,
+          community: fullProfile.community,
+          mother_tongue: fullProfile.motherTongue,
+          zodiac: fullProfile.zodiac,
+          photos: fullProfile.photos,
+          about: fullProfile.about,
+          partner_preferences: fullProfile.partnerPreferences,
+          annual_income: fullProfile.annualIncome,
+          is_verified: fullProfile.isVerified,
+          is_active: true
+        }),
+        new Promise((res) => setTimeout(res, 1000))
+      ]);
+    } catch {}
+  }
+
+  return currentList;
+}
+
+export async function deleteCloudMatrimonyProfile(id: string): Promise<MatrimonyProfile[]> {
+  let currentList = await getCloudMatrimonyProfiles();
+  currentList = currentList.filter(m => m.id !== id);
+
+  try {
+    localStorage.setItem(MATRIMONY_PROFILES_STORAGE_KEY, JSON.stringify(currentList));
+  } catch {}
+
+  if (supabase && !isTestEnv) {
+    try {
+      await Promise.race([
+        supabase.from('matrimony_profiles').delete().eq('id', id),
+        new Promise((res) => setTimeout(res, 1000))
+      ]);
+    } catch {}
+  }
+
+  return currentList;
 }
 
 export async function sendCloudInterestToMatrimony(recipientUserId: string): Promise<MatrimonyProfile[]> {
-  if (supabase) {
-    const { data: authData } = await supabase.auth.getUser();
-    if (authData.user) {
-      await supabase.from('matrimony_interests').insert({
-        sender_id: authData.user.id,
-        recipient_id: recipientUserId,
-        status: 'sent'
-      });
-    }
-  }
-  cloudState.matrimonyProfiles = cloudState.matrimonyProfiles.map(m =>
+  let currentList = await getCloudMatrimonyProfiles();
+  currentList = currentList.map(m =>
     m.id === recipientUserId ? { ...m, interestSent: true } : m
   );
-  return [...cloudState.matrimonyProfiles];
+
+  try {
+    localStorage.setItem(MATRIMONY_PROFILES_STORAGE_KEY, JSON.stringify(currentList));
+  } catch {}
+
+  if (supabase && !isTestEnv) {
+    try {
+      const { data: authData } = await Promise.race([
+        supabase.auth.getUser(),
+        new Promise<{ data: any; error: any }>((res) => setTimeout(() => res({ data: { user: null }, error: 'timeout' }), 1000))
+      ]);
+      if (authData?.user) {
+        await supabase.from('matrimony_interests').insert({
+          sender_id: authData.user.id,
+          recipient_id: recipientUserId,
+          status: 'sent'
+        });
+      }
+    } catch {}
+  }
+
+  return currentList;
 }
 
 export async function toggleCloudShortlistMatrimony(id: string): Promise<MatrimonyProfile[]> {
-  cloudState.matrimonyProfiles = cloudState.matrimonyProfiles.map(m =>
+  let currentList = await getCloudMatrimonyProfiles();
+  currentList = currentList.map(m =>
     m.id === id ? { ...m, isShortlisted: !m.isShortlisted } : m
   );
-  return [...cloudState.matrimonyProfiles];
+
+  try {
+    localStorage.setItem(MATRIMONY_PROFILES_STORAGE_KEY, JSON.stringify(currentList));
+  } catch {}
+
+  return currentList;
 }
 
 /* ==================== TUTORS & BOOKINGS CLOUD APIS ==================== */

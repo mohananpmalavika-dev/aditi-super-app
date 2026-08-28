@@ -112,6 +112,9 @@ export interface PropertyRequirement {
 }
 
 /* ==================== MATRIMONY ==================== */
+export type MatrimonyPostedFor = 'Self' | 'Son' | 'Daughter' | 'Brother' | 'Sister' | 'Relative / Friend';
+export type MatrimonyMaritalStatus = 'Never Married' | 'Divorced' | 'Widowed' | 'Awaiting Divorce';
+
 export interface MatrimonyProfile {
   id: string;
   name: string;
@@ -126,14 +129,23 @@ export interface MatrimonyProfile {
   community: string;
   motherTongue: string;
   zodiac: string;
+  nakshatra?: string;
   photos: string[];
   about: string;
   partnerPreferences: string;
   annualIncome: string;
   isVerified: boolean;
+  postedFor?: MatrimonyPostedFor;
+  maritalStatus?: MatrimonyMaritalStatus;
+  familyDetails?: string;
+  diet?: 'Vegetarian' | 'Non-Vegetarian' | 'Eggetarian' | 'Vegan';
+  contactPhone?: string;
+  contactEmail?: string;
   compatibilityScore?: number;
   interestSent?: boolean;
   isShortlisted?: boolean;
+  postedByUserId?: string;
+  createdAt?: string;
 }
 
 /* ==================== TUTOR & ACADEMY ==================== */

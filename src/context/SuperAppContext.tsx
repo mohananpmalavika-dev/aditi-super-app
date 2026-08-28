@@ -22,6 +22,8 @@ import {
   getCloudChats,
   getCloudHabits,
   getCloudMatrimonyProfiles,
+  createCloudMatrimonyProfile,
+  deleteCloudMatrimonyProfile,
   getCloudPosts,
   getCloudProperties,
   getCloudTasks,
@@ -107,6 +109,8 @@ interface SuperAppContextType {
   
   // Matrimony
   matrimonyProfiles: MatrimonyProfile[];
+  addMatrimonyProfile: (newProfile: Omit<MatrimonyProfile, 'id'> | MatrimonyProfile) => Promise<MatrimonyProfile>;
+  deleteMatrimonyProfile: (id: string) => Promise<void>;
   sendInterest: (id: string) => Promise<void>;
   toggleShortlistMatrimony: (id: string) => Promise<void>;
   
@@ -569,6 +573,30 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   // Matrimony
+  const addMatrimonyProfile = async (newProfile: Omit<MatrimonyProfile, 'id'> | MatrimonyProfile): Promise<MatrimonyProfile> => {
+    const profileId = ('id' in newProfile && newProfile.id) ? newProfile.id : `mat-${Date.now()}`;
+    const fullProfile: MatrimonyProfile = {
+      ...newProfile,
+      id: profileId,
+      compatibilityScore: newProfile.compatibilityScore || 92,
+      interestSent: false,
+      isShortlisted: false,
+      createdAt: newProfile.createdAt || 'Just now',
+      isVerified: true
+    };
+    const updated = await createCloudMatrimonyProfile(fullProfile);
+    setMatrimonyProfiles(updated);
+    confetti({ particleCount: 80, spread: 80, origin: { y: 0.6 } });
+    showToast(`👰 Matrimony profile for "${fullProfile.name}" registered successfully!`);
+    return fullProfile;
+  };
+
+  const deleteMatrimonyProfile = async (id: string) => {
+    const updated = await deleteCloudMatrimonyProfile(id);
+    setMatrimonyProfiles(updated);
+    showToast('🗑️ Matrimony profile removed.');
+  };
+
   const sendInterest = async (id: string) => {
     const updated = await sendCloudInterestToMatrimony(id);
     setMatrimonyProfiles(updated);
@@ -1477,6 +1505,8 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         deletePropertyRequirement,
         toggleSavePropertyRequirement,
         matrimonyProfiles,
+        addMatrimonyProfile,
+        deleteMatrimonyProfile,
         sendInterest,
         toggleShortlistMatrimony,
         tutors,
