@@ -3,6 +3,7 @@ import confetti from 'canvas-confetti';
 import {
   INITIAL_USER
 } from '../data/mockData';
+import { getSafeAvatarUrl } from '../utils/avatarUtils';
 import {
   addCloudComment,
   addCloudFriend,
@@ -305,7 +306,7 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
                 name: profile?.name || userData.user.user_metadata?.name || userData.user.email?.split('@')[0] || 'User',
                 email: userData.user.email || '',
                 handle: profile?.handle || userData.user.user_metadata?.handle || `@${userData.user.email?.split('@')[0]}`,
-                avatar: profile?.avatar_url || userData.user.user_metadata?.avatar || INITIAL_USER.avatar,
+                avatar: getSafeAvatarUrl(profile?.avatar_url || userData.user.user_metadata?.avatar, profile?.name || userData.user.user_metadata?.name || userData.user.email?.split('@')[0]),
                 zodiacSign: profile?.zodiac_sign || userData.user.user_metadata?.zodiacSign || 'Leo',
                 bio: profile?.bio || userData.user.user_metadata?.bio || 'Aditi Verified Member 🚀',
                 location: profile?.location || userData.user.user_metadata?.location || 'Kozhikode, Kerala, India',

@@ -17,6 +17,7 @@ import {
   ShieldCheck
 } from 'lucide-react';
 import { ChatConversation } from '../../types/superApp';
+import { getSafeAvatarUrl, handleAvatarError } from '../../utils/avatarUtils';
 
 interface ChatDetailsDrawerProps {
   isOpen: boolean;
@@ -68,8 +69,9 @@ export const ChatDetailsDrawer: React.FC<ChatDetailsDrawerProps> = ({
             <div className="text-center space-y-3">
               <div className="relative inline-block">
                 <img
-                  src={chat.participantAvatar}
+                  src={getSafeAvatarUrl(chat.participantAvatar, chat.participantName)}
                   alt={chat.participantName}
+                  onError={(e) => handleAvatarError(e, chat.participantName)}
                   className="w-24 h-24 rounded-3xl object-cover ring-4 ring-indigo-500/40 shadow-xl mx-auto"
                 />
                 {chat.isOnline && (

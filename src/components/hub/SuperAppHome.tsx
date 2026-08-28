@@ -21,6 +21,7 @@ import { useSuperApp } from '../../context/SuperAppContext';
 import { useOmniBrain } from '../../context/OmniBrainContext';
 import { MiniAppId } from '../../types/superApp';
 import { fetchUserCurrentLocationWeather, WeatherData } from '../../services/openMeteoService';
+import { getSafeAvatarUrl, handleAvatarError } from '../../utils/avatarUtils';
 
 export const SuperAppHome: React.FC = () => {
   const { user, tasks, toggleTaskStatus, habits, toggleHabitDay, properties, matrimonyProfiles, tutors, setActiveMiniApp, showToast } = useSuperApp();
@@ -369,8 +370,9 @@ export const SuperAppHome: React.FC = () => {
                 >
                   <div className="flex items-center gap-2.5 min-w-0">
                     <img
-                      src={t.avatar}
+                      src={getSafeAvatarUrl(t.avatar, t.name)}
                       alt={t.name}
+                      onError={(e) => handleAvatarError(e, t.name)}
                       className="w-10 h-10 rounded-xl object-cover ring-2 ring-emerald-500/40 flex-shrink-0 shadow-md"
                     />
                     <div className="min-w-0">
@@ -417,8 +419,9 @@ export const SuperAppHome: React.FC = () => {
                 className="p-3.5 rounded-2xl bg-slate-950/80 border border-slate-800 cursor-pointer group hover:border-pink-500/40 shadow-3d transition-all flex items-center gap-3.5"
               >
                 <img
-                  src={matrimonyProfiles[0].photos[0]}
+                  src={getSafeAvatarUrl(matrimonyProfiles[0].photos[0], matrimonyProfiles[0].name)}
                   alt={matrimonyProfiles[0].name}
+                  onError={(e) => handleAvatarError(e, matrimonyProfiles[0].name)}
                   className="w-14 h-14 rounded-2xl object-cover ring-2 ring-pink-500/40 flex-shrink-0 shadow-lg"
                 />
                 <div className="min-w-0 flex-1">

@@ -12,15 +12,17 @@ import {
   WalletTransaction
 } from '../types/superApp';
 
+import { generateSvgAvatar } from '../utils/avatarUtils';
+
 export const INITIAL_USER: UserProfile = {
   id: 'usr-guest',
   name: 'Aditi User',
-  avatar: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=300&auto=format&fit=crop&q=80',
+  avatar: generateSvgAvatar('Aditi User'),
   handle: '@aditi.user',
   email: '',
   zodiacSign: 'Leo',
   bio: 'Aditi member',
-  location: 'Your city',
+  location: 'Kozhikode, Kerala, India',
   isVerified: false
 };
 

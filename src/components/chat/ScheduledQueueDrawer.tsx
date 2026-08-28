@@ -1,6 +1,7 @@
 import React from 'react';
 import { X, Clock, Bell, Trash2, Send, Calendar, CheckCircle, Phone, Mic, Volume2 } from 'lucide-react';
 import { ScheduledMessage, ChatReminder } from '../../types/superApp';
+import { getSafeAvatarUrl, handleAvatarError } from '../../utils/avatarUtils';
 
 interface ScheduledQueueDrawerProps {
   isOpen: boolean;
@@ -81,8 +82,9 @@ export const ScheduledQueueDrawer: React.FC<ScheduledQueueDrawerProps> = ({
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <img
-                          src={sMsg.targetContactAvatar}
+                          src={getSafeAvatarUrl(sMsg.targetContactAvatar, sMsg.targetContactName)}
                           alt={sMsg.targetContactName}
+                          onError={(e) => handleAvatarError(e, sMsg.targetContactName)}
                           className="w-6 h-6 rounded-lg object-cover"
                         />
                         <span className="text-xs font-bold text-white truncate">

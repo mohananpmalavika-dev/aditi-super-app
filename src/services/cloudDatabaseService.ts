@@ -47,6 +47,8 @@ export const supabase: SupabaseClient | null = isSupabaseConfigured
     })
   : null;
 
+import { getSafeAvatarUrl, generateSvgAvatar } from '../utils/avatarUtils';
+
 const isTestEnv = Boolean(
   (typeof globalThis !== 'undefined' && (globalThis as any).process?.env?.VITEST) ||
   (typeof globalThis !== 'undefined' && (globalThis as any).process?.env?.NODE_ENV === 'test')
@@ -56,7 +58,7 @@ const isTestEnv = Boolean(
 const GUEST_USER: UserProfile = {
   id: 'usr-guest',
   name: 'Aditi Member',
-  avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80',
+  avatar: generateSvgAvatar('Aditi Member'),
   handle: '@aditi.user',
   email: '',
   zodiacSign: 'Leo',
@@ -462,7 +464,7 @@ export async function cloudLoginUser(creds: LoginCredentials): Promise<{ user: U
           name: profileData?.name || data.user.user_metadata?.name || data.user.email?.split('@')[0] || 'User',
           email: data.user.email || creds.email,
           handle: profileData?.handle || data.user.user_metadata?.handle || `@${data.user.email?.split('@')[0]}`,
-          avatar: profileData?.avatar_url || data.user.user_metadata?.avatar || GUEST_USER.avatar,
+          avatar: getSafeAvatarUrl(profileData?.avatar_url || data.user.user_metadata?.avatar, profileData?.name || data.user.user_metadata?.name || data.user.email?.split('@')[0]),
           zodiacSign: profileData?.zodiac_sign || data.user.user_metadata?.zodiacSign || 'Leo',
           bio: profileData?.bio || data.user.user_metadata?.bio || 'Aditi Verified Member 🚀',
           location: profileData?.location || data.user.user_metadata?.location || 'Kozhikode, Kerala, India',
@@ -574,7 +576,7 @@ export async function getCloudUserProfile(): Promise<UserProfile> {
           name: data.name,
           email: data.email,
           handle: data.handle,
-          avatar: data.avatar_url,
+          avatar: getSafeAvatarUrl(data.avatar_url, data.name),
           bio: data.bio,
           location: data.location,
           zodiacSign: data.zodiac_sign,

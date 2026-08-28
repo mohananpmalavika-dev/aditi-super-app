@@ -35,6 +35,7 @@ import { ListingType, PropertyNeedCategory, PropertyRequirement, PropertyType, R
 import { AddPropertyModal } from './AddPropertyModal';
 import { PostRequirementModal } from './PostRequirementModal';
 import confetti from 'canvas-confetti';
+import { getSafeAvatarUrl, handleAvatarError } from '../../utils/avatarUtils';
 
 export const RealEstateView: React.FC = () => {
   const { 
@@ -763,8 +764,9 @@ export const RealEstateView: React.FC = () => {
                     <div className="pt-3 border-t border-slate-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                       <div className="flex items-center gap-2.5">
                         <img
-                          src={req.contactAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300'}
+                          src={getSafeAvatarUrl(req.contactAvatar, req.contactName)}
                           alt={req.contactName}
+                          onError={(e) => handleAvatarError(e, req.contactName)}
                           className="w-9 h-9 rounded-xl object-cover border border-slate-700"
                         />
                         <div className="min-w-0">
@@ -975,8 +977,9 @@ export const RealEstateView: React.FC = () => {
               <div className="p-4 rounded-2xl bg-slate-950 border border-amber-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
                   <img
-                    src={selectedProperty.agent.avatar}
+                    src={getSafeAvatarUrl(selectedProperty.agent.avatar, selectedProperty.agent.name)}
                     alt={selectedProperty.agent.name}
+                    onError={(e) => handleAvatarError(e, selectedProperty.agent.name)}
                     className="w-12 h-12 rounded-2xl object-cover border border-amber-500/40"
                   />
                   <div>

@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Users, X, Check, Plus, UserPlus } from 'lucide-react';
 import { useSuperApp } from '../../context/SuperAppContext';
+import { getSafeAvatarUrl, handleAvatarError } from '../../utils/avatarUtils';
 
 interface GroupCreateModalProps {
   isOpen: boolean;
@@ -207,12 +208,10 @@ export const GroupCreateModal: React.FC<GroupCreateModalProps> = ({
                     >
                       <div className="flex items-center gap-2.5 min-w-0">
                         <img
-                          src={mem.avatar}
+                          src={getSafeAvatarUrl(mem.avatar, mem.name)}
                           alt={mem.name}
+                          onError={(e) => handleAvatarError(e, mem.name)}
                           className="w-8 h-8 rounded-lg object-cover flex-shrink-0"
-                          onError={(e) => {
-                            (e.target as HTMLElement).style.display = 'none';
-                          }}
                         />
                         <div className="min-w-0">
                           <span className="font-bold text-xs block text-white truncate">{mem.name}</span>

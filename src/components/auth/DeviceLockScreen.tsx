@@ -19,6 +19,8 @@ import {
 } from '../../services/deviceLockService';
 import confetti from 'canvas-confetti';
 
+import { getSafeAvatarUrl, handleAvatarError } from '../../utils/avatarUtils';
+
 interface DeviceLockScreenProps {
   sessionUser: DeviceSessionUser;
   onUnlockSuccess: () => void;
@@ -82,8 +84,9 @@ export const DeviceLockScreen: React.FC<DeviceLockScreenProps> = ({
         <div className="space-y-3">
           <div className="relative inline-block">
             <img
-              src={sessionUser.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80'}
+              src={getSafeAvatarUrl(sessionUser.avatar, sessionUser.name)}
               alt={sessionUser.name}
+              onError={(e) => handleAvatarError(e, sessionUser.name)}
               className="w-24 h-24 rounded-3xl object-cover ring-4 ring-indigo-500/50 shadow-2xl mx-auto"
             />
             <span className="absolute -bottom-1 -right-1 p-1.5 rounded-xl bg-indigo-600 text-white shadow-lg">

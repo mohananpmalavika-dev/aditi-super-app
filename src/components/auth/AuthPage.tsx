@@ -42,6 +42,7 @@ import { PhotoCaptureModal } from './PhotoCaptureModal';
 import { FaceUnlockModal } from './FaceUnlockModal';
 import { FingerprintModal } from './FingerprintModal';
 import confetti from 'canvas-confetti';
+import { getSafeAvatarUrl, handleAvatarError, generateSvgAvatar } from '../../utils/avatarUtils';
 
 const PRESET_AVATARS = [
   'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80',
@@ -49,7 +50,9 @@ const PRESET_AVATARS = [
   'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=300&auto=format&fit=crop&q=80',
   'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=300&auto=format&fit=crop&q=80',
   'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=300&auto=format&fit=crop&q=80',
-  'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=300&auto=format&fit=crop&q=80'
+  generateSvgAvatar('Alpha Pioneer', 'alpha'),
+  generateSvgAvatar('Cosmic Star', 'cosmic'),
+  generateSvgAvatar('Kerala Kasavu', 'kerala')
 ];
 
 export const AuthPage: React.FC = () => {
@@ -821,8 +824,9 @@ export const AuthPage: React.FC = () => {
                     {/* Active Selected Photo Preview */}
                     <div className="relative flex-shrink-0">
                       <img
-                        src={regAvatar}
+                        src={getSafeAvatarUrl(regAvatar, regName || 'Preview')}
                         alt="Profile Preview"
+                        onError={(e) => handleAvatarError(e, regName || 'Preview')}
                         className="w-14 h-14 rounded-2xl object-cover ring-2 ring-indigo-500/60 shadow-lg"
                       />
                       <span className="absolute -bottom-1 -right-1 p-1 rounded-lg bg-indigo-600 text-white shadow">
@@ -878,9 +882,10 @@ export const AuthPage: React.FC = () => {
                           key={idx}
                           src={av}
                           alt="Avatar Option"
+                          onError={(e) => handleAvatarError(e, `Option ${idx + 1}`)}
                           onClick={() => setRegAvatar(av)}
-                          className={`w-8 h-8 rounded-xl object-cover cursor-pointer border-2 transition-all flex-shrink-0 ${
-                            regAvatar === av ? 'border-indigo-500 scale-110 shadow-md shadow-indigo-500/40' : 'border-transparent opacity-60 hover:opacity-100'
+                          className={`w-9 h-9 rounded-2xl object-cover cursor-pointer border-2 transition-all flex-shrink-0 ${
+                            regAvatar === av ? 'border-indigo-500 scale-110 shadow-md shadow-indigo-500/40 ring-2 ring-indigo-400/40' : 'border-transparent opacity-75 hover:opacity-100'
                           }`}
                         />
                       ))}

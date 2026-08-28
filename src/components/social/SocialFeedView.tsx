@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { useSuperApp } from '../../context/SuperAppContext';
 import confetti from 'canvas-confetti';
+import { getSafeAvatarUrl, handleAvatarError } from '../../utils/avatarUtils';
 
 export const SocialFeedView: React.FC = () => {
   const { user, posts, stories, likePost, addComment, createPost, showToast } = useSuperApp();
@@ -62,8 +63,9 @@ export const SocialFeedView: React.FC = () => {
           <div className="flex flex-col items-center gap-1.5 cursor-pointer group flex-shrink-0">
             <div className="relative w-14 h-14 sm:w-16 sm:h-16 rounded-full p-0.5 border-2 border-dashed border-indigo-500 flex items-center justify-center bg-slate-950">
               <img
-                src={user.avatar}
+                src={getSafeAvatarUrl(user.avatar, user.name)}
                 alt={user.name}
+                onError={(e) => handleAvatarError(e, user.name)}
                 className="w-12 h-12 sm:w-14 sm:h-14 rounded-full object-cover group-hover:scale-105 transition-transform"
               />
               <div className="absolute bottom-0 right-0 w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-indigo-600 text-white flex items-center justify-center text-xs font-black shadow-md">
@@ -83,8 +85,9 @@ export const SocialFeedView: React.FC = () => {
               <div className={`w-14 h-14 sm:w-16 sm:h-16 rounded-full p-0.5 bg-gradient-to-tr from-pink-500 via-purple-500 to-indigo-500 flex items-center justify-center ${s.hasUnseen ? 'animate-pulse' : ''}`}>
                 <div className="w-full h-full rounded-full p-0.5 bg-slate-950">
                   <img
-                    src={s.user.avatar}
+                    src={getSafeAvatarUrl(s.user.avatar, s.user.name)}
                     alt={s.user.name}
+                    onError={(e) => handleAvatarError(e, s.user.name)}
                     className="w-full h-full rounded-full object-cover group-hover:scale-105 transition-transform"
                   />
                 </div>
@@ -107,8 +110,9 @@ export const SocialFeedView: React.FC = () => {
           <div className="p-4 sm:p-5 rounded-3xl bg-slate-900/80 border border-slate-800 shadow-xl space-y-3">
             <div className="flex items-center gap-2.5 sm:gap-3">
               <img
-                src={user.avatar}
+                src={getSafeAvatarUrl(user.avatar, user.name)}
                 alt={user.name}
+                onError={(e) => handleAvatarError(e, user.name)}
                 className="w-9 h-9 sm:w-10 sm:h-10 rounded-full object-cover ring-2 ring-indigo-500/30 flex-shrink-0"
               />
               <input
@@ -171,8 +175,9 @@ export const SocialFeedView: React.FC = () => {
               <div className="p-3.5 sm:p-4 flex items-center justify-between">
                 <div className="flex items-center gap-2.5 sm:gap-3">
                   <img
-                    src={post.author.avatar}
+                    src={getSafeAvatarUrl(post.author.avatar, post.author.name)}
                     alt={post.author.name}
+                    onError={(e) => handleAvatarError(e, post.author.name)}
                     className="w-9 h-9 sm:w-10 sm:h-10 rounded-full object-cover ring-2 ring-indigo-500/20 flex-shrink-0"
                   />
                   <div>
@@ -285,8 +290,9 @@ export const SocialFeedView: React.FC = () => {
                       post.comments.map((c) => (
                         <div key={c.id} className="p-2.5 rounded-xl bg-slate-900 border border-slate-800/80 flex items-start gap-2.5">
                           <img
-                            src={c.avatar}
+                            src={getSafeAvatarUrl(c.avatar, c.author)}
                             alt={c.author}
+                            onError={(e) => handleAvatarError(e, c.author)}
                             className="w-7 h-7 rounded-full object-cover flex-shrink-0"
                           />
                           <div className="flex-1 min-w-0">

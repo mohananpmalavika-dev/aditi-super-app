@@ -10,6 +10,8 @@ import {
 } from 'lucide-react';
 import { useSuperApp } from '../../context/SuperAppContext';
 import { TutorCategory, TutorProfile } from '../../types/superApp';
+import confetti from 'canvas-confetti';
+import { getSafeAvatarUrl, handleAvatarError } from '../../utils/avatarUtils';
 
 export const TutorView: React.FC = () => {
   const { tutors, bookings, bookTutorSession, startNewChatWith, showToast } = useSuperApp();
@@ -119,8 +121,9 @@ export const TutorView: React.FC = () => {
               <div className="flex items-start justify-between gap-3">
                 <div className="flex items-center gap-3">
                   <img
-                    src={t.avatar}
+                    src={getSafeAvatarUrl(t.avatar, t.name)}
                     alt={t.name}
+                    onError={(e) => handleAvatarError(e, t.name)}
                     className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl object-cover ring-2 ring-emerald-500/40 flex-shrink-0"
                   />
                   <div className="min-w-0">
@@ -222,8 +225,9 @@ export const TutorView: React.FC = () => {
 
             <div className="p-3 rounded-2xl bg-slate-950 border border-slate-800 flex items-center gap-3">
               <img
-                src={selectedTutor.avatar}
+                src={getSafeAvatarUrl(selectedTutor.avatar, selectedTutor.name)}
                 alt={selectedTutor.name}
+                onError={(e) => handleAvatarError(e, selectedTutor.name)}
                 className="w-12 h-12 rounded-xl object-cover ring-2 ring-emerald-500/40 flex-shrink-0"
               />
               <div className="min-w-0 flex-1">

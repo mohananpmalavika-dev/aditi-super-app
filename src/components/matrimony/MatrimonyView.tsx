@@ -21,6 +21,8 @@ import {
 import { useSuperApp } from '../../context/SuperAppContext';
 import { MatrimonyProfile } from '../../types/superApp';
 import { RegisterMatrimonyModal } from './RegisterMatrimonyModal';
+import confetti from 'canvas-confetti';
+import { getSafeAvatarUrl, handleAvatarError } from '../../utils/avatarUtils';
 
 export const MatrimonyView: React.FC = () => {
   const { 
@@ -264,8 +266,9 @@ export const MatrimonyView: React.FC = () => {
                     className="relative aspect-[4/3] bg-slate-950 overflow-hidden cursor-pointer"
                   >
                     <img
-                      src={p.photos[0] || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=500'}
+                      src={getSafeAvatarUrl(p.photos[0], p.name)}
                       alt={p.name}
+                      onError={(e) => handleAvatarError(e, p.name)}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     />
                     
@@ -430,8 +433,9 @@ export const MatrimonyView: React.FC = () => {
               <div className="space-y-3">
                 <div className="aspect-[3/4] rounded-2xl overflow-hidden bg-slate-950 border border-slate-800">
                   <img
-                    src={selectedProfile.photos[0] || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=500'}
+                    src={getSafeAvatarUrl(selectedProfile.photos[0], selectedProfile.name)}
                     alt={selectedProfile.name}
+                    onError={(e) => handleAvatarError(e, selectedProfile.name)}
                     className="w-full h-full object-cover"
                   />
                 </div>

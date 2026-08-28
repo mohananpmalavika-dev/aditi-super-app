@@ -16,6 +16,7 @@ import { useSuperApp } from '../../context/SuperAppContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useOmniBrain } from '../../context/OmniBrainContext';
 import { MiniAppId } from '../../types/superApp';
+import { getSafeAvatarUrl, handleAvatarError } from '../../utils/avatarUtils';
 
 interface TopHeaderProps {
   onOpenLauncher: () => void;
@@ -210,9 +211,10 @@ export const TopHeader: React.FC<TopHeaderProps> = ({ onOpenLauncher }) => {
               className="flex items-center gap-1.5 p-0.5 rounded-xl hover:bg-slate-800 active:scale-95 transition-all focus:outline-none"
             >
               <img
-                src={user.avatar}
+                src={getSafeAvatarUrl(user.avatar, user.name)}
                 alt={user.name}
-                className="w-8 h-8 rounded-xl object-cover ring-2 ring-indigo-500/40"
+                onError={(e) => handleAvatarError(e, user.name)}
+                className="w-8 h-8 rounded-xl object-cover ring-2 ring-indigo-500/40 shadow-sm"
               />
               <ChevronDown className="w-3 h-3 text-slate-400 hidden xs:block" />
             </button>
@@ -222,9 +224,10 @@ export const TopHeader: React.FC<TopHeaderProps> = ({ onOpenLauncher }) => {
               <div className="absolute right-0 mt-2 w-64 rounded-2xl bg-slate-900 border border-slate-800 shadow-2xl p-4 z-50 animate-in fade-in slide-in-from-top-2 space-y-3">
                 <div className="flex items-center gap-3 pb-3 border-b border-slate-800">
                   <img
-                    src={user.avatar}
+                    src={getSafeAvatarUrl(user.avatar, user.name)}
                     alt={user.name}
-                    className="w-10 h-10 rounded-xl object-cover ring-2 ring-indigo-500/40"
+                    onError={(e) => handleAvatarError(e, user.name)}
+                    className="w-10 h-10 rounded-xl object-cover ring-2 ring-indigo-500/40 shadow-md"
                   />
                   <div className="min-w-0">
                     <h4 className="font-bold text-xs text-white truncate">{user.name}</h4>

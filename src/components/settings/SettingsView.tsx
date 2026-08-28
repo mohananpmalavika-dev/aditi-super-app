@@ -20,6 +20,7 @@ import { PhotoCaptureModal } from '../auth/PhotoCaptureModal';
 import { isDeviceLockEnabled, setDeviceLockEnabled, verifyDeviceLock } from '../../services/deviceLockService';
 import confetti from 'canvas-confetti';
 import { searchLocations, LocationSuggestion } from '../../services/locationService';
+import { getSafeAvatarUrl, handleAvatarError } from '../../utils/avatarUtils';
 
 export const SettingsView: React.FC = () => {
   const { user, updateUser, properties, matrimonyProfiles, tutors, bookings, posts, chats, tasks, habits, resetDefaults, showToast } = useSuperApp();
@@ -167,8 +168,9 @@ export const SettingsView: React.FC = () => {
             <div className="flex flex-col sm:flex-row sm:items-center gap-4 p-3.5 rounded-2xl bg-slate-950 border border-slate-800">
               <div className="relative flex-shrink-0">
                 <img
-                  src={avatar}
+                  src={getSafeAvatarUrl(avatar, name)}
                   alt={name}
+                  onError={(e) => handleAvatarError(e, name)}
                   className="w-16 h-16 rounded-2xl object-cover ring-2 ring-indigo-500/60 shadow-lg"
                 />
                 <span className="absolute -bottom-1 -right-1 p-1 rounded-lg bg-indigo-600 text-white shadow">

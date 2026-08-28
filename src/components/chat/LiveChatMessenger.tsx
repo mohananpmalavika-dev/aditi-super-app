@@ -97,6 +97,7 @@ import { startVoiceRecognition, stopVoiceRecognition, SpeechLanguage, isSpeechRe
 import { INDIAN_LANGUAGES, translateIndianLanguageToEnglish, IndianLanguageMeta } from '../../services/indianLanguageTranslationService';
 import { UserVoiceProfile } from '../../types/superApp';
 import confetti from 'canvas-confetti';
+import { getSafeAvatarUrl, handleAvatarError } from '../../utils/avatarUtils';
 
 const emojis = ['😀', '😂', '😍', '🔥', '👍', '🎉', '🚀', '❤️', '🙌', '💯', '✨', '🙏', '😎', '🥳'];
 const reactionEmojis = ['👍', '❤️', '😂', '😮', '😢', '🙏', '🔥', '🎉'];
@@ -740,8 +741,9 @@ export const LiveChatMessenger: React.FC = () => {
               >
                 <div className="relative flex-shrink-0">
                   <img
-                    src={chat.participantAvatar}
+                    src={getSafeAvatarUrl(chat.participantAvatar, chat.participantName)}
                     alt={chat.participantName}
+                    onError={(e) => handleAvatarError(e, chat.participantName)}
                     className="w-11 h-11 rounded-2xl object-cover ring-2 ring-slate-800"
                   />
                   {chat.isOnline && (
@@ -842,8 +844,9 @@ export const LiveChatMessenger: React.FC = () => {
 
                 <div className="relative flex-shrink-0 cursor-pointer" onClick={() => setDetailsDrawerOpen(true)}>
                   <img
-                    src={activeChat.participantAvatar}
+                    src={getSafeAvatarUrl(activeChat.participantAvatar, activeChat.participantName)}
                     alt={activeChat.participantName}
+                    onError={(e) => handleAvatarError(e, activeChat.participantName)}
                     className="w-10 h-10 rounded-2xl object-cover ring-2 ring-indigo-500/40"
                   />
                   {activeChat.isOnline && (
@@ -1180,8 +1183,9 @@ export const LiveChatMessenger: React.FC = () => {
               >
                 {!isUser && (
                   <img
-                    src={activeChat.participantAvatar}
+                    src={getSafeAvatarUrl(activeChat.participantAvatar, msg.senderName)}
                     alt={msg.senderName}
+                    onError={(e) => handleAvatarError(e, msg.senderName)}
                     className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl object-cover flex-shrink-0 mt-1 ring-1 ring-slate-800"
                   />
                 )}
