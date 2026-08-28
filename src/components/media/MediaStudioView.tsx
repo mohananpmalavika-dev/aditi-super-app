@@ -94,7 +94,7 @@ export const MediaStudioView: React.FC = () => {
   /* 2. PHOTO-TO-IMAGE AI PROMPT EDITOR STATE (PHOTO UPLOAD & EDIT) */
   /* ========================================================================= */
   const [uploadedPhotoUrl, setUploadedPhotoUrl] = useState<string | null>(null);
-  const [photoEditPrompt, setPhotoEditPrompt] = useState('Change outfit to traditional Kerala Kasavu gold attire with Onam floral backdrop');
+  const [photoEditPrompt, setPhotoEditPrompt] = useState('Transform into traditional Kerala Kasavu gold attire with radiant golden aura');
   const [photoEditMode, setPhotoEditMode] = useState<AiPhotoEditMode>('Kerala Traditional Look (കേരള തനിമ)');
   const [photoEditStyle, setPhotoEditStyle] = useState<ImageStylePreset>('Photorealistic');
   const [photoEditRatio, setPhotoEditRatio] = useState<AspectRatioType>('1:1');
@@ -102,6 +102,14 @@ export const MediaStudioView: React.FC = () => {
   const [editedPhotoResult, setEditedPhotoResult] = useState<ProcessedMediaItem | null>(null);
   const [comparisonSliderPos, setComparisonSliderPos] = useState<number>(50); // 0 to 100%
   const [photoHistory, setPhotoHistory] = useState<ProcessedMediaItem[]>([]);
+  const [photoAdjustments, setPhotoAdjustments] = useState({
+    aiStrength: 85,
+    brightness: 5,
+    contrast: 10,
+    saturation: 15,
+    warmth: 15,
+    clarityHdr: 40
+  });
   const photoInputRef = useRef<HTMLInputElement>(null);
 
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -111,20 +119,30 @@ export const MediaStudioView: React.FC = () => {
     try {
       const dataUrl = await readFileAsDataUrl(file);
       setUploadedPhotoUrl(dataUrl);
-      setEditedPhotoResult(null);
-      showToast(`📸 Photo "${file.name}" loaded securely in browser memory (Zero DB storage)!`);
+      
+      // Automatically generate initial enhanced preview on the actual uploaded photo
+      setIsEditingPhoto(true);
+      const result = await editPhotoWithAiPrompt(
+        dataUrl,
+        photoEditPrompt,
+        photoEditMode,
+        photoEditStyle,
+        photoEditRatio,
+        photoAdjustments
+      );
+      setEditedPhotoResult(result);
+      setPhotoHistory((prev) => [result, ...prev]);
+      showToast(`📸 Photo "${file.name}" loaded securely & transformed in browser memory!`);
     } catch (err) {
       showToast('⚠️ Failed to read photo file.');
+    } finally {
+      setIsEditingPhoto(false);
     }
   };
 
-  const handleProcessPhotoEdit = async () => {
+  const handleProcessPhotoEdit = async (customAdjustments = photoAdjustments) => {
     if (!uploadedPhotoUrl) {
       showToast('⚠️ Please upload a reference photo first.');
-      return;
-    }
-    if (!photoEditPrompt.trim()) {
-      showToast('⚠️ Please describe your desired photo edit.');
       return;
     }
 
@@ -137,17 +155,38 @@ export const MediaStudioView: React.FC = () => {
         photoEditPrompt,
         photoEditMode,
         photoEditStyle,
-        photoEditRatio
+        photoEditRatio,
+        customAdjustments
       );
 
       setEditedPhotoResult(result);
-      setPhotoHistory((prev) => [result, ...prev]);
+      setPhotoHistory((prev) => [result, ...prev.filter((p) => p.id !== result.id)]);
       confetti({ particleCount: 60, spread: 70 });
-      showToast('🎉 Photo successfully transformed by AI prompt!');
+      showToast('🎉 Photo successfully transformed with AI styling!');
     } catch (err) {
       showToast('⚠️ Photo transformation encountered an issue.');
     } finally {
       setIsEditingPhoto(false);
+    }
+  };
+
+  const handleAdjustmentChange = async (key: string, val: number) => {
+    const next = { ...photoAdjustments, [key]: val };
+    setPhotoAdjustments(next);
+    if (uploadedPhotoUrl) {
+      try {
+        const result = await editPhotoWithAiPrompt(
+          uploadedPhotoUrl,
+          photoEditPrompt,
+          photoEditMode,
+          photoEditStyle,
+          photoEditRatio,
+          next
+        );
+        setEditedPhotoResult(result);
+      } catch (err) {
+        // Silent update
+      }
     }
   };
 
@@ -163,6 +202,7 @@ export const MediaStudioView: React.FC = () => {
   const [isMotionPlaying, setIsMotionPlaying] = useState(true);
   const [motionPlaybackSpeed, setMotionPlaybackSpeed] = useState<number>(1);
   const [motionCanvasPhase, setMotionCanvasPhase] = useState<number>(0);
+  const [isRecordingVideo, setIsRecordingVideo] = useState(false);
   const motionInputRef = useRef<HTMLInputElement>(null);
   const motionCanvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -206,6 +246,55 @@ export const MediaStudioView: React.FC = () => {
       showToast('⚠️ Motion generation failed.');
     } finally {
       setIsGeneratingMotion(false);
+    }
+  };
+
+  const handleRecordAndDownloadVideo = () => {
+    if (!motionCanvasRef.current) return;
+    const canvas = motionCanvasRef.current;
+
+    try {
+      const stream = (canvas as any).captureStream ? (canvas as any).captureStream(30) : null;
+      if (!stream) {
+        showToast('⚠️ Direct stream capture not supported on this browser.');
+        return;
+      }
+
+      const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9')
+        ? 'video/webm;codecs=vp9'
+        : 'video/webm';
+
+      const mediaRecorder = new MediaRecorder(stream, { mimeType });
+      const chunks: Blob[] = [];
+
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) chunks.push(e.data);
+      };
+
+      mediaRecorder.onstop = () => {
+        const blob = new Blob(chunks, { type: 'video/webm' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `aditi-motion-portrait-${Date.now()}.webm`;
+        a.click();
+        URL.revokeObjectURL(url);
+        setIsRecordingVideo(false);
+        showToast('🎉 Animated video file recorded & downloaded!');
+      };
+
+      setIsRecordingVideo(true);
+      mediaRecorder.start();
+      showToast(`🎥 Recording ${motionDuration}s animated video from Canvas...`);
+
+      setTimeout(() => {
+        if (mediaRecorder.state !== 'inactive') {
+          mediaRecorder.stop();
+        }
+      }, motionDuration * 1000);
+    } catch (e) {
+      setIsRecordingVideo(false);
+      showToast('⚠️ Recording completed.');
     }
   };
 
@@ -472,7 +561,12 @@ export const MediaStudioView: React.FC = () => {
                   ).map((mode) => (
                     <button
                       key={mode}
-                      onClick={() => setPhotoEditMode(mode)}
+                      onClick={() => {
+                        setPhotoEditMode(mode);
+                        if (uploadedPhotoUrl) {
+                          handleProcessPhotoEdit();
+                        }
+                      }}
                       className={`p-2.5 rounded-xl text-left text-xs font-bold border transition-all ${
                         photoEditMode === mode
                           ? 'bg-gradient-to-r from-pink-600/30 to-purple-600/30 border-pink-500 text-pink-200 shadow-md shadow-pink-500/20'
@@ -480,6 +574,35 @@ export const MediaStudioView: React.FC = () => {
                       }`}
                     >
                       {mode}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Quick AI Presets Chips */}
+              <div className="space-y-1.5">
+                <span className="text-[11px] font-bold text-slate-400">Quick Transform Presets:</span>
+                <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
+                  {[
+                    { label: '🌟 Kerala Kasavu', mode: 'Kerala Traditional Look (കേരള തനിമ)' as AiPhotoEditMode, prompt: 'Traditional Kerala Kasavu gold attire, radiant temple lighting & Onam floral aura' },
+                    { label: '👑 Royal Oil Portrait', mode: 'Royal Vintage Oil Painting (ഓയിൽ പെയിന്റിംഗ്)' as AiPhotoEditMode, prompt: 'Baroque royal oil portrait, Rembrandt classical lighting & antique gold museum finish' },
+                    { label: '🌌 Cyberpunk', mode: 'Cyberpunk Avatar (സൈബർപങ്ക്)' as AiPhotoEditMode, prompt: 'Cyberpunk neon electric glow, futuristic synthwave lighting & holographic grid' },
+                    { label: '🎨 Anime Studio', mode: 'Anime / Watercolor (അനിമേഷൻ)' as AiPhotoEditMode, prompt: 'Studio Ghibli style watercolor anime cel-shading & soft pastel bloom' },
+                    { label: '✨ 4K HDR Crystal', mode: '4K Ultra HDR Enhancer (എച്ച്.ഡി.ആർ)' as AiPhotoEditMode, prompt: '4K ultra sharp HDR crystal clarity, studio lighting, flawless micro-details' }
+                  ].map((p) => (
+                    <button
+                      key={p.label}
+                      type="button"
+                      onClick={() => {
+                        setPhotoEditMode(p.mode);
+                        setPhotoEditPrompt(p.prompt);
+                        if (uploadedPhotoUrl) {
+                          handleProcessPhotoEdit();
+                        }
+                      }}
+                      className="px-2.5 py-1 rounded-lg bg-slate-950 border border-slate-800 hover:border-pink-500/50 text-[11px] font-bold text-slate-300 hover:text-white whitespace-nowrap transition-colors"
+                    >
+                      {p.label}
                     </button>
                   ))}
                 </div>
@@ -494,28 +617,119 @@ export const MediaStudioView: React.FC = () => {
                 <textarea
                   value={photoEditPrompt}
                   onChange={(e) => setPhotoEditPrompt(e.target.value)}
-                  rows={3}
+                  rows={2}
                   placeholder="e.g. Turn outfit into royal Kasavu sari with temple background, realistic lighting..."
-                  className="w-full p-3.5 rounded-2xl bg-slate-950/90 border border-slate-700 text-xs sm:text-sm text-white placeholder-slate-500 focus:outline-none focus:border-pink-500 focus:ring-1 focus:ring-pink-500 transition-all"
+                  className="w-full p-3 rounded-2xl bg-slate-950/90 border border-slate-700 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-pink-500 focus:ring-1 focus:ring-pink-500 transition-all"
                 />
+              </div>
+
+              {/* Real-time Fine-Tuning Adjustment Sliders */}
+              <div className="space-y-3 p-4 rounded-2xl bg-slate-950/90 border border-slate-800">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-extrabold text-slate-300 flex items-center gap-1.5">
+                    <SlidersHorizontal className="w-3.5 h-3.5 text-pink-400" />
+                    <span>Real-time Neural Fine-Tuning (തത്സമയം മാറ്റുക)</span>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const defaults = { aiStrength: 85, brightness: 5, contrast: 10, saturation: 15, warmth: 15, clarityHdr: 40 };
+                      setPhotoAdjustments(defaults);
+                      if (uploadedPhotoUrl) handleProcessPhotoEdit(defaults);
+                    }}
+                    className="text-[10px] text-slate-400 hover:text-white font-bold"
+                  >
+                    Reset
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 text-[11px] font-bold">
+                  {/* AI Style Strength */}
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-slate-400">
+                      <span>Style Strength</span>
+                      <span className="text-pink-300">{photoAdjustments.aiStrength}%</span>
+                    </div>
+                    <input
+                      type="range"
+                      min={10}
+                      max={100}
+                      value={photoAdjustments.aiStrength}
+                      onChange={(e) => handleAdjustmentChange('aiStrength', Number(e.target.value))}
+                      className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-pink-500"
+                    />
+                  </div>
+
+                  {/* Warmth & Golden Aura */}
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-slate-400">
+                      <span>Gold Warmth</span>
+                      <span className="text-amber-300">{photoAdjustments.warmth > 0 ? `+${photoAdjustments.warmth}` : photoAdjustments.warmth}</span>
+                    </div>
+                    <input
+                      type="range"
+                      min={-40}
+                      max={40}
+                      value={photoAdjustments.warmth}
+                      onChange={(e) => handleAdjustmentChange('warmth', Number(e.target.value))}
+                      className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-amber-500"
+                    />
+                  </div>
+
+                  {/* Contrast */}
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-slate-400">
+                      <span>Contrast</span>
+                      <span className="text-purple-300">{photoAdjustments.contrast > 0 ? `+${photoAdjustments.contrast}` : photoAdjustments.contrast}</span>
+                    </div>
+                    <input
+                      type="range"
+                      min={-30}
+                      max={40}
+                      value={photoAdjustments.contrast}
+                      onChange={(e) => handleAdjustmentChange('contrast', Number(e.target.value))}
+                      className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-purple-500"
+                    />
+                  </div>
+
+                  {/* 4K Clarity HDR */}
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-slate-400">
+                      <span>4K HDR Detail</span>
+                      <span className="text-emerald-300">{photoAdjustments.clarityHdr}%</span>
+                    </div>
+                    <input
+                      type="range"
+                      min={0}
+                      max={100}
+                      value={photoAdjustments.clarityHdr}
+                      onChange={(e) => handleAdjustmentChange('clarityHdr', Number(e.target.value))}
+                      className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-emerald-500"
+                    />
+                  </div>
+                </div>
               </div>
 
               {/* Style Presets & Aspect Ratio */}
               <div className="space-y-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <span className="text-xs font-bold text-slate-400">Style Flavor:</span>
+                  <span className="text-xs font-bold text-slate-400">Aspect Ratio:</span>
                   <div className="flex flex-wrap gap-1.5">
-                    {(['Photorealistic', 'Cinematic Film', 'Digital Art', 'Oil Painting'] as ImageStylePreset[]).map((style) => (
+                    {(['1:1', '4:3', '16:9', '9:16'] as AspectRatioType[]).map((ratio) => (
                       <button
-                        key={style}
-                        onClick={() => setPhotoEditStyle(style)}
+                        key={ratio}
+                        type="button"
+                        onClick={() => {
+                          setPhotoEditRatio(ratio);
+                          if (uploadedPhotoUrl) handleProcessPhotoEdit();
+                        }}
                         className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition-all ${
-                          photoEditStyle === style
+                          photoEditRatio === ratio
                             ? 'bg-indigo-600 border-indigo-500 text-white'
                             : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white'
                         }`}
                       >
-                        {style}
+                        {ratio}
                       </button>
                     ))}
                   </div>
@@ -524,8 +738,9 @@ export const MediaStudioView: React.FC = () => {
 
               {/* Execute Transform Action */}
               <button
-                onClick={handleProcessPhotoEdit}
-                disabled={isEditingPhoto || !uploadedPhotoUrl || !photoEditPrompt.trim()}
+                type="button"
+                onClick={() => handleProcessPhotoEdit()}
+                disabled={isEditingPhoto || !uploadedPhotoUrl}
                 className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-pink-600 via-purple-600 to-indigo-600 hover:from-pink-500 hover:to-indigo-500 text-white text-xs font-extrabold flex items-center justify-center gap-2 shadow-xl shadow-pink-500/30 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 transition-all"
               >
                 {isEditingPhoto ? (
@@ -912,18 +1127,39 @@ export const MediaStudioView: React.FC = () => {
                     </div>
                   </div>
 
-                  {motionVideoResult && (
-                    <a
-                      href={motionVideoResult.resultUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      download="motion-video.jpg"
-                      className="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 text-white font-extrabold text-xs flex items-center gap-1.5 shadow-lg shadow-emerald-600/30 transition-all hover:scale-105"
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <button
+                      type="button"
+                      onClick={handleRecordAndDownloadVideo}
+                      disabled={isRecordingVideo || (!motionPhotoUrl && !uploadedPhotoUrl)}
+                      className={`px-4 py-2 rounded-xl text-white font-extrabold text-xs flex items-center gap-1.5 shadow-lg transition-all hover:scale-105 ${
+                        isRecordingVideo
+                          ? 'bg-rose-600 animate-pulse ring-2 ring-rose-400'
+                          : 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 shadow-purple-600/30'
+                      }`}
+                    >
+                      <Film className="w-3.5 h-3.5" />
+                      <span>{isRecordingVideo ? 'Recording Video...' : '⬇️ Download Animated Video (MP4/WebM)'}</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (motionCanvasRef.current) {
+                          const url = motionCanvasRef.current.toDataURL('image/jpeg', 0.95);
+                          const a = document.createElement('a');
+                          a.href = url;
+                          a.download = `motion-frame-${Date.now()}.jpg`;
+                          a.click();
+                          showToast('📸 Frame downloaded!');
+                        }
+                      }}
+                      className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs flex items-center gap-1.5 transition-all"
                     >
                       <Download className="w-3.5 h-3.5" />
-                      <span>Download HD Keyframes</span>
-                    </a>
-                  )}
+                      <span>Download Frame</span>
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
