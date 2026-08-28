@@ -1,4 +1,5 @@
 import { KundaliHouse, TarotCardData, ZodiacSignInfo } from '../types/superApp';
+import { calculateAstrologicalChart, RASHIS_METADATA } from './ephemerisEngine';
 
 export const ZODIAC_SIGNS: ZodiacSignInfo[] = [
   {
@@ -289,10 +290,7 @@ export function calculateVedicKundali(
   doshaReport: string;
   lifeRecommendation: string;
 } {
-  // Deterministic astrological computation based on input string hash
-  const hash = (name + birthDate + birthTime + birthPlace)
-    .split('')
-    .reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  const chart = calculateAstrologicalChart(birthDate, birthTime, birthPlace);
 
   const signs = [
     'Aries (Mesha)',
@@ -309,9 +307,9 @@ export function calculateVedicKundali(
     'Pisces (Meena)'
   ];
 
-  const ascIdx = hash % 12;
-  const moonIdx = (hash + 4) % 12;
-  const sunIdx = (hash + 8) % 12;
+  const ascIdx = chart.lagna.rashiIndex;
+  const moonIdx = chart.moonRashi.index;
+  const sunIdx = chart.sunRashi.index;
 
   const houseSignificances = [
     '1st House (Lagna): Physical Self, Personality, Vitality',
@@ -328,15 +326,21 @@ export function calculateVedicKundali(
     '12th House (Vyaya): Foreign Travel, Spiritual Liberation (Moksha)'
   ];
 
-  const planets = ['Sun ☀️', 'Moon 🌙', 'Mars ⚔️', 'Mercury 💡', 'Jupiter 👑', 'Venus ✨', 'Saturn ⚖️', 'Rahu 🐲', 'Ketu 🐉'];
-
   const houses: KundaliHouse[] = Array.from({ length: 12 }, (_, i) => {
-    const assignedSign = signs[(ascIdx + i) % 12];
-    const planetCount = ((hash + i) % 3) === 0 ? 2 : ((hash + i) % 2 === 0 ? 1 : 0);
+    const rashiForThisHouse = (ascIdx + i) % 12;
+    const assignedSign = signs[rashiForThisHouse];
+
+    // Find real planets residing in this Rashi
     const housePlanets: string[] = [];
-    for (let p = 0; p < planetCount; p++) {
-      housePlanets.push(planets[(hash + i * 3 + p) % planets.length]);
+    if (i === 0) {
+      housePlanets.push(`Lagna 🕉️ (${chart.lagna.formattedDegree.split(' ')[0]})`);
     }
+
+    chart.planets.forEach((p) => {
+      if (p.rashiIndex === rashiForThisHouse) {
+        housePlanets.push(`${p.nameEnglish} ${p.symbol} (${p.formattedDegree.split(' ')[0]})`);
+      }
+    });
 
     return {
       houseNumber: i + 1,
@@ -346,20 +350,17 @@ export function calculateVedicKundali(
     };
   });
 
-  const doshaTypes = [
-    'Manglik Dosha: Nil (Favorable for Marriage)',
-    'Kalsarp Yoga: Partial (Chanting Gayatri Mantra enhances progress)',
-    'Pitra Dosha: Nil (Strong Ancestral Blessings)',
-    'Gajakesari Yoga: Present (Brings Fame and Scholarly Recognition)'
-  ];
+  const yogasReport = chart.doshaSummary.yogas.length > 0 
+    ? chart.doshaSummary.yogas.join(' • ')
+    : 'Auspicious planetary alignment supporting steady prosperity.';
 
   return {
     ascendant: signs[ascIdx],
     moonSign: signs[moonIdx],
     sunSign: signs[sunIdx],
     houses,
-    doshaReport: doshaTypes[hash % doshaTypes.length],
+    doshaReport: `${chart.doshaSummary.kujaDoshaEnglish}. ${yogasReport}`,
     lifeRecommendation:
-      'Jupiter and Venus form an auspicious transit in your 9th and 10th houses this cycle. Focus on knowledge expansion, property acquisitions, and long-term partnerships.'
+      `Your birth star is ${chart.moonNakshatra.nameEnglish} (Pada ${chart.moonNakshatra.pada}). Active Mahadasha is ${chart.vimshottariDasha.currentMahadasha} (${chart.vimshottariDasha.dashaStartDate}-${chart.vimshottariDasha.dashaEndDate}). Focus on knowledge expansion, property acquisitions, and spiritual discipline.`
   };
 }

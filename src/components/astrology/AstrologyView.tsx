@@ -50,7 +50,7 @@ export const AstrologyView: React.FC = () => {
   const [lang, setLang] = useState<'ml' | 'en'>('ml');
   const [activeTab, setActiveTab] = useState<'horoscope' | 'prashnam' | 'kundali' | 'tarot' | 'compatibility'>('horoscope');
   const [horoscopePeriod, setHoroscopePeriod] = useState<'daily' | 'weekly' | 'monthly' | 'yearly'>('daily');
-  const [kundaliChartMode, setKundaliChartMode] = useState<'keralaGrid' | 'bhavaList'>('keralaGrid');
+  const [kundaliChartMode, setKundaliChartMode] = useState<'keralaGrid' | 'navamsha' | 'bhavaList'>('keralaGrid');
 
   // Selected Malayalam Rashi
   const [selectedRashi, setSelectedRashi] = useState<MalayalamRashiInfo>(() => {
@@ -292,7 +292,7 @@ export const AstrologyView: React.FC = () => {
           <div className="flex flex-wrap items-center gap-3 text-[11px] text-slate-300">
             <div>
               <span className="text-slate-500 font-bold">തിഥി: </span>
-              <span className="text-amber-200 font-semibold">{panchangam.thithiMalayalam}</span>
+              <span className="text-amber-200 font-semibold">{panchangam.tithiMalayalam}</span>
             </div>
             <div>
               <span className="text-slate-500 font-bold">നക്ഷത്രം: </span>
@@ -841,7 +841,16 @@ export const AstrologyView: React.FC = () => {
                     kundaliChartMode === 'keralaGrid' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'
                   }`}
                 >
-                  {lang === 'ml' ? '📐 പരമ്പരാഗത കട്ട ചാർട്ട്' : '📐 Traditional Kerala Grid'}
+                  {lang === 'ml' ? '📐 രാശി ചക്രം (D1)' : '📐 Rashi Chart (D1)'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setKundaliChartMode('navamsha')}
+                  className={`px-3 py-1 rounded-lg font-bold transition-all ${
+                    kundaliChartMode === 'navamsha' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  {lang === 'ml' ? '🌟 നവാംശകം (D9)' : '🌟 Navamsha (D9)'}
                 </button>
                 <button
                   type="button"
@@ -865,31 +874,56 @@ export const AstrologyView: React.FC = () => {
           </form>
 
           {/* Dasha & Basic Info Bar */}
-          <div className="p-4 rounded-2xl bg-indigo-950/40 border border-indigo-500/30 grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+          <div className="p-4 rounded-2xl bg-indigo-950/40 border border-indigo-500/30 grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs">
             <div className="p-2.5 rounded-xl bg-slate-950/60 border border-indigo-800/30">
               <span className="text-slate-400 block text-[10px] uppercase font-bold">{lang === 'ml' ? 'ലഗ്നം (Ascendant)' : 'Ascendant (Lagna)'}</span>
               <span className="text-indigo-300 font-extrabold text-sm">{keralaChakra.lagnaRashiMalayalam}</span>
             </div>
             <div className="p-2.5 rounded-xl bg-slate-950/60 border border-indigo-800/30">
-              <span className="text-slate-400 block text-[10px] uppercase font-bold">{lang === 'ml' ? 'നിലവിലെ ദശ' : 'Current Dasha'}</span>
-              <span className="text-amber-300 font-extrabold text-sm">{keralaChakra.currentDasha}</span>
+              <span className="text-slate-400 block text-[10px] uppercase font-bold">{lang === 'ml' ? 'ജന്മ നക്ഷത്രം & രാശി' : 'Birth Star & Moon Sign'}</span>
+              <span className="text-pink-300 font-extrabold text-xs">{keralaChakra.nakshatraMalayalam} • {keralaChakra.moonRashiMalayalam}</span>
+            </div>
+            <div className="p-2.5 rounded-xl bg-slate-950/60 border border-indigo-800/30">
+              <span className="text-slate-400 block text-[10px] uppercase font-bold">{lang === 'ml' ? 'നിലവിലെ ദശ & അപഹാരം' : 'Current Dasha & Bhukti'}</span>
+              <span className="text-amber-300 font-extrabold text-xs">{keralaChakra.currentDasha} ({keralaChakra.currentBhukti})</span>
             </div>
             <div className="p-2.5 rounded-xl bg-slate-950/60 border border-indigo-800/30">
               <span className="text-slate-400 block text-[10px] uppercase font-bold">{lang === 'ml' ? 'ദശാശിഷ്ടം' : 'Dasha Balance'}</span>
-              <span className="text-emerald-300 font-semibold text-xs truncate block">{lang === 'ml' ? keralaChakra.dashaBalanceMalayalam : keralaChakra.dashaBalanceEnglish}</span>
+              <span className="text-emerald-300 font-semibold text-[11px] truncate block">{lang === 'ml' ? keralaChakra.dashaBalanceMalayalam : keralaChakra.dashaBalanceEnglish}</span>
             </div>
           </div>
 
+          {/* Dosha & Special Yogas Badges */}
+          <div className="p-3.5 rounded-2xl bg-slate-950 border border-slate-800 flex flex-wrap items-center gap-2 text-xs">
+            <span className={`px-2.5 py-1 rounded-xl font-bold flex items-center gap-1.5 ${
+              keralaChakra.doshaSummary.kujaDosha ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+            }`}>
+              <ShieldCheck className="w-3.5 h-3.5" />
+              <span>{lang === 'ml' ? keralaChakra.doshaSummary.kujaDoshaMalayalam : keralaChakra.doshaSummary.kujaDoshaEnglish}</span>
+            </span>
+
+            {keralaChakra.doshaSummary.yogasMalayalam.map((y, idx) => (
+              <span key={idx} className="px-2.5 py-1 rounded-xl font-bold bg-purple-500/20 text-purple-300 border border-purple-500/30 flex items-center gap-1">
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>{lang === 'ml' ? y : keralaChakra.doshaSummary.yogas[idx]}</span>
+              </span>
+            ))}
+          </div>
+
           {/* 1. TRADITIONAL KERALA SOUTH INDIAN RASHI CHAKRA (12-BOX SQUARE GRID) */}
-          {kundaliChartMode === 'keralaGrid' && (
+          {(kundaliChartMode === 'keralaGrid' || kundaliChartMode === 'navamsha') && (
             <div className="p-6 rounded-3xl bg-slate-900/90 border border-indigo-500/40 shadow-2xl space-y-4">
               <div className="flex items-center justify-between">
                 <h4 className="font-black text-sm text-white flex items-center gap-2">
                   <Grid3X3 className="w-4 h-4 text-amber-400" />
-                  <span>{lang === 'ml' ? 'കേരള പരമ്പരാഗത രാശി ചക്രം (South Indian Kundali Grid)' : 'Traditional Kerala Rashi Chakra Grid'}</span>
+                  <span>
+                    {kundaliChartMode === 'keralaGrid'
+                      ? (lang === 'ml' ? 'കേരള പരമ്പരാഗത രാശി ചക്രം (Rashi Chakra D1)' : 'Traditional Kerala Rashi Chakra Grid (D1)')
+                      : (lang === 'ml' ? 'നവാംശക ചക്രം (Navamsha Chakra D9)' : 'Navamsha Chart Grid (D9)')}
+                  </span>
                 </h4>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
-                  {birthName}
+                <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                  {birthName} • {kundaliChartMode === 'keralaGrid' ? 'D1' : 'D9'}
                 </span>
               </div>
 
@@ -898,7 +932,8 @@ export const AstrologyView: React.FC = () => {
                 
                 {/* Row 1: Meenam (0), Medam (1), Edavam (2), Mithunam (3) */}
                 {[0, 1, 2, 3].map((boxIdx) => {
-                  const box = keralaChakra.grid[boxIdx];
+                  const currentGrid = kundaliChartMode === 'keralaGrid' ? keralaChakra.grid : keralaChakra.navamshaGrid;
+                  const box = currentGrid[boxIdx];
                   return (
                     <div key={boxIdx} className="aspect-square p-2 rounded-xl bg-slate-900 border border-slate-800 flex flex-col justify-between hover:border-amber-400 transition-colors">
                       <span className="text-[10px] font-black text-indigo-400">{box.nameMalayalam}</span>
@@ -912,54 +947,70 @@ export const AstrologyView: React.FC = () => {
                 })}
 
                 {/* Row 2: Kumbham (11) on Left, Center Hollow 2x2, Karkkidakam (4) on Right */}
-                <div className="aspect-square p-2 rounded-xl bg-slate-900 border border-slate-800 flex flex-col justify-between hover:border-amber-400 transition-colors">
-                  <span className="text-[10px] font-black text-indigo-400">{keralaChakra.grid[11].nameMalayalam}</span>
-                  <div className="space-y-0.5">
-                    {keralaChakra.grid[11].planets.map((p, i) => (
-                      <span key={i} className="text-[10px] font-extrabold text-amber-300 block leading-tight">{p}</span>
-                    ))}
-                  </div>
-                </div>
+                {(() => {
+                  const currentGrid = kundaliChartMode === 'keralaGrid' ? keralaChakra.grid : keralaChakra.navamshaGrid;
+                  return (
+                    <>
+                      <div className="aspect-square p-2 rounded-xl bg-slate-900 border border-slate-800 flex flex-col justify-between hover:border-amber-400 transition-colors">
+                        <span className="text-[10px] font-black text-indigo-400">{currentGrid[11].nameMalayalam}</span>
+                        <div className="space-y-0.5">
+                          {currentGrid[11].planets.map((p, i) => (
+                            <span key={i} className="text-[10px] font-extrabold text-amber-300 block leading-tight">{p}</span>
+                          ))}
+                        </div>
+                      </div>
 
-                {/* Center 2x2 Info Plate */}
-                <div className="col-span-2 row-span-2 p-3 rounded-2xl bg-gradient-to-br from-indigo-950 via-slate-950 to-purple-950 border border-indigo-500/40 flex flex-col items-center justify-center text-center space-y-1">
-                  <span className="text-xl">🕉️</span>
-                  <span className="font-extrabold text-xs text-white">{birthName}</span>
-                  <span className="text-[10px] text-amber-300 font-mono">{birthDate} • {birthTime}</span>
-                  <span className="text-[9px] text-slate-400">{birthPlace}</span>
-                </div>
+                      {/* Center 2x2 Info Plate */}
+                      <div className="col-span-2 row-span-2 p-3 rounded-2xl bg-gradient-to-br from-indigo-950 via-slate-950 to-purple-950 border border-indigo-500/40 flex flex-col items-center justify-center text-center space-y-1">
+                        <span className="text-xl">🕉️</span>
+                        <span className="font-extrabold text-xs text-white">{birthName}</span>
+                        <span className="text-[10px] text-amber-300 font-mono">{birthDate} • {birthTime}</span>
+                        <span className="text-[9px] text-pink-300 font-bold">{keralaChakra.nakshatraMalayalam}</span>
+                        <span className="text-[9px] text-slate-400">{birthPlace}</span>
+                      </div>
 
-                <div className="aspect-square p-2 rounded-xl bg-slate-900 border border-slate-800 flex flex-col justify-between hover:border-amber-400 transition-colors">
-                  <span className="text-[10px] font-black text-indigo-400">{keralaChakra.grid[4].nameMalayalam}</span>
-                  <div className="space-y-0.5">
-                    {keralaChakra.grid[4].planets.map((p, i) => (
-                      <span key={i} className="text-[10px] font-extrabold text-amber-300 block leading-tight">{p}</span>
-                    ))}
-                  </div>
-                </div>
+                      <div className="aspect-square p-2 rounded-xl bg-slate-900 border border-slate-800 flex flex-col justify-between hover:border-amber-400 transition-colors">
+                        <span className="text-[10px] font-black text-indigo-400">{currentGrid[4].nameMalayalam}</span>
+                        <div className="space-y-0.5">
+                          {currentGrid[4].planets.map((p, i) => (
+                            <span key={i} className="text-[10px] font-extrabold text-amber-300 block leading-tight">{p}</span>
+                          ))}
+                        </div>
+                      </div>
+                    </>
+                  );
+                })()}
 
                 {/* Row 3: Makaram (10) on Left, Simham (5) on Right */}
-                <div className="aspect-square p-2 rounded-xl bg-slate-900 border border-slate-800 flex flex-col justify-between hover:border-amber-400 transition-colors">
-                  <span className="text-[10px] font-black text-indigo-400">{keralaChakra.grid[10].nameMalayalam}</span>
-                  <div className="space-y-0.5">
-                    {keralaChakra.grid[10].planets.map((p, i) => (
-                      <span key={i} className="text-[10px] font-extrabold text-amber-300 block leading-tight">{p}</span>
-                    ))}
-                  </div>
-                </div>
+                {(() => {
+                  const currentGrid = kundaliChartMode === 'keralaGrid' ? keralaChakra.grid : keralaChakra.navamshaGrid;
+                  return (
+                    <>
+                      <div className="aspect-square p-2 rounded-xl bg-slate-900 border border-slate-800 flex flex-col justify-between hover:border-amber-400 transition-colors">
+                        <span className="text-[10px] font-black text-indigo-400">{currentGrid[10].nameMalayalam}</span>
+                        <div className="space-y-0.5">
+                          {currentGrid[10].planets.map((p, i) => (
+                            <span key={i} className="text-[10px] font-extrabold text-amber-300 block leading-tight">{p}</span>
+                          ))}
+                        </div>
+                      </div>
 
-                <div className="aspect-square p-2 rounded-xl bg-slate-900 border border-slate-800 flex flex-col justify-between hover:border-amber-400 transition-colors">
-                  <span className="text-[10px] font-black text-indigo-400">{keralaChakra.grid[5].nameMalayalam}</span>
-                  <div className="space-y-0.5">
-                    {keralaChakra.grid[5].planets.map((p, i) => (
-                      <span key={i} className="text-[10px] font-extrabold text-amber-300 block leading-tight">{p}</span>
-                    ))}
-                  </div>
-                </div>
+                      <div className="aspect-square p-2 rounded-xl bg-slate-900 border border-slate-800 flex flex-col justify-between hover:border-amber-400 transition-colors">
+                        <span className="text-[10px] font-black text-indigo-400">{currentGrid[5].nameMalayalam}</span>
+                        <div className="space-y-0.5">
+                          {currentGrid[5].planets.map((p, i) => (
+                            <span key={i} className="text-[10px] font-extrabold text-amber-300 block leading-tight">{p}</span>
+                          ))}
+                        </div>
+                      </div>
+                    </>
+                  );
+                })()}
 
                 {/* Row 4: Dhanu (9), Vrischikam (8), Thulam (7), Kanni (6) */}
                 {[9, 8, 7, 6].map((boxIdx) => {
-                  const box = keralaChakra.grid[boxIdx];
+                  const currentGrid = kundaliChartMode === 'keralaGrid' ? keralaChakra.grid : keralaChakra.navamshaGrid;
+                  const box = currentGrid[boxIdx];
                   return (
                     <div key={boxIdx} className="aspect-square p-2 rounded-xl bg-slate-900 border border-slate-800 flex flex-col justify-between hover:border-amber-400 transition-colors">
                       <span className="text-[10px] font-black text-indigo-400">{box.nameMalayalam}</span>
@@ -1082,9 +1133,21 @@ export const AstrologyView: React.FC = () => {
             {/* Score Banner */}
             <div className="p-5 rounded-2xl bg-gradient-to-r from-rose-950/60 via-purple-950/60 to-slate-950 border border-rose-500/40 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 uppercase tracking-wider">
-                  {lang === 'ml' ? 'ദാമ്പത്യ പൊരുത്ത ഫലം' : 'Marital Porutham Score'}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 uppercase tracking-wider">
+                    {lang === 'ml' ? 'ദാമ്പത്യ പൊരുത്ത ഫലം' : 'Marital Porutham Score'}
+                  </span>
+                  {matchResult.hasRajjuDosha && (
+                    <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-rose-600 text-white animate-pulse">
+                      ⚠️ രജ്ജുദോഷം (Rajju Dosha)
+                    </span>
+                  )}
+                  {matchResult.hasVedhaDosha && (
+                    <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-600 text-white">
+                      ⚠️ വേധദോഷം (Vedha Dosha)
+                    </span>
+                  )}
+                </div>
                 <h4 className="text-xl sm:text-2xl font-black text-white mt-1">
                   {matchResult.totalScore} / 10 {lang === 'ml' ? 'പൊരുത്തങ്ങൾ ഉത്തമം' : 'Poruthams Match'} ({matchResult.percentage}%)
                 </h4>
@@ -1094,8 +1157,12 @@ export const AstrologyView: React.FC = () => {
               </div>
 
               <div className="text-right flex-shrink-0 space-y-1">
-                <span className="text-xs font-bold text-emerald-400 block">{matchResult.kujaDoshaMalayalam}</span>
-                <span className="text-xs text-indigo-300 block">{matchResult.papasamyaMalayalam}</span>
+                <span className={`text-xs font-bold block ${matchResult.hasRajjuDosha ? 'text-rose-400' : 'text-emerald-400'}`}>
+                  {matchResult.kujaDoshaMalayalam}
+                </span>
+                <span className={`text-xs font-bold block ${matchResult.hasVedhaDosha ? 'text-amber-400' : 'text-indigo-300'}`}>
+                  {matchResult.papasamyaMalayalam}
+                </span>
               </div>
             </div>
 

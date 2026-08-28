@@ -83,6 +83,7 @@ import { LiveBackgroundCamera } from './LiveBackgroundCamera';
 import { VoiceCloneStudioModal } from './VoiceCloneStudioModal';
 import { TalkingPortraitModal } from './TalkingPortraitModal';
 import { playTextInSenderVoice } from '../../services/voiceCloneService';
+import { startVoiceRecognition, stopVoiceRecognition, SpeechLanguage, isSpeechRecognitionSupported } from '../../services/voiceToTextService';
 import { UserVoiceProfile } from '../../types/superApp';
 import confetti from 'canvas-confetti';
 
@@ -171,6 +172,72 @@ export const LiveChatMessenger: React.FC = () => {
     );
     stopVoiceRef.current = stopper;
     showToast(`🔊 Speaking in ${msg.senderName}'s AI voice avatar...`);
+  };
+
+  // Voice-to-Text (Speech Recognition / STT) Dictation
+  const [isDictating, setIsDictating] = useState(false);
+  const [dictationLang, setDictationLang] = useState<SpeechLanguage>('ml-IN');
+  const [dictationInterim, setDictationInterim] = useState('');
+  const stopDictationRef = useRef<(() => void) | null>(null);
+
+  const toggleVoiceToTextDictation = (langOverride?: SpeechLanguage) => {
+    const lang = langOverride || dictationLang;
+    if (isDictating && !langOverride) {
+      stopDictationRef.current?.();
+      stopVoiceRecognition();
+      setIsDictating(false);
+      setDictationInterim('');
+      showToast('⏹️ Voice to text dictation stopped');
+      return;
+    }
+
+    if (!isSpeechRecognitionSupported()) {
+      showToast('⚠️ Speech recognition is not supported in this browser. Please use Chrome, Edge, or Safari.');
+      return;
+    }
+
+    stopDictationRef.current?.();
+    setIsDictating(true);
+    const stopper = startVoiceRecognition({
+      lang,
+      continuous: true,
+      interimResults: true,
+      onResult: (text, isFinal) => {
+        if (isFinal) {
+          setInputText((prev) => (prev ? `${prev} ${text}` : text));
+          setDictationInterim('');
+        } else {
+          setDictationInterim(text);
+        }
+      },
+      onError: (err) => {
+        showToast(`⚠️ Dictation notice: ${err}`);
+        setIsDictating(false);
+        setDictationInterim('');
+      },
+      onEnd: () => {
+        setIsDictating(false);
+        setDictationInterim('');
+      }
+    });
+    stopDictationRef.current = stopper;
+    showToast(`🎙️ Voice to text active (${lang === 'ml-IN' ? 'മലയാളം' : 'English'}). Speak now!`);
+  };
+
+  // Send Text directly as Cloned Voice Note (Text-to-Voice)
+  const handleSendTextAsVoiceNote = (textToSend?: string) => {
+    const text = (textToSend || inputText).trim();
+    if (!text || !activeChat) return;
+
+    const audioMsg = `🎙️ [AI Voice Note]: ${text}`;
+    sendChatMessage(activeChat.id, audioMsg, {
+      expiresDuration: secretTimer,
+      mediaType: 'audio'
+    });
+    setInputText('');
+    setIsDictating(false);
+    stopDictationRef.current?.();
+    showToast('🗣️ Text converted to Voice Note & sent!');
   };
 
   // Message Actions state
@@ -1168,7 +1235,7 @@ export const LiveChatMessenger: React.FC = () => {
                     {!msg.mediaType && !msg.poll && !isSnap && !isLocation && msg.text.trim() && (
                       <div className="mt-2 pt-1.5 border-t border-white/10 flex items-center justify-between gap-1.5 flex-wrap">
                         
-                        {/* Hear Voice Audio Button */}
+                        {/* Text to Voice Audio Narration Button */}
                         <button
                           type="button"
                           onClick={() => handlePlayMessageInSenderVoice(msg)}
@@ -1179,12 +1246,12 @@ export const LiveChatMessenger: React.FC = () => {
                               ? 'bg-indigo-950/80 hover:bg-indigo-900 border border-indigo-500/30 text-indigo-200'
                               : 'bg-slate-900/90 hover:bg-slate-800 border border-purple-500/30 text-purple-300'
                           }`}
-                          title="Listen to this text message spoken aloud in sender's AI voice avatar"
+                          title="Listen to this text message spoken aloud (Text to Voice / ശബ്ദമാക്കുക)"
                         >
                           {activePlayingVoiceMsgId === msg.id ? (
                             <>
                               <Pause className="w-3 h-3 text-white" />
-                              <span>Speaking...</span>
+                              <span>Speaking (വായിക്കുന്നു...)</span>
                               <div className="flex items-center gap-0.5 ml-1">
                                 {[40, 90, 60, 100, 50].map((h, i) => (
                                   <div
@@ -1198,7 +1265,7 @@ export const LiveChatMessenger: React.FC = () => {
                           ) : (
                             <>
                               <Volume2 className="w-3 h-3 text-purple-400" />
-                              <span>Hear Voice</span>
+                              <span>🔊 Text to Voice (ശബ്ദമാക്കുക)</span>
                             </>
                           )}
                         </button>
@@ -1239,6 +1306,13 @@ export const LiveChatMessenger: React.FC = () => {
 
                     {/* Quick Hover Message Action Bar */}
                     <div className="absolute right-2 -top-3 hidden group-hover:flex items-center gap-1 bg-slate-900 border border-slate-800 rounded-lg p-1 shadow-xl z-20">
+                      <button
+                        onClick={() => handlePlayMessageInSenderVoice(msg)}
+                        className="p-1 hover:text-purple-400 text-slate-400"
+                        title="Text to Voice (ശബ്ദമാക്കുക / Speak)"
+                      >
+                        <Volume2 className="w-3 h-3 text-purple-400" />
+                      </button>
                       <button
                         onClick={() => setReplyingMessage({ id: msg.id, text: msg.text, senderName: msg.senderName })}
                         className="p-1 hover:text-indigo-400 text-slate-400"
@@ -1458,13 +1532,85 @@ export const LiveChatMessenger: React.FC = () => {
               </div>
             )}
 
-            {/* Audio Recorder Toolbar */}
+            {/* Audio Recorder Toolbar with Voice-to-Text Transcription */}
             {isRecordingAudio && (
               <div className="p-2.5 sm:p-3 bg-slate-950/95 border-t border-slate-800">
                 <AudioRecorder
                   onSendAudio={handleSendAudio}
+                  onSendTranscribedText={(text) => {
+                    if (activeChat) {
+                      sendChatMessage(activeChat.id, text, { expiresDuration: secretTimer });
+                      setIsRecordingAudio(false);
+                      showToast('🎙️ Transcribed voice message sent!');
+                    }
+                  }}
                   onCancel={() => setIsRecordingAudio(false)}
                 />
+              </div>
+            )}
+
+            {/* Live Voice-to-Text Dictation Stream Banner */}
+            {isDictating && !isRecordingAudio && (
+              <div className="p-2.5 sm:p-3 bg-gradient-to-r from-rose-950/90 via-slate-900/95 to-purple-950/90 border-t border-rose-500/40 shadow-xl flex items-center justify-between gap-3 text-xs animate-in slide-in-from-bottom-2">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="relative flex items-center justify-center">
+                    <span className="w-3 h-3 rounded-full bg-rose-500 animate-ping absolute" />
+                    <span className="w-2.5 h-2.5 rounded-full bg-rose-500 relative" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="font-extrabold text-rose-300 flex items-center gap-1 text-[11px]">
+                        <Sparkles className="w-3 h-3 text-amber-400" />
+                        <span>Live Voice-to-Text (തത്സമയ സംസാരം):</span>
+                      </span>
+                      {/* Language switcher */}
+                      <div className="flex items-center p-0.5 rounded-lg bg-slate-950 border border-slate-800 text-[10px]">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setDictationLang('ml-IN');
+                            toggleVoiceToTextDictation('ml-IN');
+                          }}
+                          className={`px-1.5 py-0.5 rounded font-bold transition-all ${
+                            dictationLang === 'ml-IN' ? 'bg-amber-500 text-slate-950' : 'text-slate-400 hover:text-white'
+                          }`}
+                        >
+                          മലയാളം
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setDictationLang('en-IN');
+                            toggleVoiceToTextDictation('en-IN');
+                          }}
+                          className={`px-1.5 py-0.5 rounded font-bold transition-all ${
+                            dictationLang === 'en-IN' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'
+                          }`}
+                        >
+                          English
+                        </button>
+                      </div>
+                    </div>
+                    <p className="text-slate-200 text-xs italic font-medium truncate mt-0.5">
+                      {dictationInterim || 'Listening... Speak in Malayalam or English (സംസാരിക്കൂ)...'}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-1.5 flex-shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      stopDictationRef.current?.();
+                      stopVoiceRecognition();
+                      setIsDictating(false);
+                      setDictationInterim('');
+                    }}
+                    className="px-2.5 py-1 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-[11px] transition-all"
+                  >
+                    Done (പൂർത്തിയായി)
+                  </button>
+                </div>
               </div>
             )}
 
@@ -1593,6 +1739,20 @@ export const LiveChatMessenger: React.FC = () => {
                   <Paperclip className="w-4 h-4 sm:w-5 sm:h-5" />
                 </button>
 
+                {/* Voice to Text Dictation Mic Button */}
+                <button
+                  type="button"
+                  onClick={() => toggleVoiceToTextDictation()}
+                  className={`p-2 rounded-xl transition-all flex items-center justify-center ${
+                    isDictating
+                      ? 'bg-rose-600 text-white animate-pulse ring-2 ring-rose-400 shadow-lg shadow-rose-600/40'
+                      : 'hover:bg-slate-800 text-slate-400 hover:text-rose-400'
+                  }`}
+                  title={isDictating ? 'Stop Voice-to-Text Dictation (സംസാരം നിർത്തുക)' : 'Voice-to-Text Dictation (സംസാരിച്ച് ടൈപ്പ് ചെയ്യുക)'}
+                >
+                  <Mic className={`w-4 h-4 sm:w-5 sm:h-5 ${isDictating ? 'animate-bounce text-white' : ''}`} />
+                </button>
+
                 {/* Input Field */}
                 <input
                   type="text"
@@ -1602,24 +1762,37 @@ export const LiveChatMessenger: React.FC = () => {
                   className="flex-1 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl bg-slate-900 border border-slate-800 text-xs sm:text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 min-w-0"
                 />
 
-                {/* Send or Record Mic */}
+                {/* Action Buttons: Text to Voice / Send / Raw Audio */}
                 {inputText.trim() ? (
-                  <button
-                    type="submit"
-                    className="p-2 sm:p-2.5 px-3 sm:px-4 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold flex items-center gap-1.5 shadow-lg shadow-indigo-600/30 transition-all hover:scale-105 active:scale-95 flex-shrink-0"
-                  >
-                    <Send className="w-4 h-4" />
-                    <span className="hidden sm:inline text-xs">Send</span>
-                  </button>
+                  <div className="flex items-center gap-1 sm:gap-1.5 flex-shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => handleSendTextAsVoiceNote()}
+                      className="p-2 sm:p-2.5 px-2 sm:px-3 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold flex items-center gap-1 shadow-lg shadow-purple-600/30 transition-all hover:scale-105 active:scale-95"
+                      title="Send as Voice Note (Text to Voice / ശബ്ദമാക്കുക)"
+                    >
+                      <Volume2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                      <span className="hidden md:inline text-xs">Text to Voice</span>
+                    </button>
+                    <button
+                      type="submit"
+                      className="p-2 sm:p-2.5 px-3 sm:px-4 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold flex items-center gap-1.5 shadow-lg shadow-indigo-600/30 transition-all hover:scale-105 active:scale-95"
+                    >
+                      <Send className="w-4 h-4" />
+                      <span className="hidden sm:inline text-xs">Send</span>
+                    </button>
+                  </div>
                 ) : (
-                  <button
-                    type="button"
-                    onClick={() => setIsRecordingAudio(true)}
-                    className="p-2 sm:p-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/30 transition-all hover:scale-105 active:scale-95 flex-shrink-0"
-                    title="Record Voice Memo"
-                  >
-                    <Mic className="w-4 h-4 sm:w-5 sm:h-5" />
-                  </button>
+                  <div className="flex items-center gap-1 flex-shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => setIsRecordingAudio(true)}
+                      className="p-2 sm:p-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/30 transition-all hover:scale-105 active:scale-95"
+                      title="Record Voice Memo"
+                    >
+                      <Mic className="w-4 h-4 sm:w-5 sm:h-5" />
+                    </button>
+                  </div>
                 )}
               </form>
             )}

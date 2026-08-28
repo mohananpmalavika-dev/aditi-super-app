@@ -8,6 +8,7 @@
  * - Prashna Marga Question-Based Horary Oracle (പ്രശ്ന ജ്യോതിഷം)
  * - Daily Malayalam Panchangam (പഞ്ചാംഗം, രാഹുകാലം, ഗുളികകാലം)
  */
+import { computeLivePanchangam, LiveMalayalamPanchangamData } from './ephemerisEngine';
 
 export interface MalayalamRashiInfo {
   id: string;
@@ -780,24 +781,14 @@ export function calculateAstrologicalPrashnam(questionText: string): PrashnaResu
 }
 
 /**
- * Live Malayalam Daily Panchangam
+ * Live Malayalam Daily Panchangam (Astronomically Computed)
  */
-export function getLiveMalayalamPanchangam() {
-  const daysMalayalam = ['ഞായറാഴ്ച', 'തിങ്കളാഴ്ച', 'ചൊവ്വാഴ്ച', 'ബുധനാഴ്ച', 'വ്യാഴാഴ്ച', 'വെള്ളിയാഴ്ച', 'ശനിയാഴ്ച'];
-  const now = new Date();
-  const dayName = daysMalayalam[now.getDay()];
-
+export function getLiveMalayalamPanchangam(): LiveMalayalamPanchangamData & {
+  kollamEra: string;
+} {
+  const panchangam = computeLivePanchangam(new Date());
   return {
-    dayMalayalam: dayName,
-    dateString: now.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' }),
-    kollamEra: 'കൊല്ലവർഷം 1201 (Kollam Era 1201)',
-    thithiMalayalam: 'ശുക്ലപക്ഷ ഏകാദശി / ദ്വാദശി (Shukla Paksha Ekadashi)',
-    nakshatraMalayalam: 'രോഹിണി / മകയിരം (Rohini / Makayiram)',
-    yogamMalayalam: 'സിദ്ധ യോഗം (Siddha Yogam)',
-    karanamMalayalam: 'ബവ കരണം (Bava Karanam)',
-    rahuKalamMalayalam: now.getDay() === 2 ? '03:00 PM - 04:30 PM' : '01:30 PM - 03:00 PM',
-    gulikaKalamMalayalam: '12:00 PM - 01:30 PM',
-    yamakandamMalayalam: '09:00 AM - 10:30 AM',
-    abhijithMuhurthamMalayalam: '11:45 AM - 12:35 PM (ഉത്തമം)'
+    ...panchangam,
+    kollamEra: panchangam.kollamEraFormatted
   };
 }
