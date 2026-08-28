@@ -91,8 +91,9 @@ const GENERIC_PLACEHOLDER_LOCAL_PARTS = new Set([
 const normalizedEmail = (email: string) => email.trim().toLowerCase();
 
 const LOCAL_ACCOUNTS_STORAGE_KEY = 'aditi-local-accounts';
+const CUSTOM_CONTACTS_STORAGE_KEY = 'aditi-custom-contacts';
 
-const getLocalAccounts = (): Record<string, { password: string; user: UserProfile }> => {
+export const getLocalAccounts = (): Record<string, { password: string; user: UserProfile }> => {
   if (typeof localStorage === 'undefined') return {};
   try {
     return JSON.parse(localStorage.getItem(LOCAL_ACCOUNTS_STORAGE_KEY) || '{}');
@@ -101,12 +102,98 @@ const getLocalAccounts = (): Record<string, { password: string; user: UserProfil
   }
 };
 
-const saveLocalAccount = (email: string, account: { password: string; user: UserProfile }) => {
+export const saveLocalAccount = (email: string, account: { password: string; user: UserProfile }) => {
   if (typeof localStorage === 'undefined') return;
   const accounts = getLocalAccounts();
   accounts[email] = account;
   localStorage.setItem(LOCAL_ACCOUNTS_STORAGE_KEY, JSON.stringify(accounts));
 };
+
+export const getCustomContacts = (): UserProfile[] => {
+  if (typeof localStorage === 'undefined') return [];
+  try {
+    return JSON.parse(localStorage.getItem(CUSTOM_CONTACTS_STORAGE_KEY) || '[]');
+  } catch {
+    return [];
+  }
+};
+
+export const saveCustomContact = (contact: UserProfile): void => {
+  if (typeof localStorage === 'undefined') return;
+  const contacts = getCustomContacts();
+  const index = contacts.findIndex(
+    (c) =>
+      c.id === contact.id ||
+      (c.email && contact.email && c.email.toLowerCase() === contact.email.toLowerCase()) ||
+      (c.name && contact.name && c.name.toLowerCase() === contact.name.toLowerCase())
+  );
+  if (index >= 0) {
+    contacts[index] = { ...contacts[index], ...contact };
+  } else {
+    contacts.unshift(contact);
+  }
+  localStorage.setItem(CUSTOM_CONTACTS_STORAGE_KEY, JSON.stringify(contacts));
+};
+
+export async function getCloudRegisteredUsers(): Promise<UserProfile[]> {
+  const usersMap = new Map<string, UserProfile>();
+
+  // 1. Fetch profiles from Supabase if configured
+  if (supabase) {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (!error && data && Array.isArray(data)) {
+        data.forEach((p: any) => {
+          if (p && (p.id || p.email)) {
+            const key = (p.id || p.email).toLowerCase();
+            usersMap.set(key, {
+              id: p.id,
+              name: p.name || p.email?.split('@')[0] || 'User',
+              email: p.email || '',
+              handle: p.handle ? (p.handle.startsWith('@') ? p.handle : `@${p.handle}`) : `@${p.email?.split('@')[0] || 'user'}`,
+              avatar: p.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80',
+              zodiacSign: p.zodiac_sign || 'Leo',
+              bio: p.bio || 'Aditi Verified Member 🚀',
+              location: p.location || 'Kozhikode, Kerala, India',
+              isVerified: p.is_verified ?? true,
+              createdAt: p.created_at
+            });
+          }
+        });
+      }
+    } catch (err) {
+      console.warn('Error fetching Supabase registered profiles:', err);
+    }
+  }
+
+  // 2. Merge registered local accounts
+  const localAccounts = getLocalAccounts();
+  Object.values(localAccounts).forEach((acc) => {
+    if (acc.user && (acc.user.id || acc.user.email)) {
+      const key = (acc.user.id || acc.user.email).toLowerCase();
+      if (!usersMap.has(key)) {
+        usersMap.set(key, acc.user);
+      }
+    }
+  });
+
+  // 3. Merge custom manually added contacts
+  const customContacts = getCustomContacts();
+  customContacts.forEach((contact) => {
+    if (contact && (contact.id || contact.email || contact.name)) {
+      const key = (contact.id || contact.email || contact.name).toLowerCase();
+      if (!usersMap.has(key)) {
+        usersMap.set(key, contact);
+      }
+    }
+  });
+
+  return Array.from(usersMap.values());
+}
 
 export function isDummyOrDisposableAccount(email: string, name?: string, handle?: string): boolean {
   if (!email || typeof email !== 'string') return true;

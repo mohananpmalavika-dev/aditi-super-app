@@ -95,6 +95,7 @@ export const LiveChatMessenger: React.FC = () => {
     activeChatId,
     setActiveChatId,
     sendChatMessage,
+    createGroup,
     createChannel,
     sendBroadcast,
     toggleFriendStatus,
@@ -385,7 +386,9 @@ export const LiveChatMessenger: React.FC = () => {
   };
 
   // Create Group Chat
-  const handleCreateGroup = (groupData: { name: string; members: string[]; avatar: string }) => {
+  const handleCreateGroup = (groupData: { name: string; description: string; members: string[]; avatar: string }) => {
+    const newGroupId = createGroup(groupData);
+    handleSelectChat(newGroupId);
     showToast(`👥 Group "${groupData.name}" created with ${groupData.members.length + 1} members!`);
   };
 

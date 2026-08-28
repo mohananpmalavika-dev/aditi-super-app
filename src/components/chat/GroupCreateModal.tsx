@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
-import { Users, X, Check, Sparkles, Plus } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { Users, X, Check, Plus, UserPlus } from 'lucide-react';
+import { useSuperApp } from '../../context/SuperAppContext';
 
 interface GroupCreateModalProps {
   isOpen: boolean;
@@ -12,8 +13,6 @@ interface GroupCreateModalProps {
   }) => void;
 }
 
-const AVAILABLE_MEMBERS: Array<{ id: string; name: string; role: string; avatar: string }> = [];
-
 const GROUP_ICONS = ['👥', '🚀', '🌟', '💻', '🎨', '🏡', '📚', '⚡'];
 
 export const GroupCreateModal: React.FC<GroupCreateModalProps> = ({
@@ -21,10 +20,56 @@ export const GroupCreateModal: React.FC<GroupCreateModalProps> = ({
   onClose,
   onCreateGroup
 }) => {
+  const { user, registeredUsers, chats } = useSuperApp();
   const [groupName, setGroupName] = useState('');
   const [groupDesc, setGroupDesc] = useState('');
   const [selectedIcon, setSelectedIcon] = useState(GROUP_ICONS[0]);
   const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([]);
+
+  // Dynamically compile available members from registered users and active contacts
+  const availableMembers = useMemo(() => {
+    const map = new Map<string, { id: string; name: string; role: string; avatar: string }>();
+
+    // 1. From registered users
+    registeredUsers.forEach((u) => {
+      if (
+        u &&
+        u.name &&
+        u.id !== user.id &&
+        (u.email ? u.email.toLowerCase() !== user.email.toLowerCase() : true) &&
+        u.name.toLowerCase() !== user.name.toLowerCase()
+      ) {
+        const key = u.id || u.email || u.name;
+        map.set(key, {
+          id: key,
+          name: u.name,
+          role: u.bio || u.location || 'Aditi Member',
+          avatar: u.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300'
+        });
+      }
+    });
+
+    // 2. From existing chat contacts
+    chats.forEach((c) => {
+      if (
+        c.conversationType !== 'channel' &&
+        c.conversationType !== 'group' &&
+        c.participantName &&
+        c.participantName.toLowerCase() !== user.name.toLowerCase()
+      ) {
+        if (!map.has(c.id) && !map.has(c.participantName)) {
+          map.set(c.id, {
+            id: c.id,
+            name: c.participantName,
+            role: c.roleOrContext || 'Contact',
+            avatar: c.participantAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300'
+          });
+        }
+      }
+    });
+
+    return Array.from(map.values());
+  }, [registeredUsers, chats, user]);
 
   if (!isOpen) return null;
 
@@ -38,7 +83,7 @@ export const GroupCreateModal: React.FC<GroupCreateModalProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!groupName.trim() || selectedMemberIds.length === 0) return;
+    if (!groupName.trim()) return;
 
     onCreateGroup({
       name: groupName.trim(),
@@ -46,6 +91,9 @@ export const GroupCreateModal: React.FC<GroupCreateModalProps> = ({
       members: selectedMemberIds,
       avatar: `data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='30' fill='%236366f1'/><text x='50%' y='65%' font-size='50' text-anchor='middle' fill='white'>${selectedIcon}</text></svg>`
     });
+    setGroupName('');
+    setGroupDesc('');
+    setSelectedMemberIds([]);
     onClose();
   };
 
@@ -102,7 +150,7 @@ export const GroupCreateModal: React.FC<GroupCreateModalProps> = ({
               type="text"
               value={groupName}
               onChange={(e) => setGroupName(e.target.value)}
-              placeholder="e.g. Kerala Tech Innovators"
+              placeholder="e.g. Kerala Innovators Community"
               className="w-full p-2.5 rounded-xl bg-slate-950 border border-slate-700 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-purple-500"
               required
             />
@@ -114,48 +162,80 @@ export const GroupCreateModal: React.FC<GroupCreateModalProps> = ({
               type="text"
               value={groupDesc}
               onChange={(e) => setGroupDesc(e.target.value)}
-              placeholder="Topic, rules, or purpose..."
+              placeholder="Topic, purpose, or community guidelines..."
               className="w-full p-2.5 rounded-xl bg-slate-950 border border-slate-700 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-purple-500"
             />
           </div>
 
           {/* Select Members */}
           <div className="space-y-2">
-            <label className="font-bold text-slate-300">Select Initial Members ({selectedMemberIds.length})</label>
-            <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1">
-              {AVAILABLE_MEMBERS.map((mem) => {
-                const isSelected = selectedMemberIds.includes(mem.id);
-                return (
-                  <button
-                    key={mem.id}
-                    type="button"
-                    onClick={() => toggleMember(mem.id)}
-                    className={`w-full p-2 rounded-xl text-left flex items-center justify-between border transition-colors ${
-                      isSelected
-                        ? 'bg-purple-950/40 border-purple-500/50 text-white'
-                        : 'bg-slate-950/50 border-slate-800 text-slate-300 hover:bg-slate-800'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <img
-                        src={mem.avatar}
-                        alt={mem.name}
-                        className="w-8 h-8 rounded-lg object-cover"
-                      />
-                      <div>
-                        <span className="font-bold text-xs block">{mem.name}</span>
-                        <span className="text-[10px] text-slate-400">{mem.role}</span>
-                      </div>
-                    </div>
+            <div className="flex items-center justify-between">
+              <label className="font-bold text-slate-300">
+                Select Members ({selectedMemberIds.length} of {availableMembers.length})
+              </label>
+              {availableMembers.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (selectedMemberIds.length === availableMembers.length) {
+                      setSelectedMemberIds([]);
+                    } else {
+                      setSelectedMemberIds(availableMembers.map((m) => m.id));
+                    }
+                  }}
+                  className="text-[10px] text-purple-400 hover:underline font-bold"
+                >
+                  {selectedMemberIds.length === availableMembers.length ? 'Deselect All' : 'Select All'}
+                </button>
+              )}
+            </div>
 
-                    <div className={`w-5 h-5 rounded-md flex items-center justify-center border ${
-                      isSelected ? 'bg-purple-600 border-purple-400 text-white' : 'border-slate-700'
-                    }`}>
-                      {isSelected && <Check className="w-3.5 h-3.5" />}
-                    </div>
-                  </button>
-                );
-              })}
+            <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+              {availableMembers.length > 0 ? (
+                availableMembers.map((mem) => {
+                  const isSelected = selectedMemberIds.includes(mem.id);
+                  return (
+                    <button
+                      key={mem.id}
+                      type="button"
+                      onClick={() => toggleMember(mem.id)}
+                      className={`w-full p-2 rounded-xl text-left flex items-center justify-between border transition-colors ${
+                        isSelected
+                          ? 'bg-purple-950/40 border-purple-500/50 text-white'
+                          : 'bg-slate-950/50 border-slate-800 text-slate-300 hover:bg-slate-800'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <img
+                          src={mem.avatar}
+                          alt={mem.name}
+                          className="w-8 h-8 rounded-lg object-cover flex-shrink-0"
+                          onError={(e) => {
+                            (e.target as HTMLElement).style.display = 'none';
+                          }}
+                        />
+                        <div className="min-w-0">
+                          <span className="font-bold text-xs block text-white truncate">{mem.name}</span>
+                          <span className="text-[10px] text-slate-400 truncate block">{mem.role}</span>
+                        </div>
+                      </div>
+
+                      <div className={`w-5 h-5 rounded-md flex items-center justify-center border flex-shrink-0 ml-2 ${
+                        isSelected ? 'bg-purple-600 border-purple-400 text-white' : 'border-slate-700'
+                      }`}>
+                        {isSelected && <Check className="w-3.5 h-3.5" />}
+                      </div>
+                    </button>
+                  );
+                })
+              ) : (
+                <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 text-center text-slate-400 space-y-1">
+                  <p className="text-xs font-bold text-slate-300">No other users found yet</p>
+                  <p className="text-[10px] text-slate-500">
+                    You can create the group now and add friends later using the invite link.
+                  </p>
+                </div>
+              )}
             </div>
           </div>
 

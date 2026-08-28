@@ -27,6 +27,8 @@ import {
   getCloudTasks,
   getCloudTutors,
   getCloudUserProfile,
+  getCloudRegisteredUsers,
+  saveCustomContact,
   isSupabaseConfigured,
   likeCloudPost,
   sendCloudInterestToMatrimony,
@@ -110,6 +112,7 @@ interface SuperAppContextType {
   setActiveChatId: (id: string) => void;
   sendChatMessage: (chatId: string, text: string, options?: { expiresDuration?: number | null; mediaUrl?: string; mediaType?: 'image' | 'video' | 'audio' | 'video_note' | 'sticker' | 'gif' | 'file'; poll?: any; isForwarded?: boolean }) => Promise<void>;
   startNewChatWith: (name: string, avatar: string, role: string, initialMessage?: string) => string;
+  createGroup: (groupData: { name: string; description: string; members: string[]; avatar: string }) => string;
   createChannel: (channelData: { name: string; handle: string; description: string; avatar: string; isPrivate: boolean; initialPost?: string }) => string;
   sendBroadcast: (recipientChatIds: string[], text: string) => Promise<void>;
   toggleFriendStatus: (chatId: string) => void;
@@ -121,6 +124,10 @@ interface SuperAppContextType {
   toggleMuteChat: (chatId: string) => void;
   setChatWallpaper: (chatId: string, wallpaper: string) => void;
   clearChatHistory: (chatId: string) => void;
+  
+  // Discoverable Registered Users & Contacts Directory
+  registeredUsers: UserProfile[];
+  refreshRegisteredUsers: () => Promise<UserProfile[]>;
   
   // Scheduled Messages & Reminders & Automated Voice Calls
   scheduledMessages: ScheduledMessage[];
@@ -186,8 +193,31 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [bookings, setBookings] = useState<TutorBooking[]>([]);
   const [posts, setPosts] = useState<SocialPost[]>([]);
   const [stories] = useState<SocialStory[]>([]);
-  const [chats, setChats] = useState<ChatConversation[]>([]);
+  const [chats, setChats] = useState<ChatConversation[]>(() => {
+    try {
+      const saved = localStorage.getItem('omnilife_chats');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
   const [activeChatId, setActiveChatId] = useState<string>('');
+  const [registeredUsers, setRegisteredUsers] = useState<UserProfile[]>([]);
+
+  useEffect(() => {
+    localStorage.setItem('omnilife_chats', JSON.stringify(chats));
+  }, [chats]);
+
+  const refreshRegisteredUsers = async (): Promise<UserProfile[]> => {
+    try {
+      const usersList = await getCloudRegisteredUsers();
+      setRegisteredUsers(usersList);
+      return usersList;
+    } catch (err) {
+      console.warn('Failed to fetch registered users:', err);
+      return [];
+    }
+  };
 
   const [scheduledMessages, setScheduledMessages] = useState<ScheduledMessage[]>(() => {
     try {
@@ -304,7 +334,7 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   useEffect(() => {
     async function loadCloudData() {
       try {
-        const [u, p, m, t, b, pos, ch, tsk, h] = await Promise.all([
+        const [u, p, m, t, b, pos, ch, tsk, h, regUsers] = await Promise.all([
           getCloudUserProfile(),
           getCloudProperties(),
           getCloudMatrimonyProfiles(),
@@ -313,7 +343,8 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           getCloudPosts(),
           getCloudChats(),
           getCloudTasks(),
-          getCloudHabits()
+          getCloudHabits(),
+          getCloudRegisteredUsers()
         ]);
         if (u && u.email) setUser(u);
         if (p && p.length > 0) setProperties(p);
@@ -324,6 +355,7 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         if (ch && ch.length > 0) setChats(ch);
         if (tsk && tsk.length > 0) setTasks(tsk);
         if (h && h.length > 0) setHabits(h);
+        if (regUsers && regUsers.length > 0) setRegisteredUsers(regUsers);
       } catch (e) {
         console.warn('Cloud database sync initialized with remote state');
       }
@@ -367,6 +399,7 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       setIsDeviceLocked(false);
       setIsAuthenticated(true);
       setActiveMiniApp('home');
+      refreshRegisteredUsers();
       confetti({ particleCount: 70, spread: 60, origin: { y: 0.6 } });
       showToast(`Welcome back, ${res.user.name}! 🌟`);
       return { success: true };
@@ -399,6 +432,7 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       setIsDeviceLocked(false);
       setIsAuthenticated(true);
       setActiveMiniApp('home');
+      refreshRegisteredUsers();
       confetti({ particleCount: 90, spread: 80, origin: { y: 0.6 } });
       showToast(`🎉 Registration complete! Welcome to Aditi, ${res.user.name}!`);
       return { success: true };
@@ -431,6 +465,7 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       setIsDeviceLocked(false);
       setIsAuthenticated(true);
       setActiveMiniApp('home');
+      refreshRegisteredUsers();
       confetti({ particleCount: 90, spread: 80, origin: { y: 0.6 } });
       showToast(`🎉 Welcome to Aditi, ${res.user.name}! Signed in via Google.`);
       return { success: true };
@@ -758,8 +793,12 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   const startNewChatWith = (name: string, avatar: string, role: string, initialMessage?: string): string => {
-    const existing = chats.find((c) => c.participantName === name);
+    const existing = chats.find((c) => c.participantName.toLowerCase() === name.toLowerCase());
     if (existing) {
+      if (!existing.isFriend) {
+        setChats((prev) => prev.map((c) => (c.id === existing.id ? { ...c, isFriend: true } : c)));
+        addCloudFriend(existing.id);
+      }
       setActiveChatId(existing.id);
       setActiveMiniApp('chat');
       return existing.id;
@@ -775,6 +814,7 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       lastMessageTime: 'Just now',
       unreadCount: 0,
       isOnline: true,
+      isFriend: true,
       messages: initialMessage
         ? [
             {
@@ -790,6 +830,7 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     };
 
     setChats((prev) => [newChat, ...prev]);
+    addCloudFriend(newChatId);
     setActiveChatId(newChatId);
     setActiveMiniApp('chat');
     return newChatId;
@@ -839,6 +880,48 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     setActiveChatId(newChannelId);
     setActiveMiniApp('chat');
     return newChannelId;
+  };
+
+  const createGroup = (groupData: {
+    name: string;
+    description: string;
+    members: string[];
+    avatar: string;
+  }): string => {
+    const newGroupId = `group-${Date.now()}`;
+    const newGroup: ChatConversation = {
+      id: newGroupId,
+      participantName: groupData.name,
+      participantAvatar: groupData.avatar,
+      roleOrContext: `👥 Group • ${groupData.members.length + 1} members`,
+      lastMessage: `Group created: "${groupData.name}"`,
+      lastMessageTime: 'Just now',
+      unreadCount: 0,
+      isOnline: true,
+      conversationType: 'group',
+      description: groupData.description,
+      isFriend: true,
+      messages: [
+        {
+          id: `m-${Date.now()}`,
+          senderId: 'user',
+          senderName: user.name,
+          text: `🎉 Created group "${groupData.name}"`,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          isUser: true
+        }
+      ]
+    };
+
+    setChats((prev) => [newGroup, ...prev]);
+    createCloudConversation({
+      name: groupData.name,
+      type: 'group',
+      memberIds: groupData.members
+    });
+    setActiveChatId(newGroupId);
+    setActiveMiniApp('chat');
+    return newGroupId;
   };
 
   const sendBroadcast = async (recipientChatIds: string[], text: string) => {
@@ -1221,6 +1304,7 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         setActiveChatId,
         sendChatMessage,
         startNewChatWith,
+        createGroup,
         createChannel,
         sendBroadcast,
         toggleFriendStatus,
@@ -1232,6 +1316,8 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         toggleMuteChat,
         setChatWallpaper,
         clearChatHistory,
+        registeredUsers,
+        refreshRegisteredUsers,
         scheduledMessages,
         chatReminders,
         scheduleChatMessage,

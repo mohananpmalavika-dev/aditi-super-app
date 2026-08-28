@@ -4,6 +4,7 @@ export default defineConfig({
   test: {
     include: ['src/__tests__/**/*.test.ts'],
     exclude: ['e2e/**', 'node_modules/**', 'dist/**'],
-    environment: 'jsdom'
+    environment: 'jsdom',
+    pool: 'threads'
   }
 });

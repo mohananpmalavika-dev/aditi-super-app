@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   UserPlus, 
   Share2, 
@@ -7,16 +7,17 @@ import {
   Check, 
   QrCode, 
   Mail, 
-  MessageSquare, 
   X, 
-  Sparkles, 
   Smartphone, 
-  ExternalLink,
+  Plus,
+  RefreshCw,
   ShieldCheck,
-  Send,
-  Plus
+  UserCheck,
+  MapPin
 } from 'lucide-react';
 import { useSuperApp } from '../../context/SuperAppContext';
+import { getCloudRegisteredUsers, saveCustomContact } from '../../services/cloudDatabaseService';
+import { UserProfile } from '../../types/superApp';
 import confetti from 'canvas-confetti';
 
 interface AddFriendModalProps {
@@ -25,32 +26,54 @@ interface AddFriendModalProps {
   onSelectChat: (chatId: string) => void;
 }
 
-// Global Discoverable Directory
-const DISCOVERABLE_USERS: Array<{
-  id: string;
-  name: string;
-  handle: string;
-  role: string;
-  avatar: string;
-  online: boolean;
-}> = [];
-
 export const AddFriendModal: React.FC<AddFriendModalProps> = ({
   isOpen,
   onClose,
   onSelectChat
 }) => {
-  const { user, startNewChatWith, showToast } = useSuperApp();
+  const { user, chats, registeredUsers, refreshRegisteredUsers, startNewChatWith, showToast } = useSuperApp();
   const [activeTab, setActiveTab] = useState<'search' | 'invite' | 'custom'>('search');
   const [searchQuery, setSearchQuery] = useState('');
   const [copiedLink, setCopiedLink] = useState(false);
   const [showQrCode, setShowQrCode] = useState(false);
+  const [loadingUsers, setLoadingUsers] = useState(false);
+  const [availableUsers, setAvailableUsers] = useState<UserProfile[]>([]);
 
   // Custom Contact Form State
   const [customName, setCustomName] = useState('');
   const [customContactInfo, setCustomContactInfo] = useState('');
-  const [customRole, setCustomRole] = useState('Friend / Associate');
+  const [customRole, setCustomRole] = useState('Friend');
   const [customMessage, setCustomMessage] = useState('Hey! Connected via AditiChat.');
+
+  // Fetch available users on modal open
+  useEffect(() => {
+    if (!isOpen) return;
+
+    let isMounted = true;
+    const fetchUsers = async () => {
+      setLoadingUsers(true);
+      try {
+        const usersList = await getCloudRegisteredUsers();
+        if (isMounted) {
+          setAvailableUsers(usersList);
+        }
+      } catch (err) {
+        console.warn('Could not fetch discoverable users:', err);
+        if (isMounted && registeredUsers.length > 0) {
+          setAvailableUsers(registeredUsers);
+        }
+      } finally {
+        if (isMounted) {
+          setLoadingUsers(false);
+        }
+      }
+    };
+
+    fetchUsers();
+    return () => {
+      isMounted = false;
+    };
+  }, [isOpen, registeredUsers]);
 
   if (!isOpen) return null;
 
@@ -62,21 +85,44 @@ export const AddFriendModal: React.FC<AddFriendModalProps> = ({
   const userInviteUrl = `${appBaseUrl}?invite=${encodeURIComponent(user.handle || user.name.toLowerCase().replace(/\s+/g, ''))}`;
   const qrCodeImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=${encodeURIComponent(userInviteUrl)}&color=99-102-241&bgcolor=3-7-18&margin=1`;
 
-  // Search filter
-  const filteredUsers = DISCOVERABLE_USERS.filter(
-    (u) =>
-      u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      u.handle.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      u.role.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Filter out the current active user
+  const otherUsers = availableUsers.filter((u) => {
+    if (!u) return false;
+    const isSelfId = Boolean(u.id && user.id && u.id === user.id);
+    const isSelfEmail = Boolean(u.email && user.email && u.email.toLowerCase() === user.email.toLowerCase());
+    const isSelfName = Boolean(u.name && user.name && u.name.toLowerCase() === user.name.toLowerCase());
+    return !isSelfId && !isSelfEmail && !isSelfName;
+  });
+
+  // Dynamic Search filter across name, handle, email, location, bio
+  const query = searchQuery.trim().toLowerCase();
+  const filteredUsers = otherUsers.filter((u) => {
+    if (!query) return true;
+    const matchName = u.name?.toLowerCase().includes(query);
+    const matchHandle = u.handle?.toLowerCase().includes(query);
+    const matchEmail = u.email?.toLowerCase().includes(query);
+    const matchLocation = u.location?.toLowerCase().includes(query);
+    const matchBio = u.bio?.toLowerCase().includes(query);
+    return matchName || matchHandle || matchEmail || matchLocation || matchBio;
+  });
+
+  // Check if a user is already in chats / friends
+  const getExistingChat = (targetUser: UserProfile) => {
+    return chats.find(
+      (c) =>
+        c.participantName.toLowerCase() === targetUser.name.toLowerCase() ||
+        (targetUser.id && c.id === targetUser.id)
+    );
+  };
 
   // Add friend from directory
-  const handleAddFromDirectory = (targetUser: typeof DISCOVERABLE_USERS[0]) => {
+  const handleAddFromDirectory = (targetUser: UserProfile) => {
+    const existing = getExistingChat(targetUser);
     const chatId = startNewChatWith(
       targetUser.name,
-      targetUser.avatar,
-      targetUser.role,
-      `Hello ${targetUser.name}! Added you as a friend on AditiChat 👋`
+      targetUser.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80',
+      targetUser.bio || targetUser.location || 'Aditi Friend',
+      existing ? undefined : `Hello ${targetUser.name}! Added you as a friend on AditiChat 👋`
     );
     confetti({ particleCount: 50, spread: 60 });
     showToast(`✨ ${targetUser.name} added to your friends list!`);
@@ -90,10 +136,25 @@ export const AddFriendModal: React.FC<AddFriendModalProps> = ({
     if (!customName.trim()) return;
 
     const randomAvatar = `https://images.unsplash.com/photo-${1534528741775 + Math.floor(Math.random() * 1000)}?w=300&auto=format&fit=crop&q=80`;
+    const newContact: UserProfile = {
+      id: `usr-custom-${Date.now()}`,
+      name: customName.trim(),
+      email: customContactInfo.includes('@') ? customContactInfo.trim() : '',
+      handle: `@${customName.trim().toLowerCase().replace(/\s+/g, '')}`,
+      avatar: randomAvatar,
+      bio: `${customRole} • ${customContactInfo || 'Aditi Contact'}`,
+      location: 'Custom Contact',
+      zodiacSign: 'Leo',
+      isVerified: true
+    };
+
+    saveCustomContact(newContact);
+    refreshRegisteredUsers();
+
     const chatId = startNewChatWith(
-      customName.trim(),
-      randomAvatar,
-      `${customRole} • ${customContactInfo || 'Aditi Contact'}`,
+      newContact.name,
+      newContact.avatar,
+      newContact.bio || 'Aditi Contact',
       customMessage
     );
 
@@ -164,10 +225,10 @@ export const AddFriendModal: React.FC<AddFriendModalProps> = ({
               <h3 className="font-extrabold text-sm sm:text-base text-white flex items-center gap-2">
                 <span>Add & Invite Friends</span>
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                  Global Network
+                  Global Directory
                 </span>
               </h3>
-              <p className="text-[11px] text-slate-400">Search registered users or send 1-click invitations</p>
+              <p className="text-[11px] text-slate-400">Discover registered users or send direct invitations</p>
             </div>
           </div>
 
@@ -191,7 +252,7 @@ export const AddFriendModal: React.FC<AddFriendModalProps> = ({
             }`}
           >
             <Search className="w-3.5 h-3.5" />
-            <span>Search Directory</span>
+            <span>Search Users ({otherUsers.length})</span>
           </button>
 
           <button
@@ -222,7 +283,7 @@ export const AddFriendModal: React.FC<AddFriendModalProps> = ({
         </div>
 
         {/* ========================================================================= */}
-        {/* TAB 1: SEARCH & ADD FROM DIRECTORY */}
+        {/* TAB 1: SEARCH & ADD FROM REGISTERED USERS DIRECTORY */}
         {/* ========================================================================= */}
         {activeTab === 'search' && (
           <div className="space-y-3.5 animate-in fade-in">
@@ -232,57 +293,123 @@ export const AddFriendModal: React.FC<AddFriendModalProps> = ({
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search by name, handle, or location (e.g. malavika, kochi)..."
-                className="w-full pl-9 pr-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+                placeholder="Search by name, handle, email, or city..."
+                className="w-full pl-9 pr-10 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
               />
-            </div>
-
-            <div className="space-y-2 max-h-64 overflow-y-auto pr-1 divide-y divide-slate-800/60">
-              {filteredUsers.length > 0 ? (
-                filteredUsers.map((u) => (
-                  <div
-                    key={u.id}
-                    className="pt-2 pb-2 first:pt-0 flex items-center justify-between gap-3 group"
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="relative flex-shrink-0">
-                        <img
-                          src={u.avatar}
-                          alt={u.name}
-                          className="w-10 h-10 rounded-2xl object-cover ring-2 ring-indigo-500/30"
-                        />
-                        {u.online && (
-                          <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-400 border-2 border-slate-900" />
-                        )}
-                      </div>
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-1.5">
-                          <h4 className="font-extrabold text-xs text-white truncate">{u.name}</h4>
-                          <span className="text-[10px] text-indigo-400 font-mono">{u.handle}</span>
-                        </div>
-                        <p className="text-[11px] text-slate-400 truncate">{u.role}</p>
-                      </div>
-                    </div>
-
-                    <button
-                      onClick={() => handleAddFromDirectory(u)}
-                      className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-md shadow-indigo-600/30 hover:scale-105 active:scale-95 transition-all flex-shrink-0"
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                      <span>Add & Chat</span>
-                    </button>
-                  </div>
-                ))
+              {loadingUsers ? (
+                <RefreshCw className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-indigo-400 animate-spin" />
               ) : (
-                <div className="py-8 text-center space-y-2 text-slate-400 text-xs">
-                  <p>No user found matching "{searchQuery}".</p>
+                searchQuery && (
                   <button
                     type="button"
-                    onClick={() => setActiveTab('invite')}
-                    className="text-indigo-400 hover:underline font-bold"
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white text-xs font-bold"
                   >
-                    Send an Invite Link to this friend instead →
+                    Clear
                   </button>
+                )
+              )}
+            </div>
+
+            <div className="space-y-2 max-h-72 overflow-y-auto pr-1 divide-y divide-slate-800/60">
+              {filteredUsers.length > 0 ? (
+                filteredUsers.map((u) => {
+                  const existingChat = getExistingChat(u);
+                  const isFriend = existingChat?.isFriend;
+
+                  return (
+                    <div
+                      key={u.id || u.email || u.name}
+                      className="pt-2.5 pb-2.5 first:pt-0 flex items-center justify-between gap-3 group"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="relative flex-shrink-0">
+                          <img
+                            src={u.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300'}
+                            alt={u.name}
+                            className="w-10 h-10 rounded-2xl object-cover ring-2 ring-indigo-500/30"
+                            onError={(e) => {
+                              (e.target as HTMLElement).style.display = 'none';
+                            }}
+                          />
+                          <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-400 border-2 border-slate-900" />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <h4 className="font-extrabold text-xs text-white truncate">{u.name}</h4>
+                            {u.isVerified && (
+                              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />
+                            )}
+                            <span className="text-[10px] text-indigo-400 font-mono truncate">
+                              {u.handle || (u.email ? `@${u.email.split('@')[0]}` : '')}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2 text-[11px] text-slate-400 truncate">
+                            {u.location && (
+                              <span className="flex items-center gap-0.5 text-slate-400 truncate">
+                                <MapPin className="w-3 h-3 text-slate-500 flex-shrink-0" />
+                                <span className="truncate">{u.location}</span>
+                              </span>
+                            )}
+                            {u.bio && !u.location && (
+                              <span className="truncate">{u.bio}</span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      <button
+                        onClick={() => handleAddFromDirectory(u)}
+                        className={`px-3 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all flex-shrink-0 ${
+                          isFriend
+                            ? 'bg-emerald-600/20 text-emerald-300 border border-emerald-500/40 hover:bg-emerald-600/30'
+                            : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-md shadow-indigo-600/30 hover:scale-105 active:scale-95'
+                        }`}
+                      >
+                        {isFriend ? (
+                          <>
+                            <UserCheck className="w-3.5 h-3.5" />
+                            <span>Friend • Chat</span>
+                          </>
+                        ) : (
+                          <>
+                            <Plus className="w-3.5 h-3.5" />
+                            <span>Add & Chat</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="py-8 text-center space-y-3 text-slate-400 text-xs">
+                  <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 flex items-center justify-center mx-auto">
+                    <Search className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <p className="font-bold text-slate-300">
+                      {searchQuery ? `No user found matching "${searchQuery}"` : 'No other users found in the directory yet'}
+                    </p>
+                    <p className="text-[11px] text-slate-500 mt-1">
+                      You can send an instant invite link or manually add your friend's contact.
+                    </p>
+                  </div>
+                  <div className="flex items-center justify-center gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('invite')}
+                      className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs transition-all shadow-md"
+                    >
+                      Send Invite Link →
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('custom')}
+                      className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs transition-all"
+                    >
+                      Manual Entry
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
