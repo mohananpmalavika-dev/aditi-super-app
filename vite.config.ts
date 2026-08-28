@@ -6,12 +6,9 @@ export default defineConfig({
   plugins: [react()],
   test: {
     environment: 'jsdom',
-    pool: 'forks',
-    poolOptions: {
-      forks: {
-        singleFork: true
-      }
-    }
+    include: ['src/__tests__/**/*.test.ts'],
+    exclude: ['e2e/**', 'node_modules/**'],
+    fileParallelism: false
   },
   server: {
     port: 5173,

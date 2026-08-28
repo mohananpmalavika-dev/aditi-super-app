@@ -14,7 +14,7 @@ import {
   KeyRound 
 } from 'lucide-react';
 import { useSuperApp } from '../../context/SuperAppContext';
-import { useTheme } from '../../context/ThemeContext';
+import { useTheme, THEME_PRESETS } from '../../context/ThemeContext';
 import { exportBackupJSON, importBackupJSON } from '../../services/storageService';
 import { PhotoCaptureModal } from '../auth/PhotoCaptureModal';
 import { isDeviceLockEnabled, setDeviceLockEnabled, verifyDeviceLock } from '../../services/deviceLockService';
@@ -381,42 +381,44 @@ export const SettingsView: React.FC = () => {
         {/* Right Side Settings Controls */}
         <div className="space-y-4 sm:space-y-6">
           
-          {/* Theme Engine */}
+          {/* 3D & 4D Theme Engine */}
           <div className="p-4 sm:p-5 rounded-3xl card-3d space-y-3.5">
             <div className="flex items-center justify-between">
               <h4 className="font-extrabold text-xs text-white uppercase tracking-wider flex items-center gap-1.5">
                 <Sun className="w-4 h-4 text-amber-400" />
-                <span>3D Theme Engine</span>
+                <span>3D & 4D Theme Engine</span>
               </h4>
               <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-indigo-500/25 text-indigo-300 border border-indigo-400/30">
-                6 Visual Presets
+                10 Visual Worlds
               </span>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-              {[
-                { id: 'dark' as const, name: 'Obsidian Sapphire', color: 'from-indigo-600 to-blue-800', desc: 'Deep cosmic 3D' },
-                { id: 'amethyst' as const, name: 'Royal Amethyst', color: 'from-purple-600 to-fuchsia-800', desc: 'Velvet luxury 3D' },
-                { id: 'cyberpunk' as const, name: 'Cyber Neon', color: 'from-cyan-500 to-pink-600', desc: 'Sci-fi glow 3D' },
-                { id: 'aurora' as const, name: 'Emerald Aurora', color: 'from-emerald-500 to-teal-800', desc: 'Northern lights 3D' },
-                { id: 'gold' as const, name: 'Golden Sunset', color: 'from-amber-500 to-red-700', desc: 'Warm royal gold' },
-                { id: 'light' as const, name: 'Solar Pearl', color: 'from-slate-100 to-indigo-100', desc: 'Luminous light 3D' },
-              ].map((t) => (
+            <div className="grid grid-cols-2 gap-2 max-h-[380px] overflow-y-auto pr-1">
+              {THEME_PRESETS.map((t) => (
                 <button
                   key={t.id}
                   onClick={() => {
                     setTheme(t.id);
                     showToast(`✨ Switched theme to ${t.name}!`);
                   }}
-                  className={`p-2.5 rounded-2xl border text-left transition-all active:scale-95 flex flex-col justify-between ${
+                  className={`p-2.5 rounded-2xl border text-left transition-all active:scale-95 flex flex-col justify-between group ${
                     theme === t.id
-                      ? 'bg-gradient-to-br from-indigo-950/80 to-purple-950/80 border-indigo-400 text-white shadow-[0_4px_16px_rgba(99,102,241,0.5),inset_0_1px_1px_rgba(255,255,255,0.3)] scale-[1.02]'
+                      ? 'bg-gradient-to-br from-indigo-950/90 to-purple-950/90 border-indigo-400 text-white shadow-[0_6px_20px_rgba(99,102,241,0.5),inset_0_1px_1px_rgba(255,255,255,0.4)] scale-[1.02]'
                       : 'bg-slate-950/70 border-slate-800 text-slate-400 hover:text-white hover:border-slate-700'
                   }`}
                 >
-                  <div className={`w-full h-4 rounded-lg bg-gradient-to-r ${t.color} mb-1.5 shadow-sm`} />
-                  <span className="text-[11px] font-black text-white truncate block">{t.name}</span>
-                  <span className="text-[9px] text-slate-400 truncate block">{t.desc}</span>
+                  <div className="flex items-center justify-between gap-1 mb-1.5">
+                    <div className={`w-full h-3.5 rounded-lg bg-gradient-to-r ${t.gradient} shadow-sm`} />
+                    <span className={`text-[8px] font-extrabold px-1.5 py-0.5 rounded-full uppercase flex-shrink-0 ${
+                      t.category === '4D Holographic'
+                        ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-400/30'
+                        : 'bg-indigo-500/20 text-indigo-300 border border-indigo-400/30'
+                    }`}>
+                      {t.badge}
+                    </span>
+                  </div>
+                  <span className="text-[11px] font-black text-white truncate block group-hover:text-indigo-300 transition-colors">{t.name}</span>
+                  <span className="text-[9px] text-slate-400 line-clamp-1 block leading-tight mt-0.5">{t.desc}</span>
                 </button>
               ))}
             </div>

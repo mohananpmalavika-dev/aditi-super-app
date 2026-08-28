@@ -10,10 +10,11 @@ import {
   X,
   CheckCircle2,
   ExternalLink,
-  ChevronDown
+  ChevronDown,
+  Palette
 } from 'lucide-react';
 import { useSuperApp } from '../../context/SuperAppContext';
-import { useTheme } from '../../context/ThemeContext';
+import { useTheme, THEME_PRESETS } from '../../context/ThemeContext';
 import { useOmniBrain } from '../../context/OmniBrainContext';
 import { MiniAppId } from '../../types/superApp';
 import { getSafeAvatarUrl, handleAvatarError } from '../../utils/avatarUtils';
@@ -24,13 +25,14 @@ interface TopHeaderProps {
 
 export const TopHeader: React.FC<TopHeaderProps> = ({ onOpenLauncher }) => {
   const { user, alerts, dismissAlert, setActiveMiniApp, logout } = useSuperApp();
-  const { theme, toggleTheme } = useTheme();
+  const { theme, setTheme, toggleTheme } = useTheme();
   const { toggleAgentDrawer, askBrain } = useOmniBrain();
   
   const [searchQuery, setSearchQuery] = useState('');
   const [showMobileSearch, setShowMobileSearch] = useState(false);
   const [showAlertsPopover, setShowAlertsPopover] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [showThemeMenu, setShowThemeMenu] = useState(false);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -191,18 +193,67 @@ export const TopHeader: React.FC<TopHeaderProps> = ({ onOpenLauncher }) => {
             )}
           </div>
 
-          {/* Theme Toggle */}
-          <button
-            onClick={toggleTheme}
-            className="p-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 active:scale-95 text-slate-300 transition-all"
-            title={`Current theme: ${theme}`}
-          >
-            {theme === 'light' ? (
-              <Sun className="w-4 h-4 text-amber-400" />
-            ) : (
-              <Moon className="w-4 h-4 text-indigo-400" />
+          {/* 3D & 4D Theme Switcher Popover */}
+          <div className="relative">
+            <button
+              onClick={() => setShowThemeMenu(!showThemeMenu)}
+              className="p-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 active:scale-95 text-slate-300 transition-all flex items-center gap-1 border border-slate-700/50"
+              title={`Switch 3D/4D theme (Current: ${theme})`}
+              aria-label="3D and 4D Themes"
+            >
+              <Palette className="w-4 h-4 text-indigo-400" />
+            </button>
+
+            {/* Theme Dropdown Menu */}
+            {showThemeMenu && (
+              <div className="absolute right-0 mt-2 w-72 sm:w-80 rounded-2xl bg-slate-900 border border-slate-800 shadow-2xl p-3 z-50 animate-in fade-in slide-in-from-top-2 space-y-2">
+                <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+                  <div className="flex items-center gap-1.5">
+                    <Palette className="w-3.5 h-3.5 text-indigo-400" />
+                    <span className="font-extrabold text-xs text-white uppercase tracking-wider">3D & 4D Themes</span>
+                  </div>
+                  <button
+                    onClick={() => setShowThemeMenu(false)}
+                    className="p-1 text-slate-400 hover:text-slate-200"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 gap-1.5 max-h-72 overflow-y-auto pr-1">
+                  {THEME_PRESETS.map((t) => (
+                    <button
+                      key={t.id}
+                      onClick={() => {
+                        setTheme(t.id);
+                        setShowThemeMenu(false);
+                      }}
+                      className={`p-2 rounded-xl border text-left transition-all flex items-center justify-between gap-2 ${
+                        theme === t.id
+                          ? 'bg-indigo-950/80 border-indigo-400 text-white shadow-md'
+                          : 'bg-slate-950/60 border-slate-800/80 text-slate-300 hover:text-white hover:border-slate-700'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        <div className={`w-3.5 h-3.5 rounded-full bg-gradient-to-tr ${t.gradient} flex-shrink-0 shadow-sm`} />
+                        <div className="min-w-0">
+                          <span className="text-xs font-bold truncate block">{t.name}</span>
+                          <span className="text-[9px] text-slate-400 truncate block">{t.desc}</span>
+                        </div>
+                      </div>
+                      <span className={`text-[8px] font-extrabold px-1.5 py-0.5 rounded-full uppercase flex-shrink-0 ${
+                        t.category === '4D Holographic'
+                          ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-400/30'
+                          : 'bg-indigo-500/20 text-indigo-300 border border-indigo-400/30'
+                      }`}>
+                        {t.badge}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
             )}
-          </button>
+          </div>
 
           {/* User Profile Avatar & Dropdown */}
           <div className="relative">
