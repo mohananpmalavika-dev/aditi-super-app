@@ -16,7 +16,20 @@ declare global {
   }
 }
 
-export type SpeechLanguage = 'ml-IN' | 'en-IN' | 'en-US';
+export type SpeechLanguage =
+  | 'ml-IN' // Malayalam
+  | 'hi-IN' // Hindi
+  | 'ta-IN' // Tamil
+  | 'te-IN' // Telugu
+  | 'kn-IN' // Kannada
+  | 'bn-IN' // Bengali
+  | 'gu-IN' // Gujarati
+  | 'mr-IN' // Marathi
+  | 'pa-IN' // Punjabi
+  | 'ur-IN' // Urdu
+  | 'en-IN' // Indian English
+  | 'en-US' // US English
+  | string;
 
 export interface VoiceRecognitionOptions {
   lang?: SpeechLanguage;
