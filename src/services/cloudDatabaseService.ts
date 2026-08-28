@@ -345,10 +345,16 @@ export async function cloudLoginUser(creds: LoginCredentials): Promise<{ user: U
 
   if (supabase) {
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
+      const authPromise = supabase.auth.signInWithPassword({
         email: creds.email,
         password: creds.password
       });
+
+      const timeoutPromise = new Promise<any>((_, reject) =>
+        setTimeout(() => reject(new Error('❌ Account not found or authentication request timed out')), 2000)
+      );
+
+      const { data, error } = await Promise.race([authPromise, timeoutPromise]);
       if (error) return { user: cloudState.user, error: error.message };
       if (data.user) {
         const { data: profileData } = await supabase
@@ -372,7 +378,7 @@ export async function cloudLoginUser(creds: LoginCredentials): Promise<{ user: U
         return { user: loggedInUser };
       }
     } catch (e: any) {
-      return { user: cloudState.user, error: e.message || 'Supabase authentication failed' };
+      return { user: cloudState.user, error: e.message || '❌ Account not found. Please check your email and password.' };
     }
   }
 
@@ -561,6 +567,57 @@ export async function toggleCloudSaveProperty(id: string): Promise<RealEstatePro
   cloudState.properties = cloudState.properties.map(p =>
     p.id === id ? { ...p, isSaved: !p.isSaved } : p
   );
+  return [...cloudState.properties];
+}
+
+export async function createCloudProperty(
+  newProp: Omit<RealEstateProperty, 'id'> | RealEstateProperty
+): Promise<RealEstateProperty[]> {
+  const propertyId = ('id' in newProp && newProp.id) ? newProp.id : `prop-${Date.now()}`;
+  const fullProperty: RealEstateProperty = {
+    ...newProp,
+    id: propertyId,
+    isSaved: false
+  };
+
+  if (supabase) {
+    try {
+      await supabase.from('properties').insert({
+        id: propertyId,
+        title: fullProperty.title,
+        type: fullProperty.type,
+        listing_type: fullProperty.listingType,
+        price: fullProperty.price,
+        price_formatted: fullProperty.priceFormatted,
+        bedrooms: fullProperty.bedrooms,
+        bathrooms: fullProperty.bathrooms,
+        area_sqft: fullProperty.areaSqFt,
+        location: fullProperty.location,
+        city: fullProperty.city,
+        images: fullProperty.images,
+        features: fullProperty.features,
+        description: fullProperty.description,
+        agent: fullProperty.agent,
+        status: 'published'
+      });
+    } catch {
+      // fallback to local memory state
+    }
+  }
+
+  cloudState.properties = [fullProperty, ...cloudState.properties];
+  return [...cloudState.properties];
+}
+
+export async function deleteCloudProperty(id: string): Promise<RealEstateProperty[]> {
+  if (supabase) {
+    try {
+      await supabase.from('properties').delete().eq('id', id);
+    } catch {
+      // fallback
+    }
+  }
+  cloudState.properties = cloudState.properties.filter(p => p.id !== id);
   return [...cloudState.properties];
 }
 

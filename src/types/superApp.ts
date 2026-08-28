@@ -259,13 +259,18 @@ export interface ChatPoll {
   totalVotes: number;
 }
 
+export type MessageDeliveryStatus = 'queued' | 'sending' | 'sent' | 'delivered' | 'read' | 'failed';
+export type ChatFolderType = 'all' | 'unread' | 'personal' | 'groups' | 'channels' | 'favorites';
+
 export interface ChatMessage {
   id: string;
+  clientMessageId?: string;
   senderId: string;
   senderName: string;
   text: string;
   timestamp: string;
   isUser: boolean;
+  status?: MessageDeliveryStatus;
   mediaUrl?: string;
   mediaType?: 'image' | 'video' | 'audio' | 'video_note' | 'sticker' | 'gif' | 'file';
   expiresAt?: number; // timestamp in milliseconds when message will permanently self-destruct
@@ -273,6 +278,17 @@ export interface ChatMessage {
   isDisappearing?: boolean;
   isStarred?: boolean;
   isForwarded?: boolean;
+  editedAt?: string;
+  editCount?: number;
+  isDeleted?: boolean;
+  deletedForEveryone?: boolean;
+  deletedAt?: string;
+  replyToId?: string;
+  replySnapshot?: {
+    text: string;
+    senderName: string;
+    mediaType?: string;
+  };
   reactions?: Record<string, number>; // e.g. { '❤️': 2, '👍': 1, '🔥': 3 }
   userReaction?: string; // current user's reaction
   poll?: ChatPoll;
@@ -282,6 +298,21 @@ export interface ChatMessage {
   voiceCloneAvailable?: boolean;
   voiceProfile?: Partial<UserVoiceProfile>;
   talkingPhotoUrl?: string;
+  deliveryReceipts?: Array<{
+    userId: string;
+    userName: string;
+    deliveredAt: string;
+    readAt?: string;
+  }>;
+  mentions?: string[];
+  contextualAttachment?: {
+    type: 'property' | 'tutor' | 'ride' | 'payment';
+    title: string;
+    subtitle: string;
+    price?: string;
+    actionUrl?: string;
+    data?: any;
+  };
 }
 
 export interface UserVoiceProfile {
@@ -323,6 +354,30 @@ export interface ChatReminder {
   isTriggered: boolean;
 }
 
+export interface PinnedMessageItem {
+  messageId: string;
+  text: string;
+  senderName: string;
+  pinnedBy: string;
+  pinnedAt: string;
+}
+
+export interface GroupMemberItem {
+  id: string;
+  name: string;
+  avatar: string;
+  role: 'owner' | 'admin' | 'moderator' | 'member';
+  isOnline?: boolean;
+}
+
+export interface GroupPermissions {
+  canSendMessages: boolean;
+  canSendMedia: boolean;
+  canPinMessages: boolean;
+  canInviteMembers: boolean;
+  canEditGroupInfo: boolean;
+}
+
 export interface ChatConversation {
   id: string;
   participantName: string;
@@ -333,6 +388,7 @@ export interface ChatConversation {
   unreadCount: number;
   messages: ChatMessage[];
   isOnline: boolean;
+  lastSeen?: string;
   conversationType?: 'direct' | 'group' | 'channel' | 'broadcast';
   channelHandle?: string; // e.g., '@malabar_deals'
   subscriberCount?: number;
@@ -344,7 +400,14 @@ export interface ChatConversation {
   isBlocked?: boolean;
   isPinned?: boolean;
   isMuted?: boolean;
+  isFavorite?: boolean;
+  isLocked?: boolean;
   customWallpaper?: string;
+  pinnedMessages?: PinnedMessageItem[];
+  members?: GroupMemberItem[];
+  groupPermissions?: GroupPermissions;
+  groupInviteToken?: string;
+  groupInviteUrl?: string;
 }
 
 /* ==================== DIGITAL WALLET ==================== */

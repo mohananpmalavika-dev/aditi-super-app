@@ -14,9 +14,10 @@ import {
   RefreshCw,
   Wind,
   Droplets,
-  Thermometer
+  Thermometer,
+  MapPin
 } from 'lucide-react';
-import { fetchLiveWeather, WeatherData } from '../../services/openMeteoService';
+import { fetchLiveWeather, fetchUserCurrentLocationWeather, WeatherData } from '../../services/openMeteoService';
 import { convertCurrency, fetchLiveExchangeRates } from '../../services/currencyService';
 import { loadFromLocal, saveToLocal } from '../../services/storageService';
 import { useSuperApp } from '../../context/SuperAppContext';
@@ -32,27 +33,43 @@ export const UtilitiesView: React.FC = () => {
   const { showToast } = useSuperApp();
   
   /* ========== WEATHER STATE ========== */
-  const [selectedCity, setSelectedCity] = useState({ name: 'San Francisco', lat: 37.7749, lon: -122.4194 });
+  const [selectedCity, setSelectedCity] = useState({ name: 'My Current Location', lat: 9.9312, lon: 76.2673, isCurrentLocation: true });
   const [weather, setWeather] = useState<WeatherData | null>(null);
   const [loadingWeather, setLoadingWeather] = useState(false);
 
   const CITIES = [
-    { name: 'San Francisco', lat: 37.7749, lon: -122.4194 },
-    { name: 'New York', lat: 40.7128, lon: -74.0060 },
-    { name: 'London', lat: 51.5074, lon: -0.1278 },
-    { name: 'Tokyo', lat: 35.6762, lon: 139.6503 },
-    { name: 'Mumbai', lat: 19.0760, lon: 72.8777 },
-    { name: 'Dubai', lat: 25.2048, lon: 55.2708 },
+    { name: '📍 My Current Location', lat: 0, lon: 0, isCurrentLocation: true },
+    { name: 'Kochi (Kerala)', lat: 9.9312, lon: 76.2673, isCurrentLocation: false },
+    { name: 'Thiruvananthapuram', lat: 8.5241, lon: 76.9366, isCurrentLocation: false },
+    { name: 'Kozhikode', lat: 11.2588, lon: 75.7804, isCurrentLocation: false },
+    { name: 'Bengaluru', lat: 12.9716, lon: 77.5946, isCurrentLocation: false },
+    { name: 'Chennai', lat: 13.0827, lon: 80.2707, isCurrentLocation: false },
+    { name: 'Mumbai', lat: 19.0760, lon: 72.8777, isCurrentLocation: false },
+    { name: 'Delhi', lat: 28.6139, lon: 77.2090, isCurrentLocation: false },
+    { name: 'Dubai', lat: 25.2048, lon: 55.2708, isCurrentLocation: false },
+    { name: 'London', lat: 51.5074, lon: -0.1278, isCurrentLocation: false },
+    { name: 'New York', lat: 40.7128, lon: -74.0060, isCurrentLocation: false },
   ];
 
-  useEffect(() => {
+  const loadWeather = async (cityObj: typeof selectedCity) => {
     setLoadingWeather(true);
-    fetchLiveWeather(selectedCity.lat, selectedCity.lon, selectedCity.name)
-      .then((data) => {
+    try {
+      if (cityObj.isCurrentLocation) {
+        const data = await fetchUserCurrentLocationWeather();
         setWeather(data);
-        setLoadingWeather(false);
-      })
-      .catch(() => setLoadingWeather(false));
+      } else {
+        const data = await fetchLiveWeather(cityObj.lat, cityObj.lon, cityObj.name);
+        setWeather(data);
+      }
+    } catch {
+      // handled in service
+    } finally {
+      setLoadingWeather(false);
+    }
+  };
+
+  useEffect(() => {
+    loadWeather(selectedCity);
   }, [selectedCity]);
 
   /* ========== CURRENCY CONVERTER STATE ========== */
@@ -135,19 +152,35 @@ export const UtilitiesView: React.FC = () => {
               <h3 className="font-extrabold text-sm text-white">Open-Meteo Global Weather Radar</h3>
             </div>
 
-            {/* City Switcher */}
-            <select
-              value={selectedCity.name}
-              onChange={(e) => {
-                const found = CITIES.find((c) => c.name === e.target.value);
-                if (found) setSelectedCity(found);
-              }}
-              className="p-2 rounded-xl bg-slate-950 border border-slate-700 text-xs text-white"
-            >
-              {CITIES.map((c) => (
-                <option key={c.name} value={c.name}>{c.name}</option>
-              ))}
-            </select>
+            {/* City Switcher & Location Button */}
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  const curr = CITIES[0];
+                  setSelectedCity(curr);
+                  loadWeather(curr);
+                  showToast('📍 Refreshing GPS location weather...');
+                }}
+                className="p-2 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-700 text-rose-400 hover:text-rose-300 transition-colors"
+                title="Get Live GPS Weather"
+              >
+                <MapPin className="w-4 h-4" />
+              </button>
+
+              <select
+                value={selectedCity.name}
+                onChange={(e) => {
+                  const found = CITIES.find((c) => c.name === e.target.value);
+                  if (found) setSelectedCity(found);
+                }}
+                className="p-2 rounded-xl bg-slate-950 border border-slate-700 text-xs text-white"
+              >
+                {CITIES.map((c) => (
+                  <option key={c.name} value={c.name}>{c.name}</option>
+                ))}
+              </select>
+            </div>
           </div>
 
           {loadingWeather || !weather ? (

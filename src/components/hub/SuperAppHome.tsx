@@ -14,11 +14,13 @@ import {
   Calendar,
   Send,
   Zap,
-  TrendingUp
+  TrendingUp,
+  MapPin,
+  RefreshCw
 } from 'lucide-react';
 import { useSuperApp } from '../../context/SuperAppContext';
 import { useOmniBrain } from '../../context/OmniBrainContext';
-import { fetchLiveWeather, WeatherData } from '../../services/openMeteoService';
+import { fetchUserCurrentLocationWeather, fetchLiveWeather, WeatherData } from '../../services/openMeteoService';
 import { MiniAppId } from '../../types/superApp';
 
 export const SuperAppHome: React.FC = () => {
@@ -32,15 +34,29 @@ export const SuperAppHome: React.FC = () => {
     matrimonyProfiles, 
     tutors, 
     setActiveMiniApp,
-    alerts
+    alerts,
+    showToast
   } = useSuperApp();
   const { toggleAgentDrawer, askBrain } = useOmniBrain();
 
   const [weather, setWeather] = useState<WeatherData | null>(null);
+  const [loadingWeather, setLoadingWeather] = useState(false);
   const [quickInput, setQuickInput] = useState('');
 
+  const loadUserLocationWeather = () => {
+    setLoadingWeather(true);
+    fetchUserCurrentLocationWeather()
+      .then((data) => {
+        setWeather(data);
+        setLoadingWeather(false);
+      })
+      .catch(() => {
+        setLoadingWeather(false);
+      });
+  };
+
   useEffect(() => {
-    fetchLiveWeather(37.7749, -122.4194, 'San Francisco').then(setWeather);
+    loadUserLocationWeather();
   }, []);
 
   const handleQuickSubmit = (e: React.FormEvent) => {
@@ -97,25 +113,47 @@ export const SuperAppHome: React.FC = () => {
             </form>
           </div>
 
-          {/* Live Weather Preview Widget */}
+          {/* Live User Current Location Weather Widget */}
           {weather && (
-            <div className="flex-shrink-0 p-4 rounded-2xl bg-slate-950/50 border border-slate-800 backdrop-blur-md flex items-center gap-4 min-w-[200px]">
-              <div className="w-12 h-12 rounded-xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-400">
+            <div className="flex-shrink-0 p-4 rounded-2xl bg-slate-950/60 border border-slate-800/80 backdrop-blur-xl flex items-center gap-3.5 min-w-[220px] shadow-xl relative group">
+              <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-amber-500/20 to-orange-500/20 border border-amber-500/30 flex items-center justify-center text-amber-400 flex-shrink-0 shadow-inner">
                 <Sun className="w-7 h-7 animate-spin-slow" />
               </div>
-              <div>
-                <div className="flex items-baseline gap-1.5">
-                  <span className="text-2xl font-black text-white">{weather.temperature}°C</span>
-                  <span className="text-xs text-slate-400">{weather.condition}</span>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center justify-between gap-1">
+                  <div className="flex items-baseline gap-1.5">
+                    <span className="text-2xl font-black text-white tracking-tight">{weather.temperature}°C</span>
+                    <span className="text-xs font-semibold text-amber-300">{weather.condition}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      loadUserLocationWeather();
+                      showToast('📍 Updating temperature for current location...');
+                    }}
+                    className="p-1 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white transition-colors"
+                    title="Refresh Location Temperature"
+                  >
+                    <RefreshCw className={`w-3 h-3 ${loadingWeather ? 'animate-spin text-amber-400' : ''}`} />
+                  </button>
                 </div>
-                <p className="text-[11px] text-slate-400">{weather.city} • Humidity {weather.humidity}%</p>
-                <button
-                  onClick={() => setActiveMiniApp('utilities')}
-                  className="mt-1 text-[10px] font-bold text-indigo-400 hover:underline flex items-center gap-0.5"
-                >
-                  <span>5-Day Forecast</span>
-                  <ArrowUpRight className="w-3 h-3" />
-                </button>
+
+                <div className="flex items-center gap-1 text-[11px] font-bold text-slate-300 truncate mt-0.5">
+                  <MapPin className="w-3 h-3 text-rose-400 flex-shrink-0" />
+                  <span className="truncate">{weather.city}</span>
+                </div>
+
+                <div className="flex items-center justify-between mt-1 text-[10px] text-slate-400">
+                  <span>Humidity {weather.humidity}%</span>
+                  <button
+                    type="button"
+                    onClick={() => setActiveMiniApp('utilities')}
+                    className="font-bold text-indigo-400 hover:underline flex items-center gap-0.5"
+                  >
+                    <span>Forecast</span>
+                    <ArrowUpRight className="w-2.5 h-2.5" />
+                  </button>
+                </div>
               </div>
             </div>
           )}

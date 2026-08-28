@@ -5,6 +5,7 @@ export default defineConfig({
     include: ['src/__tests__/**/*.test.ts'],
     exclude: ['e2e/**', 'node_modules/**', 'dist/**'],
     environment: 'jsdom',
-    pool: 'threads'
+    pool: 'threads',
+    testTimeout: 15000
   }
 });

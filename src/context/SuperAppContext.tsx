@@ -35,6 +35,8 @@ import {
   sendCloudMessage,
   supabase,
   toggleCloudSaveProperty,
+  createCloudProperty,
+  deleteCloudProperty,
   toggleCloudShortlistMatrimony,
   updateCloudHabit,
   updateCloudTaskStatus,
@@ -88,6 +90,8 @@ interface SuperAppContextType {
   // Real Estate
   properties: RealEstateProperty[];
   toggleSaveProperty: (id: string) => Promise<void>;
+  addProperty: (newProperty: Omit<RealEstateProperty, 'id' | 'isSaved'> | RealEstateProperty) => Promise<RealEstateProperty>;
+  deleteProperty: (id: string) => Promise<void>;
   
   // Matrimony
   matrimonyProfiles: MatrimonyProfile[];
@@ -124,6 +128,10 @@ interface SuperAppContextType {
   toggleMuteChat: (chatId: string) => void;
   setChatWallpaper: (chatId: string, wallpaper: string) => void;
   clearChatHistory: (chatId: string) => void;
+  editChatMessage: (chatId: string, messageId: string, newText: string) => void;
+  deleteChatMessage: (chatId: string, messageId: string, forEveryone: boolean) => void;
+  pinMessageToChat: (chatId: string, message: ChatMessage) => void;
+  unpinMessageFromChat: (chatId: string, messageId: string) => void;
   
   // Discoverable Registered Users & Contacts Directory
   registeredUsers: UserProfile[];
@@ -495,6 +503,26 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const updated = await toggleCloudSaveProperty(id);
     setProperties(updated);
     showToast('Cloud: Property bookmark synced!');
+  };
+
+  const addProperty = async (newProperty: Omit<RealEstateProperty, 'id' | 'isSaved'> | RealEstateProperty): Promise<RealEstateProperty> => {
+    const propertyId = ('id' in newProperty && newProperty.id) ? newProperty.id : `prop-${Date.now()}`;
+    const fullProp: RealEstateProperty = {
+      ...newProperty,
+      id: propertyId,
+      isSaved: false
+    };
+    const updated = await createCloudProperty(fullProp);
+    setProperties(updated);
+    confetti({ particleCount: 70, spread: 70 });
+    showToast(`🏡 Property "${fullProp.title}" listed successfully!`);
+    return fullProp;
+  };
+
+  const deleteProperty = async (id: string) => {
+    const updated = await deleteCloudProperty(id);
+    setProperties(updated);
+    showToast('🗑️ Property listing removed.');
   };
 
   // Matrimony
@@ -1135,6 +1163,117 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     showToast('🗑️ Chat history cleared.');
   };
 
+  const editChatMessage = (chatId: string, messageId: string, newText: string) => {
+    if (!newText.trim()) return;
+    const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    setChats((prev) =>
+      prev.map((c) => {
+        if (c.id === chatId) {
+          const updatedMessages = c.messages.map((m) => {
+            if (m.id === messageId || m.clientMessageId === messageId) {
+              return {
+                ...m,
+                text: newText.trim(),
+                editedAt: timeStr,
+                editCount: (m.editCount || 0) + 1
+              };
+            }
+            return m;
+          });
+          const last = updatedMessages[updatedMessages.length - 1];
+          return {
+            ...c,
+            lastMessage: last ? last.text : c.lastMessage,
+            messages: updatedMessages
+          };
+        }
+        return c;
+      })
+    );
+    showToast('✏️ Message edited successfully!');
+  };
+
+  const deleteChatMessage = (chatId: string, messageId: string, forEveryone: boolean) => {
+    const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    setChats((prev) =>
+      prev.map((c) => {
+        if (c.id === chatId) {
+          let updatedMessages: ChatMessage[];
+          if (forEveryone) {
+            updatedMessages = c.messages.map((m) => {
+              if (m.id === messageId || m.clientMessageId === messageId) {
+                return {
+                  ...m,
+                  text: '🚫 This message was deleted',
+                  isDeleted: true,
+                  deletedForEveryone: true,
+                  deletedAt: timeStr,
+                  mediaUrl: undefined,
+                  mediaType: undefined,
+                  poll: undefined
+                };
+              }
+              return m;
+            });
+          } else {
+            updatedMessages = c.messages.filter((m) => m.id !== messageId && m.clientMessageId !== messageId);
+          }
+
+          const last = updatedMessages[updatedMessages.length - 1];
+          return {
+            ...c,
+            lastMessage: last ? last.text : 'No messages',
+            messages: updatedMessages
+          };
+        }
+        return c;
+      })
+    );
+    showToast(forEveryone ? '🗑️ Message deleted for everyone.' : '🗑️ Message deleted for you.');
+  };
+
+  const pinMessageToChat = (chatId: string, message: ChatMessage) => {
+    const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    setChats((prev) =>
+      prev.map((c) => {
+        if (c.id === chatId) {
+          const currentPins = c.pinnedMessages || [];
+          if (currentPins.some((p) => p.messageId === message.id)) return c;
+          const newPin = {
+            messageId: message.id,
+            text: message.text || `[${message.mediaType?.toUpperCase() || 'Attachment'}]`,
+            senderName: message.senderName,
+            pinnedBy: user.name,
+            pinnedAt: timeStr
+          };
+          return {
+            ...c,
+            isPinned: true,
+            pinnedMessages: [newPin, ...currentPins]
+          };
+        }
+        return c;
+      })
+    );
+    showToast(`📌 Message pinned to ${chatId}!`);
+  };
+
+  const unpinMessageFromChat = (chatId: string, messageId: string) => {
+    setChats((prev) =>
+      prev.map((c) => {
+        if (c.id === chatId) {
+          const remaining = (c.pinnedMessages || []).filter((p) => p.messageId !== messageId);
+          return {
+            ...c,
+            pinnedMessages: remaining
+          };
+        }
+        return c;
+      })
+    );
+    showToast('📌 Message unpinned.');
+  };
+
   // Scheduled Messages & Chat Reminders Actions
   const scheduleChatMessage = (
     chatId: string,
@@ -1288,6 +1427,8 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         updateUser,
         properties,
         toggleSaveProperty,
+        addProperty,
+        deleteProperty,
         matrimonyProfiles,
         sendInterest,
         toggleShortlistMatrimony,
@@ -1316,6 +1457,10 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         toggleMuteChat,
         setChatWallpaper,
         clearChatHistory,
+        editChatMessage,
+        deleteChatMessage,
+        pinMessageToChat,
+        unpinMessageFromChat,
         registeredUsers,
         refreshRegisteredUsers,
         scheduledMessages,

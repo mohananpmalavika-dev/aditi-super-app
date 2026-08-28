@@ -77,6 +77,13 @@ import { BroadcastModal } from './BroadcastModal';
 import { ChatDetailsDrawer } from './ChatDetailsDrawer';
 import { AddFriendModal } from './AddFriendModal';
 import { PollModal } from './PollModal';
+import { MessageInfoModal } from './MessageInfoModal';
+import { SharedMediaDrawer } from './SharedMediaDrawer';
+import { GroupSettingsModal } from './GroupSettingsModal';
+import { ChatSearchModal } from './ChatSearchModal';
+import { AiChatAssistantModal } from './AiChatAssistantModal';
+import { filterConversationsByFolder } from '../../services/messagingEngine';
+import { ChatFolderType } from '../../types/superApp';
 import { StickerGifPickerModal } from './StickerGifPickerModal';
 import { VideoNoteModal } from './VideoNoteModal';
 import { ForwardModal } from './ForwardModal';
@@ -112,6 +119,10 @@ export const LiveChatMessenger: React.FC = () => {
     toggleMuteChat,
     setChatWallpaper,
     clearChatHistory,
+    editChatMessage,
+    deleteChatMessage,
+    pinMessageToChat,
+    unpinMessageFromChat,
     scheduledMessages,
     chatReminders,
     scheduleChatMessage,
@@ -128,11 +139,22 @@ export const LiveChatMessenger: React.FC = () => {
   
   const [inputText, setInputText] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
-  const [chatFilterTab, setChatFilterTab] = useState<'all' | 'direct' | 'group' | 'channel'>('all');
+  const [chatFolderTab, setChatFolderTab] = useState<ChatFolderType>('all');
   const [isRecordingAudio, setIsRecordingAudio] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showSecretBar, setShowSecretBar] = useState(false);
   const [secretTimer, setSecretTimer] = useState<number | null>(null);
+
+  // New Production Messenger Modals & Drawers
+  const [messageInfoModalOpen, setMessageInfoModalOpen] = useState(false);
+  const [messageInfoMsg, setMessageInfoMsg] = useState<ChatMessage | null>(null);
+  const [sharedMediaDrawerOpen, setSharedMediaDrawerOpen] = useState(false);
+  const [groupSettingsModalOpen, setGroupSettingsModalOpen] = useState(false);
+  const [chatSearchModalOpen, setChatSearchModalOpen] = useState(false);
+  const [aiAssistantModalOpen, setAiAssistantModalOpen] = useState(false);
+  const [aiAssistantSelectedMsg, setAiAssistantSelectedMsg] = useState<ChatMessage | null>(null);
+  const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
+  const [editingMessageText, setEditingMessageText] = useState('');
 
   // Live Camera & Audio Walk & Chat Background with Location Tagging
   const [isLiveBgActive, setIsLiveBgActive] = useState(false);
@@ -386,28 +408,8 @@ export const LiveChatMessenger: React.FC = () => {
     return () => clearInterval(timer);
   }, [callModalOpen, floatingCallActive]);
 
-  // Filter and Sort: Pinned conversations always stick to the top
-  const filteredChats = chats
-    .filter((c) => {
-      const matchesSearch =
-        c.participantName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        c.roleOrContext.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (c.channelHandle && c.channelHandle.toLowerCase().includes(searchQuery.toLowerCase()));
-
-      if (!matchesSearch) return false;
-
-      if (chatFilterTab === 'direct') {
-        return !c.conversationType || c.conversationType === 'direct';
-      }
-      if (chatFilterTab === 'group') {
-        return c.conversationType === 'group';
-      }
-      if (chatFilterTab === 'channel') {
-        return c.conversationType === 'channel';
-      }
-
-      return true;
-    })
+  // Filter and Sort: Folders + Pinned conversations priority
+  const filteredChats = filterConversationsByFolder(chats, chatFolderTab, searchQuery)
     .sort((a, b) => {
       if (a.isPinned && !b.isPinned) return -1;
       if (!a.isPinned && b.isPinned) return 1;
@@ -640,13 +642,13 @@ export const LiveChatMessenger: React.FC = () => {
             />
           </div>
 
-          {/* Category Filter Tabs */}
-          <div className="flex items-center gap-1 p-0.5 rounded-xl bg-slate-950 border border-slate-800 text-[11px] font-bold">
+          {/* Chat Inbox Folders & Category Filter Tabs */}
+          <div className="flex items-center gap-1 p-0.5 rounded-xl bg-slate-950 border border-slate-800 text-[10px] font-bold overflow-x-auto pb-0.5">
             <button
               type="button"
-              onClick={() => setChatFilterTab('all')}
-              className={`flex-1 py-1 rounded-lg transition-all text-center ${
-                chatFilterTab === 'all'
+              onClick={() => setChatFolderTab('all')}
+              className={`px-2.5 py-1 rounded-lg transition-all text-center whitespace-nowrap ${
+                chatFolderTab === 'all'
                   ? 'bg-indigo-600 text-white shadow-sm'
                   : 'text-slate-400 hover:text-white'
               }`}
@@ -655,20 +657,31 @@ export const LiveChatMessenger: React.FC = () => {
             </button>
             <button
               type="button"
-              onClick={() => setChatFilterTab('direct')}
-              className={`flex-1 py-1 rounded-lg transition-all text-center ${
-                chatFilterTab === 'direct'
+              onClick={() => setChatFolderTab('unread')}
+              className={`px-2.5 py-1 rounded-lg transition-all text-center whitespace-nowrap ${
+                chatFolderTab === 'unread'
                   ? 'bg-indigo-600 text-white shadow-sm'
                   : 'text-slate-400 hover:text-white'
               }`}
             >
-              Direct
+              Unread
             </button>
             <button
               type="button"
-              onClick={() => setChatFilterTab('group')}
-              className={`flex-1 py-1 rounded-lg transition-all text-center ${
-                chatFilterTab === 'group'
+              onClick={() => setChatFolderTab('personal')}
+              className={`px-2.5 py-1 rounded-lg transition-all text-center whitespace-nowrap ${
+                chatFolderTab === 'personal'
+                  ? 'bg-indigo-600 text-white shadow-sm'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              Personal
+            </button>
+            <button
+              type="button"
+              onClick={() => setChatFolderTab('groups')}
+              className={`px-2.5 py-1 rounded-lg transition-all text-center whitespace-nowrap ${
+                chatFolderTab === 'groups'
                   ? 'bg-indigo-600 text-white shadow-sm'
                   : 'text-slate-400 hover:text-white'
               }`}
@@ -677,14 +690,25 @@ export const LiveChatMessenger: React.FC = () => {
             </button>
             <button
               type="button"
-              onClick={() => setChatFilterTab('channel')}
-              className={`flex-1 py-1 rounded-lg transition-all text-center ${
-                chatFilterTab === 'channel'
+              onClick={() => setChatFolderTab('channels')}
+              className={`px-2.5 py-1 rounded-lg transition-all text-center whitespace-nowrap ${
+                chatFolderTab === 'channels'
                   ? 'bg-purple-600 text-white shadow-sm'
                   : 'text-slate-400 hover:text-white'
               }`}
             >
               Channels
+            </button>
+            <button
+              type="button"
+              onClick={() => setChatFolderTab('favorites')}
+              className={`px-2.5 py-1 rounded-lg transition-all text-center whitespace-nowrap ${
+                chatFolderTab === 'favorites'
+                  ? 'bg-amber-500 text-slate-950 font-black shadow-sm'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              ⭐ Favorites
             </button>
           </div>
         </div>
@@ -970,6 +994,47 @@ export const LiveChatMessenger: React.FC = () => {
               <Mail className="w-4 h-4" />
             </button>
 
+            {/* In-Chat & Media Search Modal */}
+            <button
+              onClick={() => setChatSearchModalOpen(true)}
+              className="p-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-indigo-300 hover:text-white transition-colors"
+              title="Search Messages & Media in Chat"
+            >
+              <Search className="w-4 h-4" />
+            </button>
+
+            {/* Shared Media & Docs Vault */}
+            <button
+              onClick={() => setSharedMediaDrawerOpen(true)}
+              className="p-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-purple-400 hover:text-purple-300 transition-colors"
+              title="Shared Photos, Documents, Audio & Links Vault"
+            >
+              <FileText className="w-4 h-4" />
+            </button>
+
+            {/* OmniBrain AI Chat Assistant Tools */}
+            <button
+              onClick={() => {
+                setAiAssistantSelectedMsg(null);
+                setAiAssistantModalOpen(true);
+              }}
+              className="p-2 rounded-xl bg-indigo-600/20 hover:bg-indigo-600/40 text-yellow-400 border border-indigo-500/30 transition-all hover:scale-105 shadow-sm"
+              title="OmniBrain AI: Unread Summaries, Task Extraction & Writing Assistant"
+            >
+              <Sparkles className="w-4 h-4" />
+            </button>
+
+            {/* Group Settings & Invite Link (if Group or Channel) */}
+            {(activeChat.conversationType === 'group' || activeChat.conversationType === 'channel') && (
+              <button
+                onClick={() => setGroupSettingsModalOpen(true)}
+                className="p-2 rounded-xl bg-indigo-600/30 hover:bg-indigo-600/50 text-indigo-300 border border-indigo-500/40 transition-colors"
+                title="Group Permissions & QR Invite Links"
+              >
+                <Users className="w-4 h-4" />
+              </button>
+            )}
+
             {/* Voice Call */}
             <button
               onClick={() => handleStartCall(false)}
@@ -1019,20 +1084,32 @@ export const LiveChatMessenger: React.FC = () => {
           </div>
         )}
 
-        {/* Pinned Message Banner */}
-        {pinnedMessage && (
-          <div className="px-4 py-2 bg-indigo-950/60 border-b border-indigo-500/30 flex items-center justify-between text-xs animate-in slide-in-from-top-1">
+        {/* Authoritative Synchronized Pinned Messages Banner */}
+        {((activeChat.pinnedMessages && activeChat.pinnedMessages.length > 0) || pinnedMessage) && (
+          <div className="px-4 py-2 bg-gradient-to-r from-indigo-950/80 via-slate-900 to-purple-950/80 border-b border-indigo-500/30 flex items-center justify-between text-xs animate-in slide-in-from-top-1 z-10">
             <div className="flex items-center gap-2 text-indigo-300 truncate">
-              <Pin className="w-3.5 h-3.5 text-indigo-400 flex-shrink-0" />
-              <span className="font-bold">Pinned:</span>
-              <span className="truncate">{pinnedMessage}</span>
+              <Pin className="w-3.5 h-3.5 text-amber-400 fill-amber-400 flex-shrink-0" />
+              <span className="font-bold text-amber-300">Pinned:</span>
+              <span className="truncate">
+                {activeChat.pinnedMessages && activeChat.pinnedMessages.length > 0
+                  ? activeChat.pinnedMessages[0].text
+                  : pinnedMessage}
+              </span>
             </div>
-            <button
-              onClick={() => setPinnedMessage(null)}
-              className="text-slate-400 hover:text-white ml-2 text-[11px]"
-            >
-              Dismiss
-            </button>
+            <div className="flex items-center gap-2 flex-shrink-0 ml-2">
+              <button
+                type="button"
+                onClick={() => {
+                  if (activeChat.pinnedMessages && activeChat.pinnedMessages.length > 0) {
+                    unpinMessageFromChat(activeChat.id, activeChat.pinnedMessages[0].messageId);
+                  }
+                  setPinnedMessage(null);
+                }}
+                className="text-slate-400 hover:text-white text-[11px] font-bold"
+              >
+                Unpin
+              </button>
+            </div>
           </div>
         )}
 
@@ -1080,6 +1157,7 @@ export const LiveChatMessenger: React.FC = () => {
             const isVideoNote = msg.mediaType === 'video_note';
             const isSticker = msg.mediaType === 'sticker';
             const isGif = msg.mediaType === 'gif';
+            const isDeleted = msg.isDeleted || msg.deletedForEveryone;
             const remainingSecs = msg.expiresAt ? Math.max(0, Math.ceil((msg.expiresAt - now) / 1000)) : null;
 
             return (
@@ -1109,241 +1187,286 @@ export const LiveChatMessenger: React.FC = () => {
 
                   <div
                     className={`p-3.5 rounded-2xl text-xs sm:text-sm leading-relaxed shadow-lg relative ${
-                      isSticker
+                      isDeleted
+                        ? 'bg-slate-900/60 border border-slate-800 text-slate-500 italic'
+                        : isSticker
                         ? 'bg-transparent shadow-none p-0'
                         : isUser
                         ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-br-none'
                         : 'bg-slate-900 border border-slate-800 text-slate-200 rounded-bl-none'
                     }`}
                   >
-                    
-                    {/* Live Poll Rendering */}
-                    {msg.poll ? (
-                      <div className="space-y-3 p-1 min-w-[240px] sm:min-w-[280px]">
-                        <div className="flex items-center justify-between gap-2 border-b border-white/10 pb-2">
-                          <div className="flex items-center gap-2">
-                            <BarChart2 className="w-4 h-4 text-indigo-300" />
-                            <span className="font-extrabold text-sm">{msg.poll.question}</span>
-                          </div>
-                        </div>
-                        
-                        <div className="space-y-2">
-                          {msg.poll.options.map((opt) => {
-                            const isVoted = opt.votedUserIds?.includes('user');
-                            const pct = msg.poll!.totalVotes > 0 ? Math.round((opt.votes / msg.poll!.totalVotes) * 100) : 0;
-                            return (
-                              <button
-                                key={opt.id}
-                                type="button"
-                                onClick={() => votePoll(activeChat.id, msg.id, opt.id)}
-                                className={`w-full p-2.5 rounded-xl border text-left text-xs transition-all relative overflow-hidden flex flex-col gap-1.5 ${
-                                  isVoted ? 'border-indigo-400 bg-indigo-950/60 ring-1 ring-indigo-400/40' : 'border-white/10 bg-black/20 hover:bg-black/40'
-                                }`}
-                              >
-                                <div className="flex items-center justify-between relative z-10">
-                                  <div className="flex items-center gap-2">
-                                    <div className={`w-4 h-4 rounded-md border flex items-center justify-center ${isVoted ? 'bg-indigo-600 border-indigo-400 text-white' : 'border-white/40'}`}>
-                                      {isVoted && <Check className="w-3 h-3 stroke-[3]" />}
-                                    </div>
-                                    <span className="font-bold">{opt.text}</span>
-                                  </div>
-                                  <span className="font-mono font-bold text-[11px]">{pct}% ({opt.votes})</span>
-                                </div>
-                                <div className="w-full bg-white/10 h-1.5 rounded-full overflow-hidden">
-                                  <div className="bg-indigo-400 h-full transition-all duration-500 rounded-full" style={{ width: `${pct}%` }} />
-                                </div>
-                              </button>
-                            );
-                          })}
-                        </div>
-
-                        <div className="flex items-center justify-between text-[10px] text-white/70 pt-1">
-                          <span>{msg.poll.totalVotes} vote{msg.poll.totalVotes !== 1 ? 's' : ''}</span>
-                          <span>{msg.poll.isAnonymous ? '🔒 Anonymous poll' : 'Public poll'}</span>
-                        </div>
+                    {/* Quoted Reply Snapshot Header */}
+                    {msg.replySnapshot && !isDeleted && (
+                      <div className="mb-2 p-2 rounded-xl bg-black/20 border-l-4 border-indigo-400 text-[11px] space-y-0.5">
+                        <span className="font-bold text-indigo-300 block">{msg.replySnapshot.senderName}</span>
+                        <p className="text-white/80 line-clamp-1 italic">{msg.replySnapshot.text}</p>
                       </div>
-                    ) : isVideoNote ? (
-                      <div className="relative p-1">
-                        <div className="w-48 h-48 sm:w-56 sm:h-56 rounded-full overflow-hidden border-4 border-indigo-500/80 shadow-2xl bg-black relative group/vid">
-                          <img
-                            src={msg.mediaUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=500&auto=format&fit=crop&q=80'}
-                            alt="Round Video Note"
-                            className="w-full h-full object-cover"
-                          />
-                          <div className="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 group-hover/vid:opacity-100 transition-opacity">
-                            <Play className="w-10 h-10 text-white fill-white" />
-                          </div>
-                        </div>
-                        <div className="flex items-center justify-center gap-1.5 mt-1.5 text-[10px] text-indigo-300 font-mono">
-                          <Video className="w-3 h-3" />
-                          <span>Round Video Memo ({msg.audioDuration || 6}s)</span>
-                        </div>
-                      </div>
-                    ) : isSticker ? (
-                      <div className="p-1">
-                        <img
-                          src={msg.mediaUrl}
-                          alt="Sticker"
-                          className="w-36 h-36 object-contain rounded-2xl hover:scale-105 transition-transform"
-                        />
-                      </div>
-                    ) : isGif ? (
-                      <div className="p-1 rounded-2xl overflow-hidden max-w-xs">
-                        <img
-                          src={msg.mediaUrl}
-                          alt="GIF"
-                          className="w-full max-h-56 object-cover rounded-xl"
-                        />
-                      </div>
-                    ) : isAudio ? (
-                      <div className="flex items-center gap-3 py-1 min-w-[220px]">
-                        <button
-                          onClick={() => setPlayingAudioId(playingAudioId === msg.id ? null : msg.id)}
-                          className="p-2.5 rounded-full bg-white/20 hover:bg-white/30 text-white transition-colors"
-                        >
-                          {playingAudioId === msg.id ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
-                        </button>
-                        <div className="flex-1">
-                          <div className="flex items-center gap-1 h-5">
-                            {[30, 60, 45, 80, 55, 90, 70, 40, 65, 85, 40, 95].map((h, i) => (
-                              <div
-                                key={i}
-                                className={`w-1 rounded-full transition-all ${
-                                  playingAudioId === msg.id ? 'bg-yellow-300 animate-pulse' : 'bg-white/60'
-                                }`}
-                                style={{ height: `${h}%` }}
-                              />
-                            ))}
-                          </div>
-                          <span className="text-[10px] text-white/80 font-mono">MediaRecorder Audio Note</span>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => toggleAudioSpeed(msg.id)}
-                          className="px-2 py-0.5 rounded-full bg-white/20 hover:bg-white/30 text-[10px] font-extrabold text-white transition-colors"
-                          title="Playback Speed (WhatsApp/Telegram)"
-                        >
-                          {audioSpeedMap[msg.id] || 1}x
-                        </button>
-                      </div>
-                    ) : isSnap ? (
-                      <div className="space-y-2">
-                        {msg.mediaUrl && (
-                          <img
-                            src={msg.mediaUrl}
-                            alt="Snap"
-                            className="w-full max-h-60 rounded-xl object-cover"
-                          />
-                        )}
-                        <div className="flex items-center gap-2.5 py-1">
-                          <div className="p-2 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/30">
-                            <Flame className="w-4 h-4 fill-amber-400" />
-                          </div>
-                          <div>
-                            <span className="font-bold block text-xs">Ephemeral Snap</span>
-                            <span className="text-[10px] text-amber-300">Self-destruct view protection active</span>
-                          </div>
-                        </div>
-                      </div>
-                    ) : isLocation ? (
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2">
-                          <Navigation className="w-4 h-4 text-emerald-400 flex-shrink-0" />
-                          <span className="font-bold truncate">{msg.text.split('\n')[0]}</span>
-                        </div>
-                        <a
-                          href="https://www.openstreetmap.org"
-                          target="_blank"
-                          rel="noreferrer"
-                          className="block p-3 rounded-xl bg-slate-950/80 border border-emerald-500/30 hover:border-emerald-400 transition-colors text-xs text-emerald-300"
-                        >
-                          <div className="flex items-center justify-between">
-                            <span className="font-semibold">🗺️ View on OpenStreetMap</span>
-                            <ExternalLink className="w-3.5 h-3.5" />
-                          </div>
-                        </a>
-                      </div>
-                    ) : isEmail ? (
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2 font-bold text-emerald-300">
-                          <Mail className="w-4 h-4 text-emerald-400" />
-                          <span>{msg.text.split('\n')[0]}</span>
-                        </div>
-                        <p className="text-slate-300 font-mono text-[11px] whitespace-pre-line">
-                          {msg.text}
-                        </p>
-                      </div>
-                    ) : isFile ? (
-                      <div className="flex items-center gap-2.5">
-                        <FileText className="w-4 h-4 text-indigo-300" />
-                        <span className="font-medium">{msg.text}</span>
-                      </div>
-                    ) : (
-                      <p className="whitespace-pre-wrap">{msg.text}</p>
                     )}
 
-                    {/* Receiver AI Voice Narration & Talking Photo Chips */}
-                    {!msg.mediaType && !msg.poll && !isSnap && !isLocation && msg.text.trim() && (
-                      <div className="mt-2 pt-1.5 border-t border-white/10 flex items-center justify-between gap-1.5 flex-wrap">
-                        
-                        {/* Text to Voice Audio Narration Button */}
-                        <button
-                          type="button"
-                          onClick={() => handlePlayMessageInSenderVoice(msg)}
-                          className={`px-2.5 py-1 rounded-xl text-[11px] font-extrabold flex items-center gap-1.5 transition-all shadow-sm ${
-                            activePlayingVoiceMsgId === msg.id
-                              ? 'bg-purple-600 text-white shadow-purple-600/40 ring-2 ring-purple-400 animate-pulse'
-                              : isUser
-                              ? 'bg-indigo-950/80 hover:bg-indigo-900 border border-indigo-500/30 text-indigo-200'
-                              : 'bg-slate-900/90 hover:bg-slate-800 border border-purple-500/30 text-purple-300'
-                          }`}
-                          title="Listen to this text message spoken aloud (Text to Voice / ശബ്ദമാക്കുക)"
-                        >
-                          {activePlayingVoiceMsgId === msg.id ? (
-                            <>
-                              <Pause className="w-3 h-3 text-white" />
-                              <span>Speaking (വായിക്കുന്നു...)</span>
-                              <div className="flex items-center gap-0.5 ml-1">
-                                {[40, 90, 60, 100, 50].map((h, i) => (
+                    {/* Deleted Tombstone */}
+                    {isDeleted ? (
+                      <div className="flex items-center gap-2 py-1 text-slate-400 font-mono text-xs">
+                        <Ban className="w-3.5 h-3.5 text-slate-500" />
+                        <span>This message was deleted</span>
+                      </div>
+                    ) : editingMessageId === msg.id ? (
+                      /* Inline Message Editor */
+                      <div className="space-y-2 min-w-[240px]">
+                        <span className="font-bold text-[11px] text-amber-300 block">Edit Message:</span>
+                        <textarea
+                          value={editingMessageText}
+                          onChange={(e) => setEditingMessageText(e.target.value)}
+                          rows={2}
+                          className="w-full p-2 rounded-xl bg-slate-950 border border-amber-500 text-xs text-white focus:outline-none"
+                        />
+                        <div className="flex justify-end gap-2 text-[11px] font-bold">
+                          <button
+                            type="button"
+                            onClick={() => setEditingMessageId(null)}
+                            className="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              editChatMessage(activeChat.id, msg.id, editingMessageText);
+                              setEditingMessageId(null);
+                            }}
+                            className="px-3 py-1 rounded-lg bg-amber-500 text-slate-950 font-black"
+                          >
+                            Save
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        {/* Live Poll Rendering */}
+                        {msg.poll ? (
+                          <div className="space-y-3 p-1 min-w-[240px] sm:min-w-[280px]">
+                            <div className="flex items-center justify-between gap-2 border-b border-white/10 pb-2">
+                              <div className="flex items-center gap-2">
+                                <BarChart2 className="w-4 h-4 text-indigo-300" />
+                                <span className="font-extrabold text-sm">{msg.poll.question}</span>
+                              </div>
+                            </div>
+                            
+                            <div className="space-y-2">
+                              {msg.poll.options.map((opt) => {
+                                const isVoted = opt.votedUserIds?.includes('user');
+                                const pct = msg.poll!.totalVotes > 0 ? Math.round((opt.votes / msg.poll!.totalVotes) * 100) : 0;
+                                return (
+                                  <button
+                                    key={opt.id}
+                                    type="button"
+                                    onClick={() => votePoll(activeChat.id, msg.id, opt.id)}
+                                    className={`w-full p-2.5 rounded-xl border text-left text-xs transition-all relative overflow-hidden flex flex-col gap-1.5 ${
+                                      isVoted ? 'border-indigo-400 bg-indigo-950/60 ring-1 ring-indigo-400/40' : 'border-white/10 bg-black/20 hover:bg-black/40'
+                                    }`}
+                                  >
+                                    <div className="flex items-center justify-between relative z-10">
+                                      <div className="flex items-center gap-2">
+                                        <div className={`w-4 h-4 rounded-md border flex items-center justify-center ${isVoted ? 'bg-indigo-600 border-indigo-400 text-white' : 'border-white/40'}`}>
+                                          {isVoted && <Check className="w-3 h-3 stroke-[3]" />}
+                                        </div>
+                                        <span className="font-bold">{opt.text}</span>
+                                      </div>
+                                      <span className="font-mono font-bold text-[11px]">{pct}% ({opt.votes})</span>
+                                    </div>
+                                    <div className="w-full bg-white/10 h-1.5 rounded-full overflow-hidden">
+                                      <div className="bg-indigo-400 h-full transition-all duration-500 rounded-full" style={{ width: `${pct}%` }} />
+                                    </div>
+                                  </button>
+                                );
+                              })}
+                            </div>
+
+                            <div className="flex items-center justify-between text-[10px] text-white/70 pt-1">
+                              <span>{msg.poll.totalVotes} vote{msg.poll.totalVotes !== 1 ? 's' : ''}</span>
+                              <span>{msg.poll.isAnonymous ? '🔒 Anonymous poll' : 'Public poll'}</span>
+                            </div>
+                          </div>
+                        ) : isVideoNote ? (
+                          <div className="relative p-1">
+                            <div className="w-48 h-48 sm:w-56 sm:h-56 rounded-full overflow-hidden border-4 border-indigo-500/80 shadow-2xl bg-black relative group/vid">
+                              <img
+                                src={msg.mediaUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=500&auto=format&fit=crop&q=80'}
+                                alt="Round Video Note"
+                                className="w-full h-full object-cover"
+                              />
+                              <div className="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 group-hover/vid:opacity-100 transition-opacity">
+                                <Play className="w-10 h-10 text-white fill-white" />
+                              </div>
+                            </div>
+                            <div className="flex items-center justify-center gap-1.5 mt-1.5 text-[10px] text-indigo-300 font-mono">
+                              <Video className="w-3 h-3" />
+                              <span>Round Video Memo ({msg.audioDuration || 6}s)</span>
+                            </div>
+                          </div>
+                        ) : isSticker ? (
+                          <div className="p-1">
+                            <img
+                              src={msg.mediaUrl}
+                              alt="Sticker"
+                              className="w-36 h-36 object-contain rounded-2xl hover:scale-105 transition-transform"
+                            />
+                          </div>
+                        ) : isGif ? (
+                          <div className="p-1 rounded-2xl overflow-hidden max-w-xs">
+                            <img
+                              src={msg.mediaUrl}
+                              alt="GIF"
+                              className="w-full max-h-56 object-cover rounded-xl"
+                            />
+                          </div>
+                        ) : isAudio ? (
+                          <div className="flex items-center gap-3 py-1 min-w-[220px]">
+                            <button
+                              onClick={() => setPlayingAudioId(playingAudioId === msg.id ? null : msg.id)}
+                              className="p-2.5 rounded-full bg-white/20 hover:bg-white/30 text-white transition-colors"
+                            >
+                              {playingAudioId === msg.id ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+                            </button>
+                            <div className="flex-1">
+                              <div className="flex items-center gap-1 h-5">
+                                {[30, 60, 45, 80, 55, 90, 70, 40, 65, 85, 40, 95].map((h, i) => (
                                   <div
                                     key={i}
-                                    className="w-0.5 bg-white rounded-full animate-pulse"
-                                    style={{ height: `${h * 0.12}px`, animationDelay: `${i * 0.1}s` }}
+                                    className={`w-1 rounded-full transition-all ${
+                                      playingAudioId === msg.id ? 'bg-yellow-300 animate-pulse' : 'bg-white/60'
+                                    }`}
+                                    style={{ height: `${h}%` }}
                                   />
                                 ))}
                               </div>
-                            </>
-                          ) : (
-                            <>
-                              <Volume2 className="w-3 h-3 text-purple-400" />
-                              <span>🔊 Text to Voice (ശബ്ദമാക്കുക)</span>
-                            </>
-                          )}
-                        </button>
+                              <span className="text-[10px] text-white/80 font-mono">MediaRecorder Audio Note</span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => toggleAudioSpeed(msg.id)}
+                              className="px-2 py-0.5 rounded-full bg-white/20 hover:bg-white/30 text-[10px] font-extrabold text-white transition-colors"
+                              title="Playback Speed (WhatsApp/Telegram)"
+                            >
+                              {audioSpeedMap[msg.id] || 1}x
+                            </button>
+                          </div>
+                        ) : isSnap ? (
+                          <div className="space-y-2">
+                            {msg.mediaUrl && (
+                              <img
+                                src={msg.mediaUrl}
+                                alt="Snap"
+                                className="w-full max-h-60 rounded-xl object-cover"
+                              />
+                            )}
+                            <div className="flex items-center gap-2.5 py-1">
+                              <div className="p-2 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                                <Flame className="w-4 h-4 fill-amber-400" />
+                              </div>
+                              <div>
+                                <span className="font-bold block text-xs">Ephemeral Snap</span>
+                                <span className="text-[10px] text-amber-300">Self-destruct view protection active</span>
+                              </div>
+                            </div>
+                          </div>
+                        ) : isLocation ? (
+                          <div className="space-y-2">
+                            <div className="flex items-center gap-2">
+                              <Navigation className="w-4 h-4 text-emerald-400" />
+                              <span className="font-bold text-xs">{msg.text}</span>
+                            </div>
+                            <div className="h-32 w-full rounded-xl bg-slate-950 border border-slate-700/60 overflow-hidden relative group/loc">
+                              <div className="absolute inset-0 bg-[radial-gradient(#6366f1_1px,transparent_1px)] [background-size:12px_12px] opacity-40" />
+                              <div className="absolute inset-0 flex items-center justify-center">
+                                <div className="p-2.5 rounded-2xl bg-indigo-600/90 text-white shadow-xl flex items-center gap-1.5 text-xs font-bold animate-bounce">
+                                  <MapPin className="w-4 h-4" />
+                                  <span>Live Geolocation</span>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ) : isFile ? (
+                          <div className="flex items-center gap-3 py-1">
+                            <div className="p-2.5 rounded-xl bg-purple-600/30 text-purple-300 border border-purple-500/40">
+                              <FileText className="w-5 h-5" />
+                            </div>
+                            <div className="min-w-0">
+                              <span className="font-bold block truncate text-xs">{msg.text}</span>
+                              <span className="text-[10px] text-purple-300">Shared Attachment</span>
+                            </div>
+                          </div>
+                        ) : isEmail ? (
+                          <div className="space-y-2">
+                            <div className="flex items-center gap-2 text-emerald-300 font-bold">
+                              <Mail className="w-4 h-4" />
+                              <span>Dispatched via SMTP Email</span>
+                            </div>
+                            <p className="whitespace-pre-wrap font-mono text-[11px] bg-slate-950/60 p-2.5 rounded-xl border border-slate-800">
+                              {msg.text}
+                            </p>
+                          </div>
+                        ) : (
+                          <div className="space-y-2">
+                            {msg.mediaUrl && (
+                              <img
+                                src={msg.mediaUrl}
+                                alt="Attachment"
+                                className="w-full max-h-64 object-cover rounded-xl mb-2"
+                              />
+                            )}
+                            <p className="whitespace-pre-wrap leading-relaxed">{msg.text}</p>
+                            
+                            {/* AI Voice Avatar Player Button (Text to Voice) */}
+                            {!isUser && (
+                              <div className="pt-2 border-t border-slate-800/80 flex items-center gap-1.5 flex-wrap">
+                                <button
+                                  type="button"
+                                  onClick={() => handlePlayMessageInSenderVoice(msg)}
+                                  className={`px-2.5 py-1 rounded-xl text-[11px] font-bold flex items-center gap-1.5 transition-all shadow-sm ${
+                                    activePlayingVoiceMsgId === msg.id
+                                      ? 'bg-purple-600 text-white animate-pulse'
+                                      : 'bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 border border-purple-500/30'
+                                  }`}
+                                  title="Listen to this text message spoken aloud"
+                                >
+                                  {activePlayingVoiceMsgId === msg.id ? (
+                                    <>
+                                      <Pause className="w-3 h-3 text-white" />
+                                      <span>Speaking...</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Volume2 className="w-3 h-3 text-purple-400" />
+                                      <span>🔊 Text to Voice</span>
+                                    </>
+                                  )}
+                                </button>
 
-                        {/* Interactive Talking Photo Avatar Button */}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setTalkingPortraitModalData({
-                              senderName: msg.senderName,
-                              senderAvatar: msg.talkingPhotoUrl || (isUser ? user.avatar : activeChat.participantAvatar),
-                              messageText: msg.text,
-                              voiceProfile: msg.voiceProfile
-                            });
-                          }}
-                          className="px-2.5 py-1 rounded-xl bg-gradient-to-r from-purple-600/30 to-indigo-600/30 hover:from-purple-600/50 hover:to-indigo-600/50 border border-purple-500/40 text-purple-200 text-[11px] font-extrabold flex items-center gap-1.5 transition-all hover:scale-105 shadow-sm"
-                          title="Watch sender's photo talk and speak this message with lip-sync animation"
-                        >
-                          <Sparkles className="w-3 h-3 text-purple-400" />
-                          <span>🗣️ Watch Photo Speak (സംസാരിക്കുന്ന ഫോട്ടോ)</span>
-                        </button>
-
-                      </div>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setTalkingPortraitModalData({
+                                      senderName: msg.senderName,
+                                      senderAvatar: msg.talkingPhotoUrl || activeChat.participantAvatar,
+                                      messageText: msg.text,
+                                      voiceProfile: msg.voiceProfile
+                                    });
+                                  }}
+                                  className="px-2.5 py-1 rounded-xl bg-indigo-600/20 hover:bg-indigo-600/30 border border-indigo-500/30 text-indigo-200 text-[11px] font-extrabold flex items-center gap-1 transition-all"
+                                >
+                                  <Sparkles className="w-3 h-3 text-yellow-400" />
+                                  <span>🗣️ Photo Lip-Sync</span>
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </>
                     )}
 
                     {/* Disappearing Message Live Countdown Badge */}
-                    {msg.isDisappearing && remainingSecs !== null && (
+                    {msg.isDisappearing && remainingSecs !== null && !isDeleted && (
                       <div className="mt-2 pt-1.5 border-t border-white/15 flex items-center justify-between gap-2 text-[10px] font-mono">
                         <div className="flex items-center gap-1 text-rose-300 font-bold animate-pulse">
                           <Flame className="w-3.5 h-3.5 text-rose-400 fill-rose-400" />
@@ -1356,84 +1479,114 @@ export const LiveChatMessenger: React.FC = () => {
                     )}
 
                     {/* Quick Hover Message Action Bar */}
-                    <div className="absolute right-2 -top-3 hidden group-hover:flex items-center gap-1 bg-slate-900 border border-slate-800 rounded-lg p-1 shadow-xl z-20">
-                      <button
-                        onClick={() => handlePlayMessageInSenderVoice(msg)}
-                        className="p-1 hover:text-purple-400 text-slate-400"
-                        title="Text to Voice (ശബ്ദമാക്കുക / Speak)"
-                      >
-                        <Volume2 className="w-3 h-3 text-purple-400" />
-                      </button>
-                      <button
-                        onClick={() => setReplyingMessage({ id: msg.id, text: msg.text, senderName: msg.senderName })}
-                        className="p-1 hover:text-indigo-400 text-slate-400"
-                        title="Reply"
-                      >
-                        <CornerUpLeft className="w-3 h-3" />
-                      </button>
-                      <button
-                        onClick={() => toggleStarMessage(activeChat.id, msg.id)}
-                        className={`p-1 transition-colors ${msg.isStarred ? 'text-yellow-400' : 'hover:text-yellow-400 text-slate-400'}`}
-                        title={msg.isStarred ? 'Unstar Message' : 'Star Message'}
-                      >
-                        <Star className={`w-3 h-3 ${msg.isStarred ? 'fill-current' : ''}`} />
-                      </button>
-                      <button
-                        onClick={() => {
-                          setForwardingMsg(msg);
-                          setForwardModalOpen(true);
-                        }}
-                        className="p-1 hover:text-indigo-400 text-slate-400"
-                        title="Forward Message"
-                      >
-                        <Forward className="w-3 h-3" />
-                      </button>
-                      <button
-                        onClick={() => handleMessageToEmail(msg.text)}
-                        className="p-1 hover:text-emerald-400 text-slate-400"
-                        title="Send as Email"
-                      >
-                        <Mail className="w-3 h-3" />
-                      </button>
-                      <button
-                        onClick={() => {
-                          setSchedulerInitialText(msg.text);
-                          setSchedulerInitialMode('reminder');
-                          setSchedulerModalOpen(true);
-                        }}
-                        className="p-1 hover:text-amber-400 text-slate-400"
-                        title="Set Reminder for this Message (WhatsApp & Telegram)"
-                      >
-                        <Clock className="w-3 h-3" />
-                      </button>
-                      <button
-                        onClick={() => {
-                          setPinnedMessage(msg.text);
-                          showToast('📌 Message pinned!');
-                        }}
-                        className="p-1 hover:text-yellow-400 text-slate-400"
-                        title="Pin Message"
-                      >
-                        <Pin className="w-3 h-3" />
-                      </button>
-                      <button
-                        onClick={() => {
-                          navigator.clipboard.writeText(msg.text);
-                          showToast('📋 Message copied to clipboard!');
-                        }}
-                        className="p-1 hover:text-slate-200 text-slate-400"
-                        title="Copy"
-                      >
-                        <Copy className="w-3 h-3" />
-                      </button>
-                      <button
-                        onClick={() => setActiveReactionMsgId(activeReactionMsgId === msg.id ? null : msg.id)}
-                        className="p-1 hover:text-pink-400 text-slate-400"
-                        title="React"
-                      >
-                        <Smile className="w-3 h-3" />
-                      </button>
-                    </div>
+                    {!isDeleted && (
+                      <div className="absolute right-2 -top-3 hidden group-hover:flex items-center gap-1 bg-slate-900 border border-slate-800 rounded-lg p-1 shadow-xl z-20">
+                        {/* Message Info / Read Receipts */}
+                        <button
+                          onClick={() => {
+                            setMessageInfoMsg(msg);
+                            setMessageInfoModalOpen(true);
+                          }}
+                          className="p-1 hover:text-cyan-400 text-slate-400"
+                          title="Message Info (Read & Delivery Receipts)"
+                        >
+                          <Info className="w-3 h-3" />
+                        </button>
+
+                        {/* Edit Message (if Sender) */}
+                        {isUser && (
+                          <button
+                            onClick={() => {
+                              setEditingMessageId(msg.id);
+                              setEditingMessageText(msg.text);
+                            }}
+                            className="p-1 hover:text-amber-400 text-slate-400"
+                            title="Edit Message"
+                          >
+                            <Edit2 className="w-3 h-3" />
+                          </button>
+                        )}
+
+                        {/* AI Assistant Tools */}
+                        <button
+                          onClick={() => {
+                            setAiAssistantSelectedMsg(msg);
+                            setAiAssistantModalOpen(true);
+                          }}
+                          className="p-1 hover:text-yellow-400 text-slate-400"
+                          title="OmniBrain AI Tools (Task, Calendar, Rewrite)"
+                        >
+                          <Sparkles className="w-3 h-3" />
+                        </button>
+
+                        <button
+                          onClick={() => setReplyingMessage({ id: msg.id, text: msg.text, senderName: msg.senderName })}
+                          className="p-1 hover:text-indigo-400 text-slate-400"
+                          title="Reply"
+                        >
+                          <CornerUpLeft className="w-3 h-3" />
+                        </button>
+
+                        <button
+                          onClick={() => toggleStarMessage(activeChat.id, msg.id)}
+                          className={`p-1 transition-colors ${msg.isStarred ? 'text-yellow-400' : 'hover:text-yellow-400 text-slate-400'}`}
+                          title={msg.isStarred ? 'Unstar Message' : 'Star Message'}
+                        >
+                          <Star className={`w-3 h-3 ${msg.isStarred ? 'fill-current' : ''}`} />
+                        </button>
+
+                        <button
+                          onClick={() => {
+                            setForwardingMsg(msg);
+                            setForwardModalOpen(true);
+                          }}
+                          className="p-1 hover:text-indigo-400 text-slate-400"
+                          title="Forward Message"
+                        >
+                          <Forward className="w-3 h-3" />
+                        </button>
+
+                        <button
+                          onClick={() => {
+                            pinMessageToChat(activeChat.id, msg);
+                          }}
+                          className="p-1 hover:text-yellow-400 text-slate-400"
+                          title="Pin Message Authoritatively"
+                        >
+                          <Pin className="w-3 h-3" />
+                        </button>
+
+                        <button
+                          onClick={() => {
+                            navigator.clipboard.writeText(msg.text);
+                            showToast('📋 Message copied to clipboard!');
+                          }}
+                          className="p-1 hover:text-slate-200 text-slate-400"
+                          title="Copy"
+                        >
+                          <Copy className="w-3 h-3" />
+                        </button>
+
+                        <button
+                          onClick={() => setActiveReactionMsgId(activeReactionMsgId === msg.id ? null : msg.id)}
+                          className="p-1 hover:text-pink-400 text-slate-400"
+                          title="React"
+                        >
+                          <Smile className="w-3 h-3" />
+                        </button>
+
+                        {/* Delete Message */}
+                        <button
+                          onClick={() => {
+                            deleteChatMessage(activeChat.id, msg.id, isUser);
+                          }}
+                          className="p-1 hover:text-rose-400 text-slate-400"
+                          title={isUser ? 'Delete for Everyone' : 'Delete for Me'}
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      </div>
+                    )}
 
                     {/* Reaction Floating Bar */}
                     {activeReactionMsgId === msg.id && (
@@ -1456,7 +1609,7 @@ export const LiveChatMessenger: React.FC = () => {
                   </div>
 
                   {/* Reaction Chips Display */}
-                  {msg.reactions && Object.keys(msg.reactions).length > 0 && (
+                  {msg.reactions && Object.keys(msg.reactions).length > 0 && !isDeleted && (
                     <div className={`flex items-center gap-1 px-1 flex-wrap ${isUser ? 'justify-end' : 'justify-start'}`}>
                       {Object.entries(msg.reactions).map(([emoji, count]) => (
                         <button
@@ -1476,15 +1629,32 @@ export const LiveChatMessenger: React.FC = () => {
                     </div>
                   )}
 
-                  {/* Timestamp, Star & Delivery State */}
+                  {/* Timestamp, Edited Tag, Star & Delivery State Machine Ticks */}
                   <div
                     className={`flex items-center gap-1.5 text-[10px] text-slate-500 px-1 ${
                       isUser ? 'justify-end' : 'justify-start'
                     }`}
                   >
                     {msg.isStarred && <Star className="w-2.5 h-2.5 text-yellow-400 fill-current" />}
+                    {msg.editedAt && <span className="italic text-amber-400/80">(edited • {msg.editedAt})</span>}
                     <span>{msg.timestamp}</span>
-                    {isUser && <CheckCheck className="w-3.5 h-3.5 text-indigo-400" />}
+                    
+                    {/* Delivery Status Machine Ticks */}
+                    {isUser && !isDeleted && (
+                      <span title={msg.status === 'read' ? 'Read by recipient' : msg.status === 'delivered' ? 'Delivered to device' : msg.status === 'sent' ? 'Sent to server' : msg.status === 'sending' || msg.status === 'queued' ? 'Sending...' : 'Delivered & Read'}>
+                        {msg.status === 'read' ? (
+                          <CheckCheck className="w-3.5 h-3.5 text-cyan-400" />
+                        ) : msg.status === 'delivered' ? (
+                          <CheckCheck className="w-3.5 h-3.5 text-slate-400" />
+                        ) : msg.status === 'sent' ? (
+                          <Check className="w-3.5 h-3.5 text-slate-400" />
+                        ) : msg.status === 'sending' || msg.status === 'queued' ? (
+                          <Clock className="w-3 h-3 text-amber-400 animate-spin" />
+                        ) : (
+                          <CheckCheck className="w-3.5 h-3.5 text-cyan-400" />
+                        )}
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>
@@ -2222,15 +2392,56 @@ export const LiveChatMessenger: React.FC = () => {
         onProfileUpdated={() => showToast('🎙️ AI Voice Avatar updated successfully!')}
       />
 
-      {/* AI Talking Photo Avatar Player Modal */}
-      {talkingPortraitModalData && (
-        <TalkingPortraitModal
-          isOpen={!!talkingPortraitModalData}
-          senderName={talkingPortraitModalData.senderName}
-          senderAvatar={talkingPortraitModalData.senderAvatar}
-          messageText={talkingPortraitModalData.messageText}
-          voiceProfile={talkingPortraitModalData.voiceProfile}
-          onClose={() => setTalkingPortraitModalData(null)}
+      {/* Message Info & Read Receipts Modal */}
+      <MessageInfoModal
+        isOpen={messageInfoModalOpen}
+        message={messageInfoMsg}
+        onClose={() => {
+          setMessageInfoModalOpen(false);
+          setMessageInfoMsg(null);
+        }}
+      />
+
+      {/* Shared Media, Docs, Audio & Links Vault Drawer */}
+      {activeChat && (
+        <SharedMediaDrawer
+          isOpen={sharedMediaDrawerOpen}
+          conversation={activeChat}
+          onClose={() => setSharedMediaDrawerOpen(false)}
+        />
+      )}
+
+      {/* Group Permissions & QR Invite Links Modal */}
+      {activeChat && (
+        <GroupSettingsModal
+          isOpen={groupSettingsModalOpen}
+          conversation={activeChat}
+          onClose={() => setGroupSettingsModalOpen(false)}
+        />
+      )}
+
+      {/* In-Chat & Media Search Modal */}
+      {activeChat && (
+        <ChatSearchModal
+          isOpen={chatSearchModalOpen}
+          conversation={activeChat}
+          onSelectMessage={(msgId) => {
+            showToast(`🔍 Jumped to message ID: ${msgId.slice(0, 8)}...`);
+          }}
+          onClose={() => setChatSearchModalOpen(false)}
+        />
+      )}
+
+      {/* OmniBrain AI Chat Assistant Modal */}
+      {activeChat && (
+        <AiChatAssistantModal
+          isOpen={aiAssistantModalOpen}
+          conversation={activeChat}
+          selectedMessage={aiAssistantSelectedMsg}
+          onClose={() => {
+            setAiAssistantModalOpen(false);
+            setAiAssistantSelectedMsg(null);
+          }}
         />
       )}
 
