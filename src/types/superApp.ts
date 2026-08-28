@@ -18,6 +18,7 @@ export interface UserProfile {
   avatar: string;
   handle: string;
   email: string;
+  phone?: string;
   zodiacSign: string;
   bio: string;
   location: string;
@@ -33,9 +34,10 @@ export interface RegisterCredentials {
   name: string;
   email: string;
   password: string;
-  handle: string;
-  zodiacSign: string;
-  avatar: string;
+  phone?: string;
+  handle?: string;
+  zodiacSign?: string;
+  avatar?: string;
   bio?: string;
   location?: string;
   dateOfBirth?: string;

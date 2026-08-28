@@ -29,6 +29,7 @@ export const SettingsView: React.FC = () => {
   const [name, setName] = useState(user.name);
   const [handle, setHandle] = useState(user.handle);
   const [email, setEmail] = useState(user.email);
+  const [phone, setPhone] = useState(user.phone || '');
   const [avatar, setAvatar] = useState(user.avatar);
   const [bio, setBio] = useState(user.bio);
   const [zodiac, setZodiac] = useState(user.zodiacSign);
@@ -85,6 +86,7 @@ export const SettingsView: React.FC = () => {
       name, 
       handle, 
       email, 
+      phone,
       avatar,
       bio, 
       zodiacSign: zodiac,
@@ -260,6 +262,20 @@ export const SettingsView: React.FC = () => {
               </div>
 
               <div className="space-y-1">
+                <label className="font-bold text-slate-300">Mobile / Phone Number</label>
+                <input
+                  type="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="+91 98765 43210"
+                  className="w-full p-2.5 rounded-xl bg-slate-950 border border-slate-700 text-xs text-white placeholder-slate-500"
+                />
+              </div>
+            </div>
+
+            {/* Gender, Date of Birth, Time of Birth, Zodiac */}
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+              <div className="space-y-1">
                 <label className="font-bold text-slate-300">Gender</label>
                 <select
                   value={gender}
@@ -273,10 +289,6 @@ export const SettingsView: React.FC = () => {
                   <option value="Prefer not to say">Prefer not to say</option>
                 </select>
               </div>
-            </div>
-
-            {/* Date of Birth, Time of Birth, Zodiac */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div className="space-y-1">
                 <label className="font-bold text-slate-300">Date of Birth</label>
                 <input

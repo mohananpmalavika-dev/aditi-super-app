@@ -338,6 +338,11 @@ export async function cloudRegisterUser(creds: RegisterCredentials): Promise<{ u
         ? window.location.origin
         : 'https://malabarbazaar.shop';
 
+      const userHandle = creds.handle
+        ? (creds.handle.startsWith('@') ? creds.handle : `@${creds.handle}`)
+        : `@${creds.email.split('@')[0]}`;
+      const userAvatar = getSafeAvatarUrl(creds.avatar, creds.name);
+
       const { data, error } = await supabase.auth.signUp({
         email: creds.email,
         password: creds.password,
@@ -345,9 +350,10 @@ export async function cloudRegisterUser(creds: RegisterCredentials): Promise<{ u
           emailRedirectTo: redirectUrl,
           data: {
             name: creds.name,
-            handle: creds.handle,
-            avatar: creds.avatar,
-            zodiacSign: creds.zodiacSign,
+            phone: creds.phone || '',
+            handle: userHandle,
+            avatar: userAvatar,
+            zodiacSign: creds.zodiacSign || 'Leo',
             bio: creds.bio || '',
             location: creds.location || 'Kozhikode, Kerala, India'
           }
@@ -366,8 +372,9 @@ export async function cloudRegisterUser(creds: RegisterCredentials): Promise<{ u
           id: data.user.id,
           name: creds.name,
           email: creds.email,
-          handle: creds.handle.startsWith('@') ? creds.handle : `@${creds.handle}`,
-          avatar: creds.avatar || GUEST_USER.avatar,
+          phone: creds.phone,
+          handle: userHandle,
+          avatar: userAvatar,
           zodiacSign: creds.zodiacSign || 'Leo',
           bio: creds.bio || 'Aditi Verified Member 🚀',
           location: creds.location || 'Kozhikode, Kerala, India',
@@ -384,12 +391,18 @@ export async function cloudRegisterUser(creds: RegisterCredentials): Promise<{ u
 
   // Local development session
   const normalizedEmailAddress = normalizedEmail(creds.email);
+  const userHandle = creds.handle
+    ? (creds.handle.startsWith('@') ? creds.handle : `@${creds.handle}`)
+    : `@${creds.email.split('@')[0]}`;
+  const userAvatar = getSafeAvatarUrl(creds.avatar, creds.name);
+
   const localUser: UserProfile = {
     id: `usr-${crypto.randomUUID()}`,
     name: creds.name,
     email: creds.email,
-    handle: creds.handle.startsWith('@') ? creds.handle : `@${creds.handle}`,
-    avatar: creds.avatar || GUEST_USER.avatar,
+    phone: creds.phone,
+    handle: userHandle,
+    avatar: userAvatar,
     zodiacSign: creds.zodiacSign || 'Leo',
     bio: creds.bio || 'Aditi Verified Member 🚀',
     location: creds.location || 'Kozhikode, Kerala, India',
