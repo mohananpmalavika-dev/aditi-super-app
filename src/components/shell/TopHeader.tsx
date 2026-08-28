@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { 
   Sparkles, 
   Search, 
-  Wallet, 
   Bell, 
   Grid, 
   Sun, 
@@ -10,7 +9,8 @@ import {
   Zap, 
   X,
   CheckCircle2,
-  ExternalLink
+  ExternalLink,
+  ChevronDown
 } from 'lucide-react';
 import { useSuperApp } from '../../context/SuperAppContext';
 import { useTheme } from '../../context/ThemeContext';
@@ -27,6 +27,7 @@ export const TopHeader: React.FC<TopHeaderProps> = ({ onOpenLauncher }) => {
   const { toggleAgentDrawer, askBrain } = useOmniBrain();
   
   const [searchQuery, setSearchQuery] = useState('');
+  const [showMobileSearch, setShowMobileSearch] = useState(false);
   const [showAlertsPopover, setShowAlertsPopover] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
 
@@ -36,6 +37,7 @@ export const TopHeader: React.FC<TopHeaderProps> = ({ onOpenLauncher }) => {
     askBrain(searchQuery);
     toggleAgentDrawer();
     setSearchQuery('');
+    setShowMobileSearch(false);
   };
 
   const handleAlertClick = (actionApp: MiniAppId, alertId: string) => {
@@ -45,42 +47,44 @@ export const TopHeader: React.FC<TopHeaderProps> = ({ onOpenLauncher }) => {
   };
 
   return (
-    <header className="sticky top-0 z-40 w-full glass border-b border-slate-800/80 px-4 lg:px-8 py-3">
-      <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
+    <header className="sticky top-0 z-40 w-full glass-header px-3 sm:px-6 lg:px-8 py-2.5 transition-all">
+      <div className="max-w-7xl mx-auto flex items-center justify-between gap-2.5 sm:gap-4">
         
         {/* Brand Logo & Mini-App Launcher Button */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
           <button
             onClick={() => setActiveMiniApp('home')}
             className="flex items-center gap-2.5 group focus:outline-none"
+            aria-label="Go to Home"
           >
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 via-purple-600 to-pink-500 flex items-center justify-center shadow-lg shadow-indigo-500/25 group-hover:scale-105 transition-transform">
-              <span className="text-xl">🌐</span>
+            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-indigo-500 via-purple-600 to-pink-500 flex items-center justify-center shadow-[0_8px_20px_-4px_rgba(99,102,241,0.6),inset_0_1px_1px_rgba(255,255,255,0.45)] group-hover:scale-105 active:scale-95 transition-all flex-shrink-0 border border-white/20">
+              <span className="text-xl drop-shadow-md">🌐</span>
             </div>
-            <div className="hidden sm:block text-left">
+            <div className="text-left">
               <div className="flex items-center gap-1.5">
-                <span className="font-extrabold text-lg tracking-tight bg-gradient-to-r from-white via-slate-100 to-indigo-200 bg-clip-text text-transparent">
+                <span className="font-black text-base sm:text-lg tracking-tight bg-gradient-to-r from-white via-indigo-100 to-purple-200 bg-clip-text text-transparent drop-shadow-sm">
                   Aditi
                 </span>
-                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-indigo-500/20 text-indigo-400 border border-indigo-500/30">
-                  SUPER APP
+                <span className="text-[9px] sm:text-[10px] font-black px-2 py-0.5 rounded-full bg-indigo-500/30 text-indigo-300 border border-indigo-400/40 shadow-[0_0_10px_rgba(99,102,241,0.4)] leading-none">
+                  PRO
                 </span>
               </div>
-              <p className="text-[11px] text-slate-400 font-medium">The Boundless LifeOS</p>
+              <p className="hidden sm:block text-[11px] text-slate-400 font-medium leading-none mt-0.5">The Boundless LifeOS</p>
             </div>
           </button>
 
           {/* Launcher Grid Trigger */}
           <button
             onClick={onOpenLauncher}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 text-xs font-semibold border border-slate-700 transition-colors"
+            className="hidden xs:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900/90 hover:bg-slate-800 active:scale-95 text-slate-300 text-xs font-bold border border-slate-700/80 shadow-3d-sm transition-all"
+            title="Open Mini-Apps Grid"
           >
             <Grid className="w-4 h-4 text-indigo-400" />
-            <span className="hidden md:inline">Mini-Apps</span>
+            <span className="hidden md:inline">Apps</span>
           </button>
         </div>
 
-        {/* OmniSearch / Universal Command Input */}
+        {/* OmniSearch / Universal Command Input (Desktop) */}
         <form onSubmit={handleSearchSubmit} className="flex-1 max-w-md hidden md:block">
           <div className="relative">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -88,29 +92,38 @@ export const TopHeader: React.FC<TopHeaderProps> = ({ onOpenLauncher }) => {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Ask Aditi Brain (e.g., 'find python tutor', '3BHK rent', 'draw anime city')..."
-              className="w-full pl-10 pr-24 py-2 rounded-xl bg-slate-900/90 border border-slate-800 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all"
+              placeholder="Ask Aditi Brain AI (e.g. 'find python tutor', '3BHK rent')..."
+              className="w-full pl-10 pr-24 py-2.5 rounded-2xl bg-slate-950/80 border border-white/10 text-xs sm:text-sm text-slate-200 placeholder-slate-500 shadow-inner focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/30 transition-all"
             />
             <button
               type="submit"
-              className="absolute right-1.5 top-1/2 -translate-y-1/2 px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-[11px] font-semibold text-white flex items-center gap-1 transition-colors"
+              className="absolute right-1.5 top-1/2 -translate-y-1/2 px-3 py-1.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-[11px] font-bold text-white flex items-center gap-1 shadow-md shadow-indigo-600/30 active:scale-95 transition-all"
             >
-              <Sparkles className="w-3 h-3" />
+              <Sparkles className="w-3 h-3 text-yellow-300" />
               <span>Ask AI</span>
             </button>
           </div>
         </form>
 
         {/* Right Header Utilities & Actions */}
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-1.5 sm:gap-2.5">
           
+          {/* Mobile Search Toggle Button */}
+          <button
+            onClick={() => setShowMobileSearch(!showMobileSearch)}
+            className="md:hidden p-2 rounded-xl bg-slate-900/90 hover:bg-slate-800 text-slate-300 border border-slate-700/60 shadow-3d-sm transition-all active:scale-95"
+            aria-label="Search"
+          >
+            <Search className="w-4 h-4 text-slate-300" />
+          </button>
+
           {/* OmniBrain Floating Trigger */}
           <button
             onClick={toggleAgentDrawer}
-            className="relative px-3 py-1.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white text-xs font-bold flex items-center gap-2 shadow-md shadow-indigo-500/20 hover:scale-105 transition-all"
+            className="px-3 sm:px-4 py-2 rounded-2xl bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 hover:from-indigo-500 hover:to-pink-500 active:scale-95 text-white text-xs font-black flex items-center gap-1.5 sm:gap-2 shadow-[0_8px_20px_-4px_rgba(99,102,241,0.5),inset_0_1px_1px_rgba(255,255,255,0.4)] transition-all border border-white/20"
           >
-            <Sparkles className="w-4 h-4 animate-spin-slow text-yellow-300" />
-            <span className="hidden sm:inline">Aditi Brain AI</span>
+            <Sparkles className="w-4 h-4 text-yellow-300 animate-spin-slow flex-shrink-0" />
+            <span className="hidden sm:inline">Brain AI</span>
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
           </button>
 
@@ -118,7 +131,8 @@ export const TopHeader: React.FC<TopHeaderProps> = ({ onOpenLauncher }) => {
           <div className="relative">
             <button
               onClick={() => setShowAlertsPopover(!showAlertsPopover)}
-              className="relative p-2 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-slate-300 transition-colors"
+              className="relative p-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 active:scale-95 text-slate-300 transition-all"
+              aria-label="Notifications"
             >
               <Bell className="w-4 h-4" />
               {alerts.length > 0 && (
@@ -130,21 +144,21 @@ export const TopHeader: React.FC<TopHeaderProps> = ({ onOpenLauncher }) => {
 
             {/* Notification Popover Dropdown */}
             {showAlertsPopover && (
-              <div className="absolute right-0 mt-2 w-80 sm:w-96 rounded-2xl bg-slate-900 border border-slate-800 shadow-2xl p-4 z-50 animate-in fade-in slide-in-from-top-2">
-                <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+              <div className="absolute right-0 mt-2 w-72 sm:w-96 rounded-2xl bg-slate-900 border border-slate-800 shadow-2xl p-3.5 sm:p-4 z-50 animate-in fade-in slide-in-from-top-2">
+                <div className="flex items-center justify-between pb-2.5 border-b border-slate-800">
                   <div className="flex items-center gap-2">
                     <Zap className="w-4 h-4 text-indigo-400" />
-                    <span className="font-bold text-sm text-slate-200">Proactive Insights</span>
+                    <span className="font-bold text-xs sm:text-sm text-slate-200">Proactive Insights</span>
                   </div>
                   <button
                     onClick={() => setShowAlertsPopover(false)}
-                    className="text-slate-400 hover:text-slate-200"
+                    className="p-1 text-slate-400 hover:text-slate-200"
                   >
                     <X className="w-4 h-4" />
                   </button>
                 </div>
 
-                <div className="mt-3 space-y-2.5 max-h-80 overflow-y-auto pr-1">
+                <div className="mt-2.5 space-y-2 max-h-72 overflow-y-auto pr-1">
                   {alerts.length === 0 ? (
                     <div className="text-center py-6 text-slate-400 text-xs">
                       <CheckCircle2 className="w-8 h-8 mx-auto mb-2 text-emerald-400 opacity-60" />
@@ -155,7 +169,7 @@ export const TopHeader: React.FC<TopHeaderProps> = ({ onOpenLauncher }) => {
                       <div
                         key={alert.id}
                         onClick={() => handleAlertClick(alert.actionMiniApp, alert.id)}
-                        className="p-3 rounded-xl bg-slate-800/70 hover:bg-slate-800 border border-slate-700/60 cursor-pointer transition-all group"
+                        className="p-2.5 sm:p-3 rounded-xl bg-slate-800/70 hover:bg-slate-800 border border-slate-700/60 cursor-pointer transition-all group"
                       >
                         <div className="flex items-start justify-between gap-2">
                           <span className="text-xs font-bold text-slate-100 group-hover:text-indigo-400 transition-colors">
@@ -179,7 +193,7 @@ export const TopHeader: React.FC<TopHeaderProps> = ({ onOpenLauncher }) => {
           {/* Theme Toggle */}
           <button
             onClick={toggleTheme}
-            className="p-2 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-slate-300 transition-colors"
+            className="p-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 active:scale-95 text-slate-300 transition-all"
             title={`Current theme: ${theme}`}
           >
             {theme === 'light' ? (
@@ -193,13 +207,14 @@ export const TopHeader: React.FC<TopHeaderProps> = ({ onOpenLauncher }) => {
           <div className="relative">
             <button
               onClick={() => setShowUserMenu(!showUserMenu)}
-              className="flex items-center gap-2 p-1 rounded-xl hover:bg-slate-800 transition-colors focus:outline-none"
+              className="flex items-center gap-1.5 p-0.5 rounded-xl hover:bg-slate-800 active:scale-95 transition-all focus:outline-none"
             >
               <img
                 src={user.avatar}
                 alt={user.name}
-                className="w-8 h-8 rounded-full object-cover ring-2 ring-indigo-500/50"
+                className="w-8 h-8 rounded-xl object-cover ring-2 ring-indigo-500/40"
               />
+              <ChevronDown className="w-3 h-3 text-slate-400 hidden xs:block" />
             </button>
 
             {/* User Profile Dropdown */}
@@ -269,6 +284,30 @@ export const TopHeader: React.FC<TopHeaderProps> = ({ onOpenLauncher }) => {
 
         </div>
       </div>
+
+      {/* Mobile Expandable Search Bar */}
+      {showMobileSearch && (
+        <form onSubmit={handleSearchSubmit} className="mt-2.5 pt-2 border-t border-slate-800/80 md:hidden animate-in fade-in slide-in-from-top-1">
+          <div className="relative flex items-center">
+            <Search className="absolute left-3 w-4 h-4 text-slate-400" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Ask Aditi Brain AI..."
+              autoFocus
+              className="w-full pl-9 pr-20 py-2 rounded-xl bg-slate-900 border border-indigo-500/50 text-xs text-white placeholder-slate-500 focus:outline-none"
+            />
+            <button
+              type="submit"
+              className="absolute right-1 px-2.5 py-1 rounded-lg bg-indigo-600 text-[11px] font-bold text-white flex items-center gap-1"
+            >
+              <Sparkles className="w-3 h-3" />
+              <span>Ask</span>
+            </button>
+          </div>
+        </form>
+      )}
     </header>
   );
 };

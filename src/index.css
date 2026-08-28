@@ -4,39 +4,81 @@
 
 @layer base {
   :root {
-    --bg-primary: #030712;
-    --bg-secondary: #0f172a;
-    --bg-card: #1e293b;
+    --bg-primary: #060713;
+    --bg-secondary: #0d1024;
+    --bg-card: #121733;
     --text-primary: #f8fafc;
     --text-secondary: #94a3b8;
     --accent: #6366f1;
     --accent-hover: #4f46e5;
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+    --safe-left: env(safe-area-inset-left, 0px);
+    --safe-right: env(safe-area-inset-right, 0px);
   }
 
   html, body {
-    background-color: #030712;
+    background-color: #060713;
     color: #f8fafc;
-    font-family: 'Plus Jakarta Sans', 'Inter', system-ui, sans-serif;
+    font-family: 'Plus Jakarta Sans', 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     overflow-x: hidden;
     min-height: 100vh;
     min-height: 100dvh;
     -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    background-image: 
+      radial-gradient(at 10% 10%, rgba(99, 102, 241, 0.12) 0px, transparent 50%),
+      radial-gradient(at 90% 0%, rgba(236, 72, 153, 0.10) 0px, transparent 45%),
+      radial-gradient(at 50% 50%, rgba(6, 182, 212, 0.06) 0px, transparent 60%),
+      radial-gradient(at 80% 90%, rgba(139, 92, 246, 0.12) 0px, transparent 50%),
+      radial-gradient(at 20% 90%, rgba(16, 185, 129, 0.06) 0px, transparent 40%);
+    background-attachment: fixed;
+  }
+
+  input, textarea, select, button {
+    touch-action: manipulation;
+    font-family: inherit;
   }
 }
 
-/* Custom Scrollbar */
+/* Safe Area Insets Support for iOS Notches & Android Gesture Bars */
+.pt-safe {
+  padding-top: max(0.75rem, env(safe-area-inset-top, 0px));
+}
+
+.pb-safe {
+  padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px));
+}
+
+.pb-safe-nav {
+  padding-bottom: calc(4.75rem + env(safe-area-inset-bottom, 0px));
+}
+
+.pl-safe {
+  padding-left: max(0.75rem, env(safe-area-inset-left, 0px));
+}
+
+.pr-safe {
+  padding-right: max(0.75rem, env(safe-area-inset-right, 0px));
+}
+
+/* Custom Responsive Scrollbars */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
 }
 
 ::-webkit-scrollbar-track {
-  background: rgba(15, 23, 42, 0.6);
+  background: rgba(13, 16, 36, 0.4);
 }
 
 ::-webkit-scrollbar-thumb {
   background: rgba(99, 102, 241, 0.4);
   border-radius: 9999px;
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.3);
 }
 
 ::-webkit-scrollbar-thumb:hover {
@@ -52,41 +94,223 @@
   scrollbar-width: none;
 }
 
-/* Glassmorphism Classes */
-.glass {
-  background: rgba(15, 23, 42, 0.8);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+/* Touch-optimized horizontal scrolling */
+.touch-scroll-x {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scroll-snap-type: x mandatory;
+  overscroll-behavior-x: contain;
+}
+
+.touch-snap-item {
+  scroll-snap-align: start;
+}
+
+/* ========================================================================= */
+/* 3D DESIGN SYSTEM & DEPTH UTILITIES */
+/* ========================================================================= */
+
+/* 3D Card Base with Specular Top Bevel & Multistage Shadow */
+.card-3d {
+  background: linear-gradient(180deg, rgba(21, 27, 58, 0.75) 0%, rgba(13, 16, 36, 0.85) 100%);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 
+    0 16px 36px -8px rgba(0, 0, 0, 0.75),
+    inset 0 1px 1px 0 rgba(255, 255, 255, 0.2),
+    inset 0 -1px 1px 0 rgba(0, 0, 0, 0.3);
+  position: relative;
+}
+
+.card-3d-interactive {
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.card-3d-interactive:hover {
+  transform: translateY(-4px) scale(1.01);
+  border-color: rgba(129, 140, 248, 0.45);
+  box-shadow: 
+    0 24px 48px -10px rgba(0, 0, 0, 0.85),
+    0 0 30px -5px rgba(99, 102, 241, 0.35),
+    inset 0 1px 2px 0 rgba(255, 255, 255, 0.35);
+}
+
+.card-3d-interactive:active {
+  transform: translateY(-1px) scale(0.99);
+}
+
+/* 3D Tactile Buttons */
+.btn-3d {
+  position: relative;
+  background: linear-gradient(180deg, #6366f1 0%, #4338ca 100%);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 
+    0 4px 0 0 #312e81,
+    0 10px 20px -4px rgba(99, 102, 241, 0.5),
+    inset 0 1px 1px 0 rgba(255, 255, 255, 0.4);
+  transition: all 0.15s ease;
+}
+
+.btn-3d:hover {
+  background: linear-gradient(180deg, #818cf8 0%, #4f46e5 100%);
+  box-shadow: 
+    0 4px 0 0 #3730a3,
+    0 14px 25px -4px rgba(99, 102, 241, 0.65),
+    inset 0 1px 1px 0 rgba(255, 255, 255, 0.5);
+  transform: translateY(-1px);
+}
+
+.btn-3d:active {
+  transform: translateY(3px);
+  box-shadow: 
+    0 1px 0 0 #312e81,
+    0 4px 10px -2px rgba(99, 102, 241, 0.4),
+    inset 0 1px 2px 0 rgba(0, 0, 0, 0.2);
+}
+
+/* 3D Icon Container */
+.icon-box-3d {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0.03) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 
+    0 8px 20px -4px rgba(0, 0, 0, 0.5),
+    inset 0 1px 1px 0 rgba(255, 255, 255, 0.35);
+  backdrop-filter: blur(10px);
+}
+
+/* 3D Glass Header & Bottom Nav */
+.glass-header {
+  background: rgba(6, 7, 19, 0.82);
+  backdrop-filter: blur(28px);
+  -webkit-backdrop-filter: blur(28px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 
+    0 8px 32px 0 rgba(0, 0, 0, 0.5),
+    inset 0 -1px 1px rgba(255, 255, 255, 0.05);
+}
+
+.glass-nav {
+  background: rgba(7, 9, 23, 0.88);
+  backdrop-filter: blur(28px);
+  -webkit-backdrop-filter: blur(28px);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 
+    0 -10px 35px 0 rgba(0, 0, 0, 0.6),
+    inset 0 1px 1px rgba(255, 255, 255, 0.15);
 }
 
 .glass-card {
-  background: rgba(30, 41, 59, 0.6);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: linear-gradient(180deg, rgba(18, 23, 51, 0.7) 0%, rgba(10, 13, 30, 0.8) 100%);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 
+    0 12px 28px -6px rgba(0, 0, 0, 0.7),
+    inset 0 1px 1px 0 rgba(255, 255, 255, 0.12);
 }
 
-.glass-card-hover {
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+.glass-sheet {
+  background: linear-gradient(180deg, rgba(14, 18, 42, 0.96) 0%, rgba(8, 10, 24, 0.98) 100%);
+  backdrop-filter: blur(32px);
+  -webkit-backdrop-filter: blur(32px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 
+    0 -10px 50px 0 rgba(0, 0, 0, 0.85),
+    inset 0 1px 2px 0 rgba(255, 255, 255, 0.25);
 }
 
-.glass-card-hover:hover {
-  transform: translateY(-2px);
-  border-color: rgba(99, 102, 241, 0.3);
-  box-shadow: 0 12px 24px -10px rgba(99, 102, 241, 0.2);
+/* Glowing Accent Border */
+.glow-border-indigo {
+  border: 1px solid rgba(99, 102, 241, 0.4);
+  box-shadow: 0 0 20px -3px rgba(99, 102, 241, 0.35), inset 0 1px 1px rgba(255, 255, 255, 0.2);
 }
 
-.gradient-border {
+.glow-border-pink {
+  border: 1px solid rgba(236, 72, 153, 0.4);
+  box-shadow: 0 0 20px -3px rgba(236, 72, 153, 0.35), inset 0 1px 1px rgba(255, 255, 255, 0.2);
+}
+
+.glow-border-cyan {
+  border: 1px solid rgba(6, 182, 212, 0.4);
+  box-shadow: 0 0 20px -3px rgba(6, 182, 212, 0.35), inset 0 1px 1px rgba(255, 255, 255, 0.2);
+}
+
+.glow-border-amber {
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  box-shadow: 0 0 20px -3px rgba(245, 158, 11, 0.35), inset 0 1px 1px rgba(255, 255, 255, 0.2);
+}
+
+.glow-border-emerald {
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  box-shadow: 0 0 20px -3px rgba(16, 185, 129, 0.35), inset 0 1px 1px rgba(255, 255, 255, 0.2);
+}
+
+/* 3D Floating Pill Badges */
+.badge-3d {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.03) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 
+    0 4px 10px -2px rgba(0, 0, 0, 0.4),
+    inset 0 1px 1px 0 rgba(255, 255, 255, 0.3);
+  backdrop-filter: blur(8px);
+}
+
+/* 3D Raised Inset Input */
+.input-3d {
+  background: rgba(7, 9, 22, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 
+    inset 0 2px 4px 0 rgba(0, 0, 0, 0.6),
+    0 1px 0 0 rgba(255, 255, 255, 0.05);
+  transition: all 0.2s ease;
+}
+
+.input-3d:focus {
+  border-color: rgba(99, 102, 241, 0.6);
+  box-shadow: 
+    inset 0 2px 4px 0 rgba(0, 0, 0, 0.6),
+    0 0 15px -2px rgba(99, 102, 241, 0.4);
+}
+
+/* 3D Depth Utilities */
+.depth-1 {
+  box-shadow: 0 4px 14px -3px rgba(0, 0, 0, 0.6), inset 0 1px 1px rgba(255, 255, 255, 0.15);
+}
+
+.depth-2 {
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.75), inset 0 1px 1px rgba(255, 255, 255, 0.18);
+}
+
+.depth-3 {
+  box-shadow: 0 20px 45px -10px rgba(0, 0, 0, 0.85), inset 0 1px 2px rgba(255, 255, 255, 0.25);
+}
+
+/* Animated Shimmer Flare */
+@keyframes shimmerFlare {
+  0% { transform: translateX(-100%) rotate(45deg); }
+  100% { transform: translateX(200%) rotate(45deg); }
+}
+
+.shimmer-flare {
   position: relative;
-  background-clip: padding-box;
+  overflow: hidden;
 }
 
-.gradient-border::before {
+.shimmer-flare::after {
   content: '';
   position: absolute;
-  top: -1px; right: -1px; bottom: -1px; left: -1px;
-  z-index: -1;
-  border-radius: inherit;
-  background: linear-gradient(135deg, rgba(99, 102, 241, 0.5), rgba(236, 72, 153, 0.5));
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.08) 50%,
+    transparent 100%
+  );
+  transform: rotate(45deg);
+  animation: shimmerFlare 4s infinite;
+  pointer-events: none;
 }

@@ -252,6 +252,43 @@ export async function getCloudRegisteredUsers(): Promise<UserProfile[]> {
   return Array.from(usersMap.values());
 }
 
+/**
+ * Irreversibly purges all registered accounts, custom contacts, and profiles from local database and storage.
+ */
+export async function deleteAllUsersFromDb(): Promise<{ success: boolean; message: string }> {
+  try {
+    if (typeof localStorage !== 'undefined') {
+      localStorage.removeItem(LOCAL_ACCOUNTS_STORAGE_KEY);
+      localStorage.removeItem(CUSTOM_CONTACTS_STORAGE_KEY);
+      localStorage.removeItem('aditi-user-profile');
+      localStorage.removeItem('aditi-device-lock-credentials');
+    }
+
+    if (supabase && !isTestEnv) {
+      try {
+        await Promise.race([
+          supabase.from('profiles').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
+          new Promise((res) => setTimeout(res, 2000))
+        ]);
+      } catch (err) {
+        console.warn('Supabase profiles delete warning:', err);
+      }
+    }
+
+    cloudState.user = { ...GUEST_USER };
+
+    return {
+      success: true,
+      message: 'All user accounts and contacts have been deleted from storage and database.'
+    };
+  } catch (err: any) {
+    return {
+      success: false,
+      message: err?.message || 'Failed to delete users from database.'
+    };
+  }
+}
+
 export function isDummyOrDisposableAccount(email: string, name?: string, handle?: string): boolean {
   if (!email || typeof email !== 'string') return true;
   const cleanEmail = email.trim().toLowerCase();

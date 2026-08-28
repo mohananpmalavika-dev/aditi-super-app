@@ -10,16 +10,13 @@ import {
   Send, 
   Bookmark, 
   UserCheck, 
-  X,
-  MessageSquare,
-  Plus,
-  Phone,
-  Moon,
-  Users,
-  ShieldCheck,
-  Crown,
-  Trash2,
-  Filter
+  X, 
+  MessageSquare, 
+  Plus, 
+  Phone, 
+  Users, 
+  ShieldCheck, 
+  Trash2 
 } from 'lucide-react';
 import { useSuperApp } from '../../context/SuperAppContext';
 import { MatrimonyProfile } from '../../types/superApp';
@@ -28,7 +25,6 @@ import { RegisterMatrimonyModal } from './RegisterMatrimonyModal';
 export const MatrimonyView: React.FC = () => {
   const { 
     matrimonyProfiles, 
-    addMatrimonyProfile,
     deleteMatrimonyProfile,
     sendInterest, 
     toggleShortlistMatrimony, 
@@ -87,18 +83,18 @@ export const MatrimonyView: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6 pb-20 font-sans">
+    <div className="space-y-4 sm:space-y-6 pb-6 font-sans">
       
       {/* Matrimony Header Banner */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 p-6 rounded-3xl bg-slate-900/90 border border-slate-800 shadow-2xl backdrop-blur-xl">
-        <div className="flex items-center gap-3.5">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-rose-500 via-pink-600 to-red-600 flex items-center justify-center text-white shadow-xl shadow-rose-500/25 shrink-0">
-            <Heart className="w-6 h-6" />
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 p-4 sm:p-6 rounded-3xl bg-slate-900/90 border border-slate-800 shadow-2xl backdrop-blur-xl">
+        <div className="flex items-center gap-3 sm:gap-3.5">
+          <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-gradient-to-tr from-rose-500 via-pink-600 to-red-600 flex items-center justify-center text-white shadow-xl shadow-rose-500/25 shrink-0">
+            <Heart className="w-5 h-5 sm:w-6 sm:h-6" />
           </div>
           <div>
             <div className="flex items-center gap-2 flex-wrap">
-              <h1 className="text-xl sm:text-2xl font-extrabold text-white">Matrimony & Matchmaking</h1>
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30 flex items-center gap-1">
+              <h1 className="text-lg sm:text-2xl font-extrabold text-white">Matrimony & Matchmaking</h1>
+              <span className="text-[9px] sm:text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30 flex items-center gap-1">
                 <ShieldCheck className="w-3 h-3 text-rose-400" />
                 <span>100% Verified Profiles</span>
               </span>
@@ -113,71 +109,71 @@ export const MatrimonyView: React.FC = () => {
         <div className="flex items-center gap-2.5 flex-wrap">
           <button
             onClick={() => setShowRegisterModal(true)}
-            className="px-4 py-2.5 rounded-2xl bg-gradient-to-r from-rose-600 via-pink-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-white text-xs font-extrabold flex items-center gap-2 shadow-lg shadow-rose-600/30 hover:scale-105 active:scale-95 transition-all"
+            className="w-full sm:w-auto px-4 py-2.5 rounded-2xl bg-gradient-to-r from-rose-600 via-pink-600 to-red-600 hover:from-rose-500 hover:to-red-500 active:scale-95 text-white text-xs font-extrabold flex items-center justify-center gap-2 shadow-lg shadow-rose-600/30 transition-all"
           >
             <Plus className="w-4 h-4" />
-            <span>Register Profile (വരൻ / വധു ചേർക്കുക)</span>
+            <span>Register Profile (വരൻ / വധു)</span>
           </button>
         </div>
       </div>
 
       {/* Main Section Navigation Switcher */}
-      <div className="flex items-center p-1.5 rounded-2xl bg-slate-900 border border-slate-800 gap-1.5 overflow-x-auto shadow-md">
+      <div className="flex items-center p-1.5 rounded-2xl bg-slate-900 border border-slate-800 gap-1.5 overflow-x-auto no-scrollbar shadow-md">
         
         {/* All Matches */}
         <button
           onClick={() => setActiveTab('all')}
-          className={`py-2 px-3.5 rounded-xl text-xs font-extrabold flex items-center gap-1.5 whitespace-nowrap transition-all ${
+          className={`py-2 px-3 sm:px-3.5 rounded-xl text-xs font-extrabold flex items-center gap-1.5 whitespace-nowrap transition-all active:scale-95 flex-shrink-0 ${
             activeTab === 'all'
               ? 'bg-rose-600 text-white shadow-md'
               : 'text-slate-400 hover:text-white'
           }`}
         >
           <Heart className="w-3.5 h-3.5" />
-          <span>All Matches ({matrimonyProfiles.length})</span>
+          <span>All ({matrimonyProfiles.length})</span>
         </button>
 
         {/* Brides */}
         <button
           onClick={() => setActiveTab('brides')}
-          className={`py-2 px-3.5 rounded-xl text-xs font-extrabold flex items-center gap-1.5 whitespace-nowrap transition-all ${
+          className={`py-2 px-3 sm:px-3.5 rounded-xl text-xs font-extrabold flex items-center gap-1.5 whitespace-nowrap transition-all active:scale-95 flex-shrink-0 ${
             activeTab === 'brides'
               ? 'bg-pink-600 text-white shadow-md'
               : 'text-slate-400 hover:text-white'
           }`}
         >
-          <span>👰 Brides (വധുക്കൾ - {bridesCount})</span>
+          <span>👰 Brides ({bridesCount})</span>
         </button>
 
         {/* Grooms */}
         <button
           onClick={() => setActiveTab('grooms')}
-          className={`py-2 px-3.5 rounded-xl text-xs font-extrabold flex items-center gap-1.5 whitespace-nowrap transition-all ${
+          className={`py-2 px-3 sm:px-3.5 rounded-xl text-xs font-extrabold flex items-center gap-1.5 whitespace-nowrap transition-all active:scale-95 flex-shrink-0 ${
             activeTab === 'grooms'
               ? 'bg-indigo-600 text-white shadow-md'
               : 'text-slate-400 hover:text-white'
           }`}
         >
-          <span>🤵 Grooms (വരന്മാർ - {groomsCount})</span>
+          <span>🤵 Grooms ({groomsCount})</span>
         </button>
 
         {/* Shortlisted */}
         <button
           onClick={() => setActiveTab('shortlisted')}
-          className={`py-2 px-3.5 rounded-xl text-xs font-extrabold flex items-center gap-1.5 whitespace-nowrap transition-all ${
+          className={`py-2 px-3 sm:px-3.5 rounded-xl text-xs font-extrabold flex items-center gap-1.5 whitespace-nowrap transition-all active:scale-95 flex-shrink-0 ${
             activeTab === 'shortlisted'
               ? 'bg-amber-600 text-white shadow-md'
               : 'text-slate-400 hover:text-white'
           }`}
         >
           <Bookmark className="w-3.5 h-3.5" />
-          <span>Shortlisted ({shortlistedCount})</span>
+          <span>Saved ({shortlistedCount})</span>
         </button>
 
         {/* My Registered Profiles */}
         <button
           onClick={() => setActiveTab('myProfiles')}
-          className={`py-2 px-3.5 rounded-xl text-xs font-extrabold flex items-center gap-1.5 whitespace-nowrap transition-all ${
+          className={`py-2 px-3 sm:px-3.5 rounded-xl text-xs font-extrabold flex items-center gap-1.5 whitespace-nowrap transition-all active:scale-95 flex-shrink-0 ${
             activeTab === 'myProfiles'
               ? 'bg-purple-600 text-white shadow-md'
               : 'text-slate-400 hover:text-white'
@@ -190,8 +186,8 @@ export const MatrimonyView: React.FC = () => {
       </div>
 
       {/* Search Bar & Filters */}
-      <div className="p-4 rounded-3xl bg-slate-900/90 border border-slate-800 shadow-xl space-y-3">
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
+      <div className="p-3.5 sm:p-4 rounded-3xl bg-slate-900/90 border border-slate-800 shadow-xl space-y-3">
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-2.5 sm:gap-3">
           
           {/* Search Box */}
           <div className="md:col-span-8 relative">
@@ -200,18 +196,18 @@ export const MatrimonyView: React.FC = () => {
               type="text"
               value={professionSearch}
               onChange={(e) => setProfessionSearch(e.target.value)}
-              placeholder="Search by name, profession (Doctor, Engineer...), city, star (Rohini, Makam...), or education..."
+              placeholder="Search by name, profession, city, star (Rohini...), or education..."
               className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-rose-500 transition-colors"
             />
           </div>
 
           {/* Religion Filter */}
-          <div className="md:col-span-4 flex items-center gap-1.5 overflow-x-auto pb-1">
+          <div className="md:col-span-4 flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-0.5">
             {(['All', 'Hindu', 'Muslim', 'Christian'] as const).map((r) => (
               <button
                 key={r}
                 onClick={() => setReligionFilter(r)}
-                className={`px-3 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-colors ${
+                className={`px-3 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all active:scale-95 flex-1 ${
                   religionFilter === r
                     ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40 shadow-sm'
                     : 'bg-slate-950 text-slate-400 border border-slate-800 hover:text-white'
@@ -228,15 +224,15 @@ export const MatrimonyView: React.FC = () => {
       {/* Profiles Grid */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h3 className="font-extrabold text-sm text-slate-200 uppercase tracking-wider flex items-center gap-2">
+          <h3 className="font-extrabold text-xs sm:text-sm text-slate-200 uppercase tracking-wider flex items-center gap-2">
             <Heart className="w-4 h-4 text-rose-500 fill-rose-500" />
             <span>Verified Matrimony Biodatas ({filteredProfiles.length})</span>
           </h3>
-          <span className="text-xs text-slate-400">Direct Family & Candidate Connect</span>
+          <span className="text-[11px] text-slate-400">Direct Family Connect</span>
         </div>
 
         {filteredProfiles.length === 0 ? (
-          <div className="p-12 text-center rounded-3xl bg-slate-900/80 border border-slate-800 space-y-4">
+          <div className="p-8 sm:p-12 text-center rounded-3xl bg-slate-900/80 border border-slate-800 space-y-4">
             <div className="w-14 h-14 rounded-2xl bg-rose-500/10 text-rose-400 flex items-center justify-center mx-auto">
               <Heart className="w-8 h-8 opacity-70" />
             </div>
@@ -248,13 +244,13 @@ export const MatrimonyView: React.FC = () => {
             </div>
             <button
               onClick={() => setShowRegisterModal(true)}
-              className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-rose-600 to-pink-600 hover:from-rose-500 text-white font-bold text-xs shadow-lg shadow-rose-600/30 transition-all"
+              className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-rose-600 to-pink-600 hover:from-rose-500 text-white font-bold text-xs shadow-lg shadow-rose-600/30 transition-all active:scale-95"
             >
               + Register Bride / Groom Profile Now
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
             {filteredProfiles.map((p) => (
               <div
                 key={p.id}
@@ -296,7 +292,7 @@ export const MatrimonyView: React.FC = () => {
                         e.stopPropagation();
                         toggleShortlistMatrimony(p.id);
                       }}
-                      className={`absolute top-3 right-3 p-2 rounded-xl backdrop-blur-md transition-colors ${
+                      className={`absolute top-3 right-3 p-2 rounded-xl backdrop-blur-md transition-colors active:scale-95 ${
                         p.isShortlisted
                           ? 'bg-rose-500 text-white'
                           : 'bg-slate-950/80 text-slate-400 hover:text-white'
@@ -309,15 +305,15 @@ export const MatrimonyView: React.FC = () => {
                     {/* Name & Age Overlay */}
                     <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-slate-950 via-slate-950/70 to-transparent p-4 pt-10">
                       <div className="flex items-center gap-1.5">
-                        <h3 className="font-extrabold text-base text-white">{p.name}, {p.age}</h3>
+                        <h3 className="font-extrabold text-base text-white truncate">{p.name}, {p.age}</h3>
                         {p.isVerified && (
-                          <CheckCircle2 className="w-4 h-4 text-rose-400 fill-rose-400/20" />
+                          <CheckCircle2 className="w-4 h-4 text-rose-400 fill-rose-400/20 flex-shrink-0" />
                         )}
                       </div>
-                      <p className="text-xs text-rose-200 font-semibold flex items-center gap-1.5">
+                      <p className="text-xs text-rose-200 font-semibold flex items-center gap-1.5 truncate">
                         <span>{p.height}</span>
                         <span>•</span>
-                        <span>{p.nakshatra ? `${p.nakshatra} ⭐` : p.zodiac}</span>
+                        <span className="truncate">{p.nakshatra ? `${p.nakshatra} ⭐` : p.zodiac}</span>
                       </p>
                     </div>
                   </div>
@@ -335,7 +331,7 @@ export const MatrimonyView: React.FC = () => {
                       </div>
                       <div className="flex items-center gap-2">
                         <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                        <span className="text-slate-400">{p.city}, {p.state}</span>
+                        <span className="text-slate-400 truncate">{p.city}, {p.state}</span>
                       </div>
                     </div>
 
@@ -363,15 +359,15 @@ export const MatrimonyView: React.FC = () => {
                 <div className="p-4 pt-0 flex items-center gap-2 flex-wrap">
                   <button
                     onClick={() => setSelectedProfile(p)}
-                    className="flex-1 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold transition-colors"
+                    className="flex-1 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-200 text-xs font-bold transition-colors"
                   >
-                    View Biodata
+                    Biodata
                   </button>
 
                   <button
                     onClick={() => sendInterest(p.id)}
                     disabled={p.interestSent}
-                    className={`flex-1 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
+                    className={`flex-1 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all active:scale-95 ${
                       p.interestSent
                         ? 'bg-emerald-600/30 text-emerald-300 border border-emerald-500/40'
                         : 'bg-gradient-to-r from-rose-600 to-pink-600 hover:from-rose-500 text-white shadow-md shadow-rose-500/25'
@@ -393,7 +389,7 @@ export const MatrimonyView: React.FC = () => {
                   {p.postedByUserId === (user.id || 'current-user') && (
                     <button
                       onClick={() => deleteMatrimonyProfile(p.id)}
-                      className="p-2 rounded-xl bg-slate-800 hover:bg-red-500/20 text-slate-400 hover:text-red-400 transition-colors"
+                      className="p-2 rounded-xl bg-slate-800 hover:bg-red-500/20 active:scale-95 text-slate-400 hover:text-red-400 transition-colors"
                       title="Delete My Profile"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
@@ -408,27 +404,27 @@ export const MatrimonyView: React.FC = () => {
       </div>
 
       {/* ========================================================================= */}
-      {/* FULL BIODATA MODAL */}
+      {/* FULL BIODATA MODAL / BOTTOM SHEET */}
       {/* ========================================================================= */}
       {selectedProfile && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in overflow-y-auto">
-          <div className="w-full max-w-3xl max-h-[92dvh] rounded-3xl bg-slate-900 border border-slate-800 shadow-2xl p-5 sm:p-7 overflow-y-auto space-y-6 my-auto text-slate-100 font-sans">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in">
+          <div className="w-full max-w-3xl max-h-[90dvh] sm:max-h-[92vh] rounded-t-3xl sm:rounded-3xl bg-slate-900 border border-slate-800 shadow-2xl p-4 sm:p-7 overflow-y-auto space-y-4 sm:space-y-6 text-slate-100 font-sans animate-in slide-in-from-bottom-6 sm:slide-in-from-bottom-2 pb-safe">
             
             {/* Modal Header */}
             <div className="flex items-center justify-between pb-3 border-b border-slate-800">
               <div className="flex items-center gap-2">
                 <Heart className="w-5 h-5 text-rose-500 fill-rose-500" />
-                <h3 className="font-extrabold text-base text-white">Full Matrimonial Profile & Biodata</h3>
+                <h3 className="font-extrabold text-sm sm:text-base text-white">Full Matrimonial Biodata</h3>
               </div>
               <button
                 onClick={() => setSelectedProfile(null)}
-                className="text-slate-400 hover:text-white"
+                className="p-1.5 rounded-xl bg-slate-800 text-slate-400 hover:text-white"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
               
               {/* Photo & Compatibility */}
               <div className="space-y-3">
@@ -440,9 +436,9 @@ export const MatrimonyView: React.FC = () => {
                   />
                 </div>
 
-                <div className="p-3.5 rounded-2xl bg-rose-950/30 border border-rose-800/40 text-center">
+                <div className="p-3 rounded-2xl bg-rose-950/30 border border-rose-800/40 text-center">
                   <p className="text-xl font-black text-rose-400">{selectedProfile.compatibilityScore || 95}%</p>
-                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Astrological & Lifestyle Match</p>
+                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Astrological Match</p>
                 </div>
 
                 {selectedProfile.contactPhone && (
@@ -460,7 +456,7 @@ export const MatrimonyView: React.FC = () => {
               <div className="sm:col-span-2 space-y-4 text-xs">
                 <div>
                   <div className="flex items-center gap-2 flex-wrap">
-                    <h2 className="text-xl font-extrabold text-white">{selectedProfile.name}, {selectedProfile.age}</h2>
+                    <h2 className="text-lg sm:text-xl font-extrabold text-white">{selectedProfile.name}, {selectedProfile.age}</h2>
                     <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
                       selectedProfile.gender === 'Female'
                         ? 'bg-pink-500/20 text-pink-300 border-pink-500/30'
@@ -477,72 +473,44 @@ export const MatrimonyView: React.FC = () => {
                 <div className="grid grid-cols-2 gap-2 text-xs">
                   <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800">
                     <span className="text-slate-400 text-[10px] uppercase font-bold block">Education</span>
-                    <span className="font-semibold text-slate-200">{selectedProfile.education}</span>
+                    <span className="font-semibold text-slate-200 truncate block">{selectedProfile.education}</span>
                   </div>
 
                   <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800">
                     <span className="text-slate-400 text-[10px] uppercase font-bold block">Location</span>
-                    <span className="font-semibold text-slate-200">{selectedProfile.city}, {selectedProfile.state}</span>
+                    <span className="font-semibold text-slate-200 truncate block">{selectedProfile.city}, {selectedProfile.state}</span>
                   </div>
 
                   <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800">
-                    <span className="text-slate-400 text-[10px] uppercase font-bold block">Community & Religion</span>
-                    <span className="font-semibold text-slate-200">{selectedProfile.religion} ({selectedProfile.community})</span>
+                    <span className="text-slate-400 text-[10px] uppercase font-bold block">Community</span>
+                    <span className="font-semibold text-slate-200 truncate block">{selectedProfile.religion} ({selectedProfile.community})</span>
                   </div>
 
                   <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800">
                     <span className="text-slate-400 text-[10px] uppercase font-bold block">Star & Zodiac</span>
-                    <span className="font-semibold text-slate-200">
-                      {selectedProfile.nakshatra ? `${selectedProfile.nakshatra} (${selectedProfile.zodiac})` : selectedProfile.zodiac}
+                    <span className="font-semibold text-slate-200 truncate block">
+                      {selectedProfile.nakshatra ? `${selectedProfile.nakshatra}` : selectedProfile.zodiac}
                     </span>
                   </div>
-
-                  {selectedProfile.maritalStatus && (
-                    <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800">
-                      <span className="text-slate-400 text-[10px] uppercase font-bold block">Marital Status</span>
-                      <span className="font-semibold text-slate-200">{selectedProfile.maritalStatus}</span>
-                    </div>
-                  )}
-
-                  {selectedProfile.diet && (
-                    <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800">
-                      <span className="text-slate-400 text-[10px] uppercase font-bold block">Diet & Lifestyle</span>
-                      <span className="font-semibold text-slate-200">{selectedProfile.diet}</span>
-                    </div>
-                  )}
                 </div>
 
-                {selectedProfile.familyDetails && (
+                {selectedProfile.about && (
                   <div className="space-y-1">
-                    <span className="text-xs font-bold text-slate-300">Family Background</span>
+                    <span className="text-xs font-bold text-slate-300">About Candidate</span>
                     <p className="text-xs text-slate-300 leading-relaxed bg-slate-950/60 p-3 rounded-2xl border border-slate-800">
-                      {selectedProfile.familyDetails}
+                      {selectedProfile.about}
                     </p>
                   </div>
                 )}
-
-                <div className="space-y-1">
-                  <span className="text-xs font-bold text-slate-300">About Me</span>
-                  <p className="text-xs text-slate-300 leading-relaxed bg-slate-950/60 p-3 rounded-2xl border border-slate-800">
-                    {selectedProfile.about}
-                  </p>
-                </div>
-
-                <div className="space-y-1">
-                  <span className="text-xs font-bold text-slate-300">Partner Expectations</span>
-                  <p className="text-xs text-slate-300 leading-relaxed bg-slate-950/60 p-3 rounded-2xl border border-slate-800">
-                    {selectedProfile.partnerPreferences}
-                  </p>
-                </div>
 
                 {/* Bottom Actions */}
                 <div className="flex gap-2 pt-2 flex-wrap">
                   <button
                     onClick={() => handleStartIcebreaker(selectedProfile)}
-                    className="flex-1 py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 text-white text-xs font-bold flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/30"
+                    className="flex-1 py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 active:scale-95 text-white text-xs font-bold flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/30"
                   >
                     <MessageSquare className="w-4 h-4" />
-                    <span>Start Chat with Candidate / Family</span>
+                    <span>Start Chat</span>
                   </button>
 
                   <button
@@ -551,7 +519,7 @@ export const MatrimonyView: React.FC = () => {
                       setSelectedProfile(null);
                     }}
                     disabled={selectedProfile.interestSent}
-                    className="px-5 py-3 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold shadow-lg shadow-rose-600/30"
+                    className="px-5 py-3 rounded-xl bg-rose-600 hover:bg-rose-500 active:scale-95 text-white text-xs font-bold shadow-lg shadow-rose-600/30"
                   >
                     {selectedProfile.interestSent ? 'Interest Sent' : 'Send Interest'}
                   </button>
