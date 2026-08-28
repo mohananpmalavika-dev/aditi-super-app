@@ -50,7 +50,7 @@ export interface LoginCredentials {
 }
 
 /* ==================== REAL ESTATE ==================== */
-export type PropertyType = 'Apartment' | 'Villa' | 'Penthouse' | 'Studio' | 'Commercial';
+export type PropertyType = 'Apartment' | 'Villa' | 'Penthouse' | 'Studio' | 'Commercial' | 'Plot / Land' | 'Independent House' | 'Office Space' | 'Warehouse';
 export type ListingType = 'Buy' | 'Rent';
 
 export interface RealEstateProperty {
@@ -75,6 +75,39 @@ export interface RealEstateProperty {
     rating: number;
   };
   isFeatured?: boolean;
+  isSaved?: boolean;
+  postedByUserId?: string;
+  createdAt?: string;
+}
+
+export type PropertyRequirementType = 'Buy' | 'Rent';
+export type PropertyNeedCategory = 'Apartment' | 'Villa' | 'Independent House' | 'Commercial' | 'Plot / Land' | 'Studio / 1RK' | 'Office Space' | 'Warehouse';
+export type FurnishingPreference = 'Fully Furnished' | 'Semi-Furnished' | 'Unfurnished' | 'Any';
+export type PossessionTimeline = 'Immediate' | 'Within 1 Month' | 'Within 3 Months' | 'Flexible';
+
+export interface PropertyRequirement {
+  id: string;
+  title: string;
+  requirementType: PropertyRequirementType; // 'Buy' | 'Rent'
+  propertyCategory: PropertyNeedCategory;
+  preferredLocations: string[]; // e.g. ["Kozhikode Beach", "Mavoor Road"]
+  city: string;
+  minBudget: number;
+  maxBudget: number;
+  budgetFormatted: string; // e.g. "₹35 Lakhs - ₹60 Lakhs" or "₹15,000 - ₹25,000 / mo"
+  bedrooms?: number | 'Any';
+  bathrooms?: number | 'Any';
+  minAreaSqFt?: number;
+  furnishing?: FurnishingPreference;
+  timeline?: PossessionTimeline;
+  specificNeeds: string;
+  contactName: string;
+  contactPhone: string;
+  contactEmail?: string;
+  contactAvatar?: string;
+  isVerifiedBuyer?: boolean;
+  createdAt: string;
+  postedByUserId?: string;
   isSaved?: boolean;
 }
 

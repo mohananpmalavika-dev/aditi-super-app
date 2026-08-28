@@ -37,6 +37,10 @@ import {
   toggleCloudSaveProperty,
   createCloudProperty,
   deleteCloudProperty,
+  getCloudPropertyRequirements,
+  createCloudPropertyRequirement,
+  deleteCloudPropertyRequirement,
+  toggleCloudSaveRequirement,
   toggleCloudShortlistMatrimony,
   updateCloudHabit,
   updateCloudTaskStatus,
@@ -53,6 +57,7 @@ import {
   MiniAppId,
   ProactiveAlert,
   RealEstateProperty,
+  PropertyRequirement,
   RegisterCredentials,
   ScheduledMessage,
   SocialPost,
@@ -60,7 +65,8 @@ import {
   TaskItem,
   TutorBooking,
   TutorProfile,
-  UserProfile
+  UserProfile,
+  WalletTransaction
 } from '../types/superApp';
 import {
   DeviceSessionUser,
@@ -92,6 +98,12 @@ interface SuperAppContextType {
   toggleSaveProperty: (id: string) => Promise<void>;
   addProperty: (newProperty: Omit<RealEstateProperty, 'id' | 'isSaved'> | RealEstateProperty) => Promise<RealEstateProperty>;
   deleteProperty: (id: string) => Promise<void>;
+  
+  // Buyer / Tenant Requirements (Property Wanted)
+  propertyRequirements: PropertyRequirement[];
+  addPropertyRequirement: (newReq: Omit<PropertyRequirement, 'id'> | PropertyRequirement) => Promise<PropertyRequirement>;
+  deletePropertyRequirement: (id: string) => Promise<void>;
+  toggleSavePropertyRequirement: (id: string) => Promise<void>;
   
   // Matrimony
   matrimonyProfiles: MatrimonyProfile[];
@@ -196,6 +208,7 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [activeMiniApp, setActiveMiniApp] = useState<MiniAppId>('home');
   const [user, setUser] = useState<UserProfile>(INITIAL_USER);
   const [properties, setProperties] = useState<RealEstateProperty[]>([]);
+  const [propertyRequirements, setPropertyRequirements] = useState<PropertyRequirement[]>([]);
   const [matrimonyProfiles, setMatrimonyProfiles] = useState<MatrimonyProfile[]>([]);
   const [tutors, setTutors] = useState<TutorProfile[]>([]);
   const [bookings, setBookings] = useState<TutorBooking[]>([]);
@@ -342,9 +355,10 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   useEffect(() => {
     async function loadCloudData() {
       try {
-        const [u, p, m, t, b, pos, ch, tsk, h, regUsers] = await Promise.all([
+        const [u, p, reqs, m, t, b, pos, ch, tsk, h, regUsers] = await Promise.all([
           getCloudUserProfile(),
           getCloudProperties(),
+          getCloudPropertyRequirements(),
           getCloudMatrimonyProfiles(),
           getCloudTutors(),
           getCloudBookings(),
@@ -356,6 +370,7 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         ]);
         if (u && u.email) setUser(u);
         if (p && p.length > 0) setProperties(p);
+        if (reqs && reqs.length > 0) setPropertyRequirements(reqs);
         if (m && m.length > 0) setMatrimonyProfiles(m);
         if (t && t.length > 0) setTutors(t);
         if (b && b.length > 0) setBookings(b);
@@ -523,6 +538,34 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const updated = await deleteCloudProperty(id);
     setProperties(updated);
     showToast('🗑️ Property listing removed.');
+  };
+
+  // Buyer & Tenant Requirements (Property Wanted)
+  const toggleSavePropertyRequirement = async (id: string) => {
+    const updated = await toggleCloudSaveRequirement(id);
+    setPropertyRequirements(updated);
+    showToast('Requirement bookmark updated!');
+  };
+
+  const addPropertyRequirement = async (newReq: Omit<PropertyRequirement, 'id'> | PropertyRequirement): Promise<PropertyRequirement> => {
+    const reqId = ('id' in newReq && newReq.id) ? newReq.id : `req-${Date.now()}`;
+    const fullReq: PropertyRequirement = {
+      ...newReq,
+      id: reqId,
+      createdAt: newReq.createdAt || 'Just now',
+      isSaved: false
+    };
+    const updated = await createCloudPropertyRequirement(fullReq);
+    setPropertyRequirements(updated);
+    confetti({ particleCount: 70, spread: 70 });
+    showToast(`📋 Your property requirement "${fullReq.title}" posted successfully!`);
+    return fullReq;
+  };
+
+  const deletePropertyRequirement = async (id: string) => {
+    const updated = await deleteCloudPropertyRequirement(id);
+    setPropertyRequirements(updated);
+    showToast('🗑️ Property requirement removed.');
   };
 
   // Matrimony
@@ -1429,6 +1472,10 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         toggleSaveProperty,
         addProperty,
         deleteProperty,
+        propertyRequirements,
+        addPropertyRequirement,
+        deletePropertyRequirement,
+        toggleSavePropertyRequirement,
         matrimonyProfiles,
         sendInterest,
         toggleShortlistMatrimony,

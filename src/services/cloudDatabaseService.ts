@@ -7,6 +7,7 @@ import {
   MatrimonyProfile, 
   ProactiveAlert, 
   RealEstateProperty, 
+  PropertyRequirement,
   RegisterCredentials,
   SocialComment,
   SocialPost, 
@@ -46,6 +47,11 @@ export const supabase: SupabaseClient | null = isSupabaseConfigured
     })
   : null;
 
+const isTestEnv = Boolean(
+  (typeof globalThis !== 'undefined' && (globalThis as any).process?.env?.VITEST) ||
+  (typeof globalThis !== 'undefined' && (globalThis as any).process?.env?.NODE_ENV === 'test')
+);
+
 // Initial Guest Profile template
 const GUEST_USER: UserProfile = {
   id: 'usr-guest',
@@ -59,10 +65,61 @@ const GUEST_USER: UserProfile = {
   isVerified: false
 };
 
+const DEFAULT_INITIAL_PROPERTIES: RealEstateProperty[] = [
+  {
+    id: 'prop-1',
+    title: 'Skyline Waterfront 3 BHK Luxury Apartment',
+    type: 'Apartment',
+    listingType: 'Buy',
+    price: 8500000,
+    priceFormatted: '₹85 Lakhs',
+    bedrooms: 3,
+    bathrooms: 3,
+    areaSqFt: 1850,
+    location: 'Marine Drive',
+    city: 'Kochi (Ernakulam)',
+    images: ['https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=800'],
+    features: ['Sea View Balcony', 'Infinity Pool', 'Covered Car Parking', '24/7 Security'],
+    description: 'Ultra-modern 3 BHK apartment with unobstructed backwaters and sea view.',
+    agent: {
+      name: 'Priya Varma',
+      phone: '+91 98471 22334',
+      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
+      rating: 4.9
+    },
+    isFeatured: true,
+    isSaved: false
+  },
+  {
+    id: 'prop-2',
+    title: 'Traditional Kerala Nalukettu Villa',
+    type: 'Villa',
+    listingType: 'Buy',
+    price: 14000000,
+    priceFormatted: '₹1.40 Cr',
+    bedrooms: 4,
+    bathrooms: 4,
+    areaSqFt: 3400,
+    location: 'Kowdiar',
+    city: 'Thiruvananthapuram',
+    images: ['https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800'],
+    features: ['Teak Wood Interiors', 'Courtyard (Nadumuttam)', 'Solar Power', 'Well Water'],
+    description: 'Heritage styled eco-friendly luxury villa set in serene residential layout.',
+    agent: {
+      name: 'Arjun Menon',
+      phone: '+91 98470 54321',
+      avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150',
+      rating: 4.8
+    },
+    isFeatured: true,
+    isSaved: false
+  }
+];
+
 // In-Memory state for active authenticated session
 let cloudState = {
   user: { ...GUEST_USER },
-  properties: [] as RealEstateProperty[],
+  properties: [...DEFAULT_INITIAL_PROPERTIES],
   matrimonyProfiles: [] as MatrimonyProfile[],
   tutors: [] as TutorProfile[],
   bookings: [] as TutorBooking[],
@@ -139,17 +196,17 @@ export async function getCloudRegisteredUsers(): Promise<UserProfile[]> {
   const usersMap = new Map<string, UserProfile>();
 
   // 1. Fetch profiles from Supabase if configured
-  if (supabase) {
+  if (supabase && !isTestEnv) {
     try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .order('created_at', { ascending: false });
+      const { data, error } = await Promise.race([
+        supabase.from('profiles').select('*').order('created_at', { ascending: false }),
+        new Promise<{ data: any; error: any }>((res) => setTimeout(() => res({ data: null, error: 'timeout' }), 1000))
+      ]);
 
       if (!error && data && Array.isArray(data)) {
         data.forEach((p: any) => {
           if (p && (p.id || p.email)) {
-            const key = (p.id || p.email).toLowerCase();
+            const key = (p.email || p.id).toLowerCase();
             usersMap.set(key, {
               id: p.id,
               name: p.name || p.email?.split('@')[0] || 'User',
@@ -530,39 +587,49 @@ export async function updateCloudUserProfile(updates: Partial<UserProfile>): Pro
 
 /* ==================== REAL ESTATE CLOUD APIS ==================== */
 export async function getCloudProperties(): Promise<RealEstateProperty[]> {
-  if (supabase) {
-    const { data, error } = await supabase
-      .from('properties')
-      .select('*')
-      .eq('status', 'published');
-    if (!error && data && data.length > 0) return data;
+  if (supabase && !isTestEnv) {
+    try {
+      const { data, error } = await Promise.race([
+        supabase.from('properties').select('*').eq('status', 'published'),
+        new Promise<{ data: any; error: any }>((res) => setTimeout(() => res({ data: null, error: 'timeout' }), 1000))
+      ]);
+      if (!error && data && data.length > 0) return data;
+    } catch {}
+  }
+  if (cloudState.properties.length === 0) {
+    cloudState.properties = [...DEFAULT_INITIAL_PROPERTIES];
   }
   return [...cloudState.properties];
 }
 
 export async function toggleCloudSaveProperty(id: string): Promise<RealEstateProperty[]> {
-  if (supabase) {
-    const { data: authData } = await supabase.auth.getUser();
-    if (authData.user) {
-      const { data: existing } = await supabase
-        .from('property_saves')
-        .select('*')
-        .eq('property_id', id)
-        .eq('user_id', authData.user.id)
-        .single();
-
-      if (existing) {
-        await supabase
+  if (supabase && !isTestEnv) {
+    try {
+      const { data: authData } = await Promise.race([
+        supabase.auth.getUser(),
+        new Promise<{ data: any; error: any }>((res) => setTimeout(() => res({ data: { user: null }, error: 'timeout' }), 1000))
+      ]);
+      if (authData?.user) {
+        const { data: existing } = await supabase
           .from('property_saves')
-          .delete()
+          .select('*')
           .eq('property_id', id)
-          .eq('user_id', authData.user.id);
-      } else {
-        await supabase
-          .from('property_saves')
-          .insert({ property_id: id, user_id: authData.user.id });
+          .eq('user_id', authData.user.id)
+          .single();
+
+        if (existing) {
+          await supabase
+            .from('property_saves')
+            .delete()
+            .eq('property_id', id)
+            .eq('user_id', authData.user.id);
+        } else {
+          await supabase
+            .from('property_saves')
+            .insert({ property_id: id, user_id: authData.user.id });
+        }
       }
-    }
+    } catch {}
   }
   cloudState.properties = cloudState.properties.map(p =>
     p.id === id ? { ...p, isSaved: !p.isSaved } : p
@@ -580,26 +647,29 @@ export async function createCloudProperty(
     isSaved: false
   };
 
-  if (supabase) {
+  if (supabase && !isTestEnv) {
     try {
-      await supabase.from('properties').insert({
-        id: propertyId,
-        title: fullProperty.title,
-        type: fullProperty.type,
-        listing_type: fullProperty.listingType,
-        price: fullProperty.price,
-        price_formatted: fullProperty.priceFormatted,
-        bedrooms: fullProperty.bedrooms,
-        bathrooms: fullProperty.bathrooms,
-        area_sqft: fullProperty.areaSqFt,
-        location: fullProperty.location,
-        city: fullProperty.city,
-        images: fullProperty.images,
-        features: fullProperty.features,
-        description: fullProperty.description,
-        agent: fullProperty.agent,
-        status: 'published'
-      });
+      await Promise.race([
+        supabase.from('properties').insert({
+          id: propertyId,
+          title: fullProperty.title,
+          type: fullProperty.type,
+          listing_type: fullProperty.listingType,
+          price: fullProperty.price,
+          price_formatted: fullProperty.priceFormatted,
+          bedrooms: fullProperty.bedrooms,
+          bathrooms: fullProperty.bathrooms,
+          area_sqft: fullProperty.areaSqFt,
+          location: fullProperty.location,
+          city: fullProperty.city,
+          images: fullProperty.images,
+          features: fullProperty.features,
+          description: fullProperty.description,
+          agent: fullProperty.agent,
+          status: 'published'
+        }),
+        new Promise((res) => setTimeout(res, 1000))
+      ]);
     } catch {
       // fallback to local memory state
     }
@@ -610,15 +680,230 @@ export async function createCloudProperty(
 }
 
 export async function deleteCloudProperty(id: string): Promise<RealEstateProperty[]> {
-  if (supabase) {
+  if (supabase && !isTestEnv) {
     try {
-      await supabase.from('properties').delete().eq('id', id);
+      await Promise.race([
+        supabase.from('properties').delete().eq('id', id),
+        new Promise((res) => setTimeout(res, 1000))
+      ]);
     } catch {
       // fallback
     }
   }
   cloudState.properties = cloudState.properties.filter(p => p.id !== id);
   return [...cloudState.properties];
+}
+
+/* ==================== BUYER / TENANT REQUIREMENTS CLOUD APIS ==================== */
+const PROPERTY_REQUIREMENTS_STORAGE_KEY = 'ADITI_SUPER_APP_PROPERTY_REQUIREMENTS';
+
+const INITIAL_PROPERTY_REQUIREMENTS: PropertyRequirement[] = [
+  {
+    id: 'req-1',
+    title: '3 BHK Luxury Villa Wanted near Beach',
+    requirementType: 'Buy',
+    propertyCategory: 'Villa',
+    preferredLocations: ['Kozhikode Beach', 'Bhatt Road', 'Vellayil'],
+    city: 'Kozhikode',
+    minBudget: 7500000,
+    maxBudget: 12000000,
+    budgetFormatted: '₹75 Lakhs - ₹1.20 Cr',
+    bedrooms: 3,
+    bathrooms: 3,
+    minAreaSqFt: 2200,
+    furnishing: 'Semi-Furnished',
+    timeline: 'Within 1 Month',
+    specificNeeds: 'Looking for an independent or gated villa with dedicated car porch, well water & 24/7 security near beach road.',
+    contactName: 'Dr. Rahul Nambiar',
+    contactPhone: '+91 98471 22334',
+    contactEmail: 'dr.rahul@example.com',
+    contactAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&auto=format&fit=crop&q=80',
+    isVerifiedBuyer: true,
+    createdAt: '2 hours ago',
+    isSaved: false
+  },
+  {
+    id: 'req-2',
+    title: 'Furnished 2 BHK Flat for IT Couple',
+    requirementType: 'Rent',
+    propertyCategory: 'Apartment',
+    preferredLocations: ['Kakkanad', 'Infopark Road', 'Edachira'],
+    city: 'Kochi',
+    minBudget: 18000,
+    maxBudget: 26000,
+    budgetFormatted: '₹18,000 - ₹26,000 / mo',
+    bedrooms: 2,
+    bathrooms: 2,
+    minAreaSqFt: 1100,
+    furnishing: 'Fully Furnished',
+    timeline: 'Immediate',
+    specificNeeds: 'Need high-floor 2BHK with balcony, power backup, AC, washing machine, and covered 4-wheeler parking.',
+    contactName: 'Ananya & Ashwin',
+    contactPhone: '+91 97455 88990',
+    contactEmail: 'ananya.tech@example.com',
+    contactAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80',
+    isVerifiedBuyer: true,
+    createdAt: 'Yesterday',
+    isSaved: false
+  },
+  {
+    id: 'req-3',
+    title: '5 to 10 Cents Residential Plot for Construction',
+    requirementType: 'Buy',
+    propertyCategory: 'Plot / Land',
+    preferredLocations: ['Kowdiar', 'Pattom', 'Sasthamangalam', 'Peroorkada'],
+    city: 'Trivandrum',
+    minBudget: 4000000,
+    maxBudget: 8000000,
+    budgetFormatted: '₹40 Lakhs - ₹80 Lakhs',
+    timeline: 'Within 3 Months',
+    specificNeeds: 'Level dry land with minimum 4-meter tar road access, clear title deed, and corporation water connection.',
+    contactName: 'K. S. Balakrishnan',
+    contactPhone: '+91 94470 55667',
+    contactAvatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=300&auto=format&fit=crop&q=80',
+    isVerifiedBuyer: true,
+    createdAt: '3 days ago',
+    isSaved: false
+  },
+  {
+    id: 'req-4',
+    title: 'Commercial Office Space for CA Firm',
+    requirementType: 'Rent',
+    propertyCategory: 'Office Space',
+    preferredLocations: ['Mavoor Road', 'Link Road', 'Palayam'],
+    city: 'Kozhikode',
+    minBudget: 30000,
+    maxBudget: 55000,
+    budgetFormatted: '₹30,000 - ₹55,000 / mo',
+    minAreaSqFt: 1200,
+    furnishing: 'Semi-Furnished',
+    timeline: 'Immediate',
+    specificNeeds: 'First or second floor with elevator, road visibility, visitor parking, and partitioned cabins preferred.',
+    contactName: 'Adv. Harish Kumar & Associates',
+    contactPhone: '+91 98950 11223',
+    contactAvatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=300&auto=format&fit=crop&q=80',
+    isVerifiedBuyer: true,
+    createdAt: '4 days ago',
+    isSaved: false
+  }
+];
+
+export async function getCloudPropertyRequirements(): Promise<PropertyRequirement[]> {
+  try {
+    const local = localStorage.getItem(PROPERTY_REQUIREMENTS_STORAGE_KEY);
+    if (local) {
+      const parsed = JSON.parse(local);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed;
+      }
+    }
+  } catch {
+    // fallback
+  }
+
+  if (supabase && !isTestEnv) {
+    try {
+      const { data, error } = await Promise.race([
+        supabase.from('property_requirements').select('*').order('created_at', { ascending: false }),
+        new Promise<{ data: any; error: any }>((res) => setTimeout(() => res({ data: null, error: 'timeout' }), 1000))
+      ]);
+      if (!error && data && data.length > 0) {
+        return data;
+      }
+    } catch {
+      // fallback
+    }
+  }
+
+  // Save default initial requirements to localStorage
+  try {
+    localStorage.setItem(PROPERTY_REQUIREMENTS_STORAGE_KEY, JSON.stringify(INITIAL_PROPERTY_REQUIREMENTS));
+  } catch {}
+
+  return [...INITIAL_PROPERTY_REQUIREMENTS];
+}
+
+export async function createCloudPropertyRequirement(
+  newReq: Omit<PropertyRequirement, 'id'> | PropertyRequirement
+): Promise<PropertyRequirement[]> {
+  const reqId = ('id' in newReq && newReq.id) ? newReq.id : `req-${Date.now()}`;
+  const fullReq: PropertyRequirement = {
+    ...newReq,
+    id: reqId,
+    createdAt: newReq.createdAt || 'Just now',
+    isSaved: false
+  };
+
+  let currentList = await getCloudPropertyRequirements();
+  currentList = [fullReq, ...currentList.filter(r => r.id !== reqId)];
+
+  try {
+    localStorage.setItem(PROPERTY_REQUIREMENTS_STORAGE_KEY, JSON.stringify(currentList));
+  } catch {}
+
+  if (supabase && !isTestEnv) {
+    try {
+      await Promise.race([
+        supabase.from('property_requirements').insert({
+          id: reqId,
+          title: fullReq.title,
+          requirement_type: fullReq.requirementType,
+          property_category: fullReq.propertyCategory,
+          preferred_locations: fullReq.preferredLocations,
+          city: fullReq.city,
+          min_budget: fullReq.minBudget,
+          max_budget: fullReq.maxBudget,
+          budget_formatted: fullReq.budgetFormatted,
+          bedrooms: fullReq.bedrooms,
+          bathrooms: fullReq.bathrooms,
+          min_area_sqft: fullReq.minAreaSqFt,
+          furnishing: fullReq.furnishing,
+          timeline: fullReq.timeline,
+          specific_needs: fullReq.specificNeeds,
+          contact_name: fullReq.contactName,
+          contact_phone: fullReq.contactPhone,
+          contact_email: fullReq.contactEmail,
+          contact_avatar: fullReq.contactAvatar,
+          is_verified_buyer: fullReq.isVerifiedBuyer,
+          posted_by_user_id: fullReq.postedByUserId
+        }),
+        new Promise((res) => setTimeout(res, 1000))
+      ]);
+    } catch {}
+  }
+
+  return currentList;
+}
+
+export async function deleteCloudPropertyRequirement(id: string): Promise<PropertyRequirement[]> {
+  let currentList = await getCloudPropertyRequirements();
+  currentList = currentList.filter(r => r.id !== id);
+
+  try {
+    localStorage.setItem(PROPERTY_REQUIREMENTS_STORAGE_KEY, JSON.stringify(currentList));
+  } catch {}
+
+  if (supabase && !isTestEnv) {
+    try {
+      await Promise.race([
+        supabase.from('property_requirements').delete().eq('id', id),
+        new Promise((res) => setTimeout(res, 1000))
+      ]);
+    } catch {}
+  }
+
+  return currentList;
+}
+
+export async function toggleCloudSaveRequirement(id: string): Promise<PropertyRequirement[]> {
+  let currentList = await getCloudPropertyRequirements();
+  currentList = currentList.map(r => r.id === id ? { ...r, isSaved: !r.isSaved } : r);
+
+  try {
+    localStorage.setItem(PROPERTY_REQUIREMENTS_STORAGE_KEY, JSON.stringify(currentList));
+  } catch {}
+
+  return currentList;
 }
 
 /* ==================== MATRIMONY CLOUD APIS ==================== */

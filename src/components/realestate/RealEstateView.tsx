@@ -23,23 +23,45 @@ import {
   ChevronRight,
   Info,
   Sparkles,
-  Heart
+  Heart,
+  FileText,
+  UserCheck,
+  Armchair,
+  Home,
+  Trash2
 } from 'lucide-react';
 import { useSuperApp } from '../../context/SuperAppContext';
-import { ListingType, PropertyType, RealEstateProperty } from '../../types/superApp';
+import { ListingType, PropertyNeedCategory, PropertyRequirement, PropertyType, RealEstateProperty } from '../../types/superApp';
 import { AddPropertyModal } from './AddPropertyModal';
+import { PostRequirementModal } from './PostRequirementModal';
 import confetti from 'canvas-confetti';
 
 export const RealEstateView: React.FC = () => {
-  const { properties, toggleSaveProperty, startNewChatWith, showToast } = useSuperApp();
+  const { 
+    properties, 
+    toggleSaveProperty, 
+    propertyRequirements, 
+    deletePropertyRequirement, 
+    toggleSavePropertyRequirement, 
+    startNewChatWith, 
+    showToast,
+    user
+  } = useSuperApp();
   
+  const [activeTab, setActiveTab] = useState<'properties' | 'demands' | 'saved'>('properties');
   const [listingType, setListingType] = useState<ListingType>('Buy');
   const [selectedType, setSelectedType] = useState<PropertyType | 'All'>('All');
   const [selectedBHK, setSelectedBHK] = useState<number | 'All'>('All');
   const [searchLocation, setSearchLocation] = useState('');
   
+  // Demands / Requirements Filters State
+  const [demandFilterType, setDemandFilterType] = useState<'All' | 'Buy' | 'Rent'>('All');
+  const [demandCategory, setDemandCategory] = useState<string>('All');
+  const [demandSearchQuery, setDemandSearchQuery] = useState('');
+
   // Modals
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showPostReqModal, setShowPostReqModal] = useState(false);
   const [selectedProperty, setSelectedProperty] = useState<RealEstateProperty | null>(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [showTourModal, setShowTourModal] = useState(false);
@@ -74,6 +96,19 @@ export const RealEstateView: React.FC = () => {
     return matchesListing && matchesType && matchesBHK && matchesLoc;
   });
 
+  const filteredRequirements = (propertyRequirements || []).filter((r) => {
+    const matchesType = demandFilterType === 'All' || r.requirementType === demandFilterType;
+    const matchesCat = demandCategory === 'All' || r.propertyCategory === demandCategory;
+    const q = demandSearchQuery.toLowerCase().trim();
+    const matchesSearch = !q || 
+      r.title.toLowerCase().includes(q) ||
+      r.city.toLowerCase().includes(q) ||
+      r.preferredLocations.some(l => l.toLowerCase().includes(q)) ||
+      r.specificNeeds.toLowerCase().includes(q) ||
+      r.contactName.toLowerCase().includes(q);
+    return matchesType && matchesCat && matchesSearch;
+  });
+
   const handleBookTour = (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedProperty) return;
@@ -90,6 +125,16 @@ export const RealEstateView: React.FC = () => {
       `Hi ${property.agent.name}, I am inquiring about "${property.title}" (${property.priceFormatted}) in ${property.location}, ${property.city}. Could you share more details?`
     );
     showToast(`Opened direct chat with ${property.agent.name}`);
+  };
+
+  const handleContactBuyer = (req: PropertyRequirement) => {
+    startNewChatWith(
+      req.contactName,
+      req.contactAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300',
+      `Property Buyer/Tenant - ${req.title}`,
+      `Hi ${req.contactName}, I noticed your requirement for "${req.title}" (${req.budgetFormatted}) in ${req.city}. I have matching properties available for you. Let's connect!`
+    );
+    showToast(`Opened direct chat with ${req.contactName}`);
   };
 
   const openPropertyDetails = (property: RealEstateProperty) => {
@@ -116,105 +161,151 @@ export const RealEstateView: React.FC = () => {
             <div className="flex items-center gap-2 flex-wrap">
               <h1 className="text-xl sm:text-2xl font-extrabold text-white">Real Estate & Property Portal</h1>
               <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                Verified Listings
+                Verified Listings & Buyer Demands
               </span>
             </div>
             <p className="text-xs text-slate-400 mt-0.5">
-              Discover, buy, rent & list premium residential villas, apartments & penthouses.
+              Discover properties for sale & rent, or post your specific buyer & tenant requirements.
             </p>
           </div>
         </div>
 
-        {/* Action Controls: Add Property & Purpose Switcher */}
+        {/* Action Controls: Add Property & Post Requirement */}
         <div className="flex items-center gap-2.5 flex-wrap">
+          {/* Post Requirement Button */}
+          <button
+            onClick={() => setShowPostReqModal(true)}
+            className="px-4 py-2.5 rounded-2xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white text-xs font-extrabold flex items-center gap-1.5 shadow-lg shadow-indigo-600/30 hover:scale-105 active:scale-95 transition-all"
+          >
+            <Sparkles className="w-4 h-4 text-yellow-300" />
+            <span>Post My Need (എനിക്ക് പ്രോപ്പർട്ടി വേണം)</span>
+          </button>
+
           {/* Add / List Property Button */}
           <button
             onClick={() => setShowAddModal(true)}
             className="px-4 py-2.5 rounded-2xl bg-gradient-to-r from-amber-500 via-orange-500 to-yellow-500 hover:from-amber-400 hover:to-orange-400 text-white text-xs font-extrabold flex items-center gap-1.5 shadow-lg shadow-amber-500/30 hover:scale-105 active:scale-95 transition-all"
           >
             <Plus className="w-4 h-4" />
-            <span>List / Add Property (പ്രോപ്പർട്ടി ചേർക്കുക)</span>
+            <span>List Property (പ്രോപ്പർട്ടി ചേർക്കുക)</span>
           </button>
-
-          {/* Buy vs Rent Switcher */}
-          <div className="flex items-center p-1 rounded-2xl bg-slate-950/80 border border-slate-800">
-            <button
-              onClick={() => setListingType('Buy')}
-              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-                listingType === 'Buy'
-                  ? 'bg-amber-600 text-white shadow-md'
-                  : 'text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              Buy Homes
-            </button>
-            <button
-              onClick={() => setListingType('Rent')}
-              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-                listingType === 'Rent'
-                  ? 'bg-amber-600 text-white shadow-md'
-                  : 'text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              Rent Properties
-            </button>
-          </div>
         </div>
       </div>
 
-      {/* Search & Filter Bar */}
-      <div className="p-4 rounded-3xl bg-slate-900/90 border border-slate-800 shadow-xl space-y-3">
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
-          
-          {/* Search Box */}
-          <div className="md:col-span-5 relative">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-            <input
-              type="text"
-              value={searchLocation}
-              onChange={(e) => setSearchLocation(e.target.value)}
-              placeholder="Search by city (Kochi, Trivandrum, Calicut...), locality, or building..."
-              className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 transition-colors"
-            />
-          </div>
+      {/* Main Section Navigation Switcher */}
+      <div className="flex items-center p-1.5 rounded-2xl bg-slate-900 border border-slate-800 gap-1.5 overflow-x-auto shadow-md">
+        <button
+          onClick={() => setActiveTab('properties')}
+          className={`flex-1 min-w-[150px] py-2.5 px-4 rounded-xl text-xs font-extrabold flex items-center justify-center gap-2 transition-all ${
+            activeTab === 'properties'
+              ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md'
+              : 'text-slate-400 hover:text-white'
+          }`}
+        >
+          <Building2 className="w-4 h-4" />
+          <span>Available Properties ({properties.length})</span>
+        </button>
 
-          {/* Property Type Filter */}
-          <div className="md:col-span-4 flex items-center gap-1.5 overflow-x-auto pb-1">
-            {(['All', 'Apartment', 'Villa', 'Penthouse', 'Studio', 'Commercial'] as Array<PropertyType | 'All'>).map((t) => (
-              <button
-                key={t}
-                onClick={() => setSelectedType(t)}
-                className={`px-3 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-colors ${
-                  selectedType === t
-                    ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-sm'
-                    : 'bg-slate-950 text-slate-400 border border-slate-800 hover:text-white'
-                }`}
-              >
-                {t}
-              </button>
-            ))}
-          </div>
-
-          {/* BHK Filter */}
-          <div className="md:col-span-3 flex items-center gap-1.5 overflow-x-auto pb-1">
-            <span className="text-xs font-bold text-slate-400 mr-1">BHK:</span>
-            {(['All', 1, 2, 3, 4, 5] as Array<number | 'All'>).map((b) => (
-              <button
-                key={b.toString()}
-                onClick={() => setSelectedBHK(b)}
-                className={`px-2.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-colors ${
-                  selectedBHK === b
-                    ? 'bg-indigo-600 text-white shadow-sm'
-                    : 'bg-slate-950 text-slate-400 border border-slate-800 hover:text-white'
-                }`}
-              >
-                {b === 'All' ? 'All' : `${b} BHK`}
-              </button>
-            ))}
-          </div>
-
-        </div>
+        <button
+          onClick={() => setActiveTab('demands')}
+          className={`flex-1 min-w-[180px] py-2.5 px-4 rounded-xl text-xs font-extrabold flex items-center justify-center gap-2 transition-all ${
+            activeTab === 'demands'
+              ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-md'
+              : 'text-slate-400 hover:text-white'
+          }`}
+        >
+          <FileText className="w-4 h-4 text-yellow-300" />
+          <span>Buyer & Tenant Needs ({propertyRequirements.length})</span>
+          <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-amber-400 text-slate-950 font-black">
+            ആവശ്യക്കാർ
+          </span>
+        </button>
       </div>
+
+      {/* ========================================================================= */}
+      {/* SECTION 1: AVAILABLE PROPERTIES TAB */}
+      {/* ========================================================================= */}
+      {activeTab === 'properties' && (
+        <div className="space-y-6 animate-in fade-in">
+          {/* Search & Filter Bar */}
+          <div className="p-4 rounded-3xl bg-slate-900/90 border border-slate-800 shadow-xl space-y-3">
+            <div className="flex items-center justify-between gap-3 flex-wrap border-b border-slate-800/80 pb-3">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-extrabold text-slate-300">Listing Purpose:</span>
+                <div className="flex items-center p-1 rounded-xl bg-slate-950 border border-slate-800">
+                  <button
+                    onClick={() => setListingType('Buy')}
+                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                      listingType === 'Buy'
+                        ? 'bg-amber-600 text-white shadow-md'
+                        : 'text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    Buy Homes
+                  </button>
+                  <button
+                    onClick={() => setListingType('Rent')}
+                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                      listingType === 'Rent'
+                        ? 'bg-amber-600 text-white shadow-md'
+                        : 'text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    Rent Properties
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
+              {/* Search Box */}
+              <div className="md:col-span-5 relative">
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <input
+                  type="text"
+                  value={searchLocation}
+                  onChange={(e) => setSearchLocation(e.target.value)}
+                  placeholder="Search by city (Kochi, Trivandrum, Calicut...), locality, or building..."
+                  className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 transition-colors"
+                />
+              </div>
+
+              {/* Property Type Filter */}
+              <div className="md:col-span-4 flex items-center gap-1.5 overflow-x-auto pb-1">
+                {(['All', 'Apartment', 'Villa', 'Penthouse', 'Studio', 'Commercial'] as Array<PropertyType | 'All'>).map((t) => (
+                  <button
+                    key={t}
+                    onClick={() => setSelectedType(t)}
+                    className={`px-3 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-colors ${
+                      selectedType === t
+                        ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-sm'
+                        : 'bg-slate-950 text-slate-400 border border-slate-800 hover:text-white'
+                    }`}
+                  >
+                    {t}
+                  </button>
+                ))}
+              </div>
+
+              {/* BHK Filter */}
+              <div className="md:col-span-3 flex items-center gap-1.5 overflow-x-auto pb-1">
+                <span className="text-xs font-bold text-slate-400 mr-1">BHK:</span>
+                {(['All', 1, 2, 3, 4, 5] as Array<number | 'All'>).map((b) => (
+                  <button
+                    key={b.toString()}
+                    onClick={() => setSelectedBHK(b)}
+                    className={`px-2.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-colors ${
+                      selectedBHK === b
+                        ? 'bg-indigo-600 text-white shadow-sm'
+                        : 'bg-slate-950 text-slate-400 border border-slate-800 hover:text-white'
+                    }`}
+                  >
+                    {b === 'All' ? 'All' : `${b} BHK`}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
 
       {/* Listings Grid + Mortgage Calculator Sidebar */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -454,6 +545,283 @@ export const RealEstateView: React.FC = () => {
         </div>
 
       </div>
+    </div>
+  )}
+
+      {/* ========================================================================= */}
+      {/* SECTION 2: BUYER & TENANT REQUIREMENTS (ആവശ്യക്കാർ - PROPERTY WANTED) */}
+      {/* ========================================================================= */}
+      {activeTab === 'demands' && (
+        <div className="space-y-6 animate-in fade-in">
+          
+          {/* Post Requirement Banner CTA */}
+          <div className="p-6 rounded-3xl bg-gradient-to-r from-indigo-950/80 via-slate-900 to-purple-950/80 border border-indigo-500/30 shadow-2xl flex flex-col md:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-indigo-600 flex items-center justify-center text-white shadow-xl shadow-indigo-600/30 shrink-0">
+                <FileText className="w-6 h-6 text-yellow-300" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h3 className="font-extrabold text-base sm:text-lg text-white">Looking to Buy or Rent a Property?</h3>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/40">
+                    നിങ്ങളുടെ ആവശ്യം ചേർക്കുക
+                  </span>
+                </div>
+                <p className="text-xs text-slate-300 mt-1">
+                  Post your exact budget, preferred localities, BHK, and furnishing preferences. Property owners and verified brokers will contact you directly with matching options.
+                </p>
+              </div>
+            </div>
+
+            <button
+              onClick={() => setShowPostReqModal(true)}
+              className="px-5 py-3 rounded-2xl bg-gradient-to-r from-indigo-600 via-purple-600 to-amber-500 hover:from-indigo-500 hover:to-amber-400 text-white font-extrabold text-xs flex items-center gap-2 shadow-xl shadow-indigo-600/30 whitespace-nowrap hover:scale-105 active:scale-95 transition-all"
+            >
+              <Plus className="w-4 h-4" />
+              <span>+ Post My Requirement (ആവശ്യം പോസ്റ്റ് ചെയ്യുക)</span>
+            </button>
+          </div>
+
+          {/* Demands Search & Filter Bar */}
+          <div className="p-4 rounded-3xl bg-slate-900/90 border border-slate-800 shadow-xl space-y-3">
+            <div className="flex items-center justify-between gap-3 flex-wrap border-b border-slate-800/80 pb-3">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-extrabold text-slate-300">Requirement Type:</span>
+                <div className="flex items-center p-1 rounded-xl bg-slate-950 border border-slate-800">
+                  <button
+                    onClick={() => setDemandFilterType('All')}
+                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                      demandFilterType === 'All'
+                        ? 'bg-indigo-600 text-white shadow-md'
+                        : 'text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    All Needs ({propertyRequirements.length})
+                  </button>
+                  <button
+                    onClick={() => setDemandFilterType('Buy')}
+                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                      demandFilterType === 'Buy'
+                        ? 'bg-amber-600 text-white shadow-md'
+                        : 'text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    Want to Buy ({propertyRequirements.filter(r => r.requirementType === 'Buy').length})
+                  </button>
+                  <button
+                    onClick={() => setDemandFilterType('Rent')}
+                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                      demandFilterType === 'Rent'
+                        ? 'bg-purple-600 text-white shadow-md'
+                        : 'text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    Want to Rent ({propertyRequirements.filter(r => r.requirementType === 'Rent').length})
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
+              {/* Search Box */}
+              <div className="md:col-span-6 relative">
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <input
+                  type="text"
+                  value={demandSearchQuery}
+                  onChange={(e) => setDemandSearchQuery(e.target.value)}
+                  placeholder="Search buyer requirements (Kozhikode, Villa, 3 BHK, Kakkanad, Beach...)"
+                  className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-colors"
+                />
+              </div>
+
+              {/* Category Filter */}
+              <div className="md:col-span-6 flex items-center gap-1.5 overflow-x-auto pb-1">
+                {(['All', 'Apartment', 'Villa', 'Independent House', 'Plot / Land', 'Commercial', 'Office Space'] as const).map((cat) => (
+                  <button
+                    key={cat}
+                    onClick={() => setDemandCategory(cat)}
+                    className={`px-3 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-colors ${
+                      demandCategory === cat
+                        ? 'bg-indigo-600 text-white shadow-sm'
+                        : 'bg-slate-950 text-slate-400 border border-slate-800 hover:text-white'
+                    }`}
+                  >
+                    {cat}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Demands Cards List / Grid */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="font-extrabold text-sm text-slate-200 uppercase tracking-wider flex items-center gap-2">
+                <FileText className="w-4 h-4 text-indigo-400" />
+                <span>Buyer & Tenant Demand Listings ({filteredRequirements.length})</span>
+              </h3>
+              <span className="text-xs text-slate-400">Direct Customer Inquiries</span>
+            </div>
+
+            {filteredRequirements.length === 0 ? (
+              <div className="p-12 text-center rounded-3xl bg-slate-900/80 border border-slate-800 space-y-4">
+                <div className="w-14 h-14 rounded-2xl bg-indigo-500/10 text-indigo-400 flex items-center justify-center mx-auto">
+                  <FileText className="w-8 h-8 opacity-70" />
+                </div>
+                <div>
+                  <p className="font-bold text-sm text-slate-200">No buyer or tenant requirements match this filter</p>
+                  <p className="text-xs text-slate-500 max-w-sm mx-auto mt-1">
+                    Be the first to post your property requirement so sellers and agents can reach out to you!
+                  </p>
+                </div>
+                <button
+                  onClick={() => setShowPostReqModal(true)}
+                  className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-lg shadow-indigo-600/30 transition-all"
+                >
+                  + Post Your Property Requirement
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                {filteredRequirements.map((req) => (
+                  <div
+                    key={req.id}
+                    className="p-5 rounded-3xl bg-slate-900 border border-slate-800 hover:border-indigo-500/40 shadow-xl space-y-4 transition-all flex flex-col justify-between"
+                  >
+                    <div className="space-y-3">
+                      
+                      {/* Top Badges & Budget */}
+                      <div className="flex items-center justify-between gap-2 flex-wrap">
+                        <div className="flex items-center gap-2">
+                          <span className={`px-2.5 py-1 rounded-xl text-[10px] font-black flex items-center gap-1 border ${
+                            req.requirementType === 'Buy'
+                              ? 'bg-amber-500/20 text-amber-300 border-amber-500/30'
+                              : 'bg-purple-500/20 text-purple-300 border-purple-500/30'
+                          }`}>
+                            {req.requirementType === 'Buy' ? '🏷️ Want to Buy (വാങ്ങാൻ)' : '🔑 Want to Rent (വാടകയ്ക്ക്)'}
+                          </span>
+
+                          <span className="px-2 py-0.5 rounded-lg bg-slate-950 text-slate-300 border border-slate-800 text-[10px] font-bold">
+                            {req.propertyCategory}
+                          </span>
+                        </div>
+
+                        <span className="px-3 py-1 rounded-xl bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 font-black text-xs">
+                          {req.budgetFormatted}
+                        </span>
+                      </div>
+
+                      {/* Title & City */}
+                      <div>
+                        <h4 className="font-extrabold text-sm sm:text-base text-white hover:text-indigo-300 transition-colors">
+                          {req.title}
+                        </h4>
+                        <div className="flex items-center gap-1.5 text-xs text-slate-400 mt-1 flex-wrap">
+                          <MapPin className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                          <span className="font-bold text-slate-300">{req.city}:</span>
+                          <span>{req.preferredLocations.join(', ')}</span>
+                        </div>
+                      </div>
+
+                      {/* Specs Tags */}
+                      <div className="flex items-center gap-2 flex-wrap text-[11px]">
+                        {req.bedrooms && req.bedrooms !== 'Any' && (
+                          <span className="px-2.5 py-1 rounded-xl bg-slate-950 border border-slate-800 text-slate-300 flex items-center gap-1">
+                            <Bed className="w-3.5 h-3.5 text-indigo-400" />
+                            <span>{req.bedrooms} BHK</span>
+                          </span>
+                        )}
+                        {req.furnishing && (
+                          <span className="px-2.5 py-1 rounded-xl bg-slate-950 border border-slate-800 text-slate-300 flex items-center gap-1">
+                            <Armchair className="w-3.5 h-3.5 text-purple-400" />
+                            <span>{req.furnishing}</span>
+                          </span>
+                        )}
+                        {req.timeline && (
+                          <span className="px-2.5 py-1 rounded-xl bg-slate-950 border border-slate-800 text-emerald-300 flex items-center gap-1">
+                            <Calendar className="w-3.5 h-3.5 text-emerald-400" />
+                            <span>{req.timeline}</span>
+                          </span>
+                        )}
+                        {req.minAreaSqFt && (
+                          <span className="px-2.5 py-1 rounded-xl bg-slate-950 border border-slate-800 text-amber-300 flex items-center gap-1">
+                            <Maximize2 className="w-3.5 h-3.5 text-amber-400" />
+                            <span>Min {req.minAreaSqFt} sq.ft</span>
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Specific Needs Description */}
+                      <p className="p-3 rounded-2xl bg-slate-950/80 border border-slate-800/80 text-slate-300 text-xs leading-relaxed">
+                        "{req.specificNeeds}"
+                      </p>
+
+                    </div>
+
+                    {/* Customer Profile & Direct Contact Actions */}
+                    <div className="pt-3 border-t border-slate-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div className="flex items-center gap-2.5">
+                        <img
+                          src={req.contactAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300'}
+                          alt={req.contactName}
+                          className="w-9 h-9 rounded-xl object-cover border border-slate-700"
+                        />
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1">
+                            <span className="font-extrabold text-xs text-white truncate">{req.contactName}</span>
+                            <UserCheck className="w-3 h-3 text-emerald-400 shrink-0" />
+                          </div>
+                          <span className="text-[10px] text-slate-400 block font-mono">{req.contactPhone}</span>
+                        </div>
+                      </div>
+
+                      {/* Action Buttons */}
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <button
+                          onClick={() => handleContactBuyer(req)}
+                          className="flex-1 sm:flex-initial px-3.5 py-2 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-md shadow-indigo-600/25 hover:scale-105 active:scale-95 transition-all"
+                        >
+                          <MessageSquare className="w-3.5 h-3.5" />
+                          <span>Chat with Buyer</span>
+                        </button>
+
+                        <a
+                          href={`tel:${req.contactPhone}`}
+                          className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white transition-colors"
+                          title="Call Buyer"
+                        >
+                          <Phone className="w-3.5 h-3.5" />
+                        </a>
+
+                        <button
+                          onClick={() => toggleSavePropertyRequirement(req.id)}
+                          className={`p-2 rounded-xl transition-colors ${
+                            req.isSaved ? 'bg-amber-500 text-white' : 'bg-slate-800 text-slate-400 hover:text-white'
+                          }`}
+                          title="Bookmark Requirement"
+                        >
+                          <Bookmark className="w-3.5 h-3.5" />
+                        </button>
+
+                        <button
+                          onClick={() => deletePropertyRequirement(req.id)}
+                          className="p-2 rounded-xl bg-slate-800 hover:bg-red-500/20 text-slate-400 hover:text-red-400 transition-colors"
+                          title="Delete Requirement"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+        </div>
+      )}
 
       {/* ========================================================================= */}
       {/* 1. PROPERTY DETAILS MODAL (FULL DETAILS, GALLERY & SELLER CONTACT) */}
@@ -775,6 +1143,14 @@ export const RealEstateView: React.FC = () => {
       <AddPropertyModal
         isOpen={showAddModal}
         onClose={() => setShowAddModal(false)}
+      />
+
+      {/* ========================================================================= */}
+      {/* 4. POST BUYER / TENANT REQUIREMENT MODAL */}
+      {/* ========================================================================= */}
+      <PostRequirementModal
+        isOpen={showPostReqModal}
+        onClose={() => setShowPostReqModal(false)}
       />
 
     </div>
