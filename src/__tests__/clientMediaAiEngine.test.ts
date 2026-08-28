@@ -2,7 +2,9 @@ import { describe, it, expect } from 'vitest';
 import {
   editPhotoWithAiPrompt,
   animatePhotoToVideo,
-  applyCanvasFilter
+  applyCanvasFilter,
+  resolveLandmarkBackgroundFromPrompt,
+  LANDMARK_BACKGROUND_PRESETS
 } from '../services/clientMediaAiEngine';
 
 describe('100% Client-Side AI Creative Media Engine', () => {
@@ -27,6 +29,40 @@ describe('100% Client-Side AI Creative Media Engine', () => {
       expect(result.style).toContain('Kerala Traditional Look');
       expect(result.dimensions?.width).toBe(1024);
       expect(result.dimensions?.height).toBe(1024);
+    });
+
+    it('supports Background Swap to Taj Mahal and landmark resolution', async () => {
+      const tajUrl = resolveLandmarkBackgroundFromPrompt('Change background to Taj Mahal Agra');
+      expect(tajUrl).toContain('unsplash.com');
+
+      const result = await editPhotoWithAiPrompt(
+        dummyPhotoUrl,
+        'Change background to Taj Mahal at sunrise',
+        'Background Swap (പശ്ചാത്തലം മാറ്റുക)',
+        'Photorealistic',
+        '1:1',
+        { customBackgroundUrl: tajUrl }
+      );
+
+      expect(result.id).toContain('photo-edit-');
+      expect(result.resultUrl).toBeDefined();
+      expect(result.style).toContain('Background Swap');
+    });
+
+    it('supports custom background image URLs', async () => {
+      const customBg = 'https://images.unsplash.com/photo-1512453979798-5ea266f8880c?w=1200';
+      const result = await editPhotoWithAiPrompt(
+        dummyPhotoUrl,
+        'Change background to Dubai Burj Khalifa',
+        'Background Swap (പശ്ചാത്തലം മാറ്റുക)',
+        'Photorealistic',
+        '16:9',
+        { customBackgroundUrl: customBg }
+      );
+
+      expect(result.dimensions?.width).toBe(1280);
+      expect(result.dimensions?.height).toBe(720);
+      expect(result.resultUrl).toBeDefined();
     });
 
     it('supports different aspect ratios properly', async () => {

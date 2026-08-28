@@ -311,10 +311,12 @@ export function searchMessagesInConversation(
 /**
  * Filter conversations by tab folder (All, Unread, Personal, Groups, Channels, Favorites).
  */
+export type ChatFolderCategory = 'all' | 'friends' | 'unread' | 'personal' | 'groups' | 'channels' | 'favorites';
+
 export function filterConversationsByFolder(
   conversations: ChatConversation[],
-  folder: ChatFolderType,
-  searchQuery: string = ''
+  folder: ChatFolderCategory,
+  searchQuery = ''
 ): ChatConversation[] {
   const cleanSearch = searchQuery.trim().toLowerCase();
 
@@ -322,17 +324,18 @@ export function filterConversationsByFolder(
     // Search query match
     if (cleanSearch) {
       const matchName = c.participantName.toLowerCase().includes(cleanSearch);
-      const matchRole = c.roleOrContext.toLowerCase().includes(cleanSearch);
-      const matchLastMsg = c.lastMessage.toLowerCase().includes(cleanSearch);
+      const matchRole = (c.roleOrContext || '').toLowerCase().includes(cleanSearch);
+      const matchLastMsg = (c.lastMessage || '').toLowerCase().includes(cleanSearch);
       if (!matchName && !matchRole && !matchLastMsg) return false;
     }
 
     // Folder match
+    if (folder === 'friends') return Boolean(c.isFriend || (c.conversationType === 'direct' && c.isFriend !== false));
     if (folder === 'unread') return c.unreadCount > 0;
     if (folder === 'personal') return c.conversationType === 'direct' || !c.conversationType;
     if (folder === 'groups') return c.conversationType === 'group' || c.conversationType === 'broadcast';
     if (folder === 'channels') return c.conversationType === 'channel';
-    if (folder === 'favorites') return c.isFavorite || c.isPinned;
+    if (folder === 'favorites') return Boolean(c.isFavorite || c.isPinned);
     return true; // 'all'
   });
 }

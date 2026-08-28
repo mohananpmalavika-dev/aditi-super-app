@@ -35,7 +35,8 @@ import {
   applyCanvasFilter, 
   AiPhotoEditMode, 
   MotionAnimationType, 
-  ProcessedMediaItem 
+  ProcessedMediaItem,
+  LANDMARK_BACKGROUND_PRESETS
 } from '../../services/clientMediaAiEngine';
 import { AspectRatioType, GeneratedImage, GeneratedVideo, ImageStylePreset, VideoEditorClip } from '../../types/superApp';
 import { useSuperApp } from '../../context/SuperAppContext';
@@ -102,13 +103,22 @@ export const MediaStudioView: React.FC = () => {
   const [editedPhotoResult, setEditedPhotoResult] = useState<ProcessedMediaItem | null>(null);
   const [comparisonSliderPos, setComparisonSliderPos] = useState<number>(50); // 0 to 100%
   const [photoHistory, setPhotoHistory] = useState<ProcessedMediaItem[]>([]);
-  const [photoAdjustments, setPhotoAdjustments] = useState({
+  const [photoAdjustments, setPhotoAdjustments] = useState<{
+    aiStrength: number;
+    brightness: number;
+    contrast: number;
+    saturation: number;
+    warmth: number;
+    clarityHdr: number;
+    customBackgroundUrl?: string;
+  }>({
     aiStrength: 85,
     brightness: 5,
     contrast: 10,
     saturation: 15,
     warmth: 15,
-    clarityHdr: 40
+    clarityHdr: 40,
+    customBackgroundUrl: ''
   });
   const photoInputRef = useRef<HTMLInputElement>(null);
 
@@ -584,6 +594,8 @@ export const MediaStudioView: React.FC = () => {
                 <span className="text-[11px] font-bold text-slate-400">Quick Transform Presets:</span>
                 <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
                   {[
+                    { label: '🏛️ Taj Mahal, Agra', mode: 'Background Swap (പശ്ചാത്തലം മാറ്റുക)' as AiPhotoEditMode, prompt: 'Change background to Taj Mahal Agra with realistic sunlight & depth' },
+                    { label: '🌴 Kerala Backwaters', mode: 'Background Swap (പശ്ചാത്തലം മാറ്റുക)' as AiPhotoEditMode, prompt: 'Change background to Kerala Backwaters houseboat & palm trees' },
                     { label: '🌟 Kerala Kasavu', mode: 'Kerala Traditional Look (കേരള തനിമ)' as AiPhotoEditMode, prompt: 'Traditional Kerala Kasavu gold attire, radiant temple lighting & Onam floral aura' },
                     { label: '👑 Royal Oil Portrait', mode: 'Royal Vintage Oil Painting (ഓയിൽ പെയിന്റിംഗ്)' as AiPhotoEditMode, prompt: 'Baroque royal oil portrait, Rembrandt classical lighting & antique gold museum finish' },
                     { label: '🌌 Cyberpunk', mode: 'Cyberpunk Avatar (സൈബർപങ്ക്)' as AiPhotoEditMode, prompt: 'Cyberpunk neon electric glow, futuristic synthwave lighting & holographic grid' },
@@ -600,7 +612,11 @@ export const MediaStudioView: React.FC = () => {
                           handleProcessPhotoEdit();
                         }
                       }}
-                      className="px-2.5 py-1 rounded-lg bg-slate-950 border border-slate-800 hover:border-pink-500/50 text-[11px] font-bold text-slate-300 hover:text-white whitespace-nowrap transition-colors"
+                      className={`px-2.5 py-1 rounded-lg border text-[11px] font-bold whitespace-nowrap transition-colors ${
+                        photoEditMode === p.mode && photoEditPrompt === p.prompt
+                          ? 'bg-pink-600 border-pink-500 text-white'
+                          : 'bg-slate-950 border-slate-800 hover:border-pink-500/50 text-slate-300 hover:text-white'
+                      }`}
                     >
                       {p.label}
                     </button>
@@ -608,17 +624,83 @@ export const MediaStudioView: React.FC = () => {
                 </div>
               </div>
 
+              {/* Background Swap Dedicated Scenery Gallery & Custom Upload */}
+              {photoEditMode === 'Background Swap (പശ്ചാത്തലം മാറ്റുക)' && (
+                <div className="space-y-3 p-4 rounded-2xl bg-gradient-to-br from-indigo-950/60 to-purple-950/60 border border-indigo-500/40 animate-in fade-in">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-extrabold text-indigo-200 flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5 text-yellow-300" />
+                      <span>Choose Background Scenery (പശ്ചാത്തലം തിരഞ്ഞെടുക്കുക)</span>
+                    </span>
+                    <label className="px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-[10px] cursor-pointer shadow-sm transition-all">
+                      <span>+ Upload Custom BG</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          try {
+                            const bgDataUrl = await readFileAsDataUrl(file);
+                            handleAdjustmentChange('customBackgroundUrl', bgDataUrl as any);
+                            showToast(`🏞️ Custom background "${file.name}" applied!`);
+                          } catch (err) {
+                            showToast('⚠️ Failed to load custom background.');
+                          }
+                        }}
+                      />
+                    </label>
+                  </div>
+
+                  {/* 1-Click Iconic Landmark Backgrounds */}
+                  <div className="grid grid-cols-4 gap-2">
+                    {LANDMARK_BACKGROUND_PRESETS.map((preset) => {
+                      const isSelected = photoAdjustments.customBackgroundUrl === preset.imageUrl ||
+                        (!photoAdjustments.customBackgroundUrl && photoEditPrompt.toLowerCase().includes(preset.keywords[0]));
+                      return (
+                        <button
+                          key={preset.id}
+                          type="button"
+                          onClick={() => {
+                            setPhotoEditPrompt(`Change background to ${preset.name}`);
+                            handleAdjustmentChange('customBackgroundUrl', preset.imageUrl as any);
+                            showToast(`🏛️ Background changed to ${preset.name}`);
+                          }}
+                          className={`relative rounded-xl overflow-hidden aspect-video border-2 transition-all group ${
+                            isSelected
+                              ? 'border-yellow-400 ring-2 ring-yellow-400/50 scale-105 shadow-lg shadow-yellow-500/20'
+                              : 'border-slate-800 hover:border-indigo-400 opacity-75 hover:opacity-100'
+                          }`}
+                        >
+                          <img
+                            src={preset.imageUrl}
+                            alt={preset.name}
+                            className="w-full h-full object-cover"
+                          />
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex items-end p-1">
+                            <span className="text-[9px] font-extrabold text-white truncate drop-shadow-md">
+                              {preset.name.split(',')[0]}
+                            </span>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
               {/* Prompt Description Input */}
               <div className="space-y-2">
                 <label className="text-xs font-extrabold text-slate-300 flex items-center justify-between">
-                  <span>3. Edit Instructions / Prompt</span>
-                  <span className="text-indigo-400 text-[10px]">Describe desired modifications</span>
+                  <span>3. Edit Instructions / Landmark Prompt</span>
+                  <span className="text-indigo-400 text-[10px]">Type any landmark (e.g. Taj Mahal)</span>
                 </label>
                 <textarea
                   value={photoEditPrompt}
                   onChange={(e) => setPhotoEditPrompt(e.target.value)}
                   rows={2}
-                  placeholder="e.g. Turn outfit into royal Kasavu sari with temple background, realistic lighting..."
+                  placeholder="e.g. Change background to Taj Mahal Agra, sunset lighting..."
                   className="w-full p-3 rounded-2xl bg-slate-950/90 border border-slate-700 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-pink-500 focus:ring-1 focus:ring-pink-500 transition-all"
                 />
               </div>

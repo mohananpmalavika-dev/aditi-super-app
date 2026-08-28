@@ -32,7 +32,7 @@ export const AddFriendModal: React.FC<AddFriendModalProps> = ({
   onSelectChat
 }) => {
   const { user, chats, registeredUsers, refreshRegisteredUsers, startNewChatWith, showToast } = useSuperApp();
-  const [activeTab, setActiveTab] = useState<'search' | 'invite' | 'custom'>('search');
+  const [activeTab, setActiveTab] = useState<'friends' | 'search' | 'invite' | 'custom'>('friends');
   const [searchQuery, setSearchQuery] = useState('');
   const [copiedLink, setCopiedLink] = useState(false);
   const [showQrCode, setShowQrCode] = useState(false);
@@ -45,7 +45,7 @@ export const AddFriendModal: React.FC<AddFriendModalProps> = ({
   const [customRole, setCustomRole] = useState('Friend');
   const [customMessage, setCustomMessage] = useState('Hey! Connected via AditiChat.');
 
-  // Fetch available users on modal open
+  // Fetch available users on modal open & merge chat contacts
   useEffect(() => {
     if (!isOpen) return;
 
@@ -54,13 +54,70 @@ export const AddFriendModal: React.FC<AddFriendModalProps> = ({
       setLoadingUsers(true);
       try {
         const usersList = await getCloudRegisteredUsers();
+        const usersMap = new Map<string, UserProfile>();
+
+        // 1. Add cloud & local registered users
+        usersList.forEach((u) => {
+          if (u && (u.id || u.email || u.name)) {
+            usersMap.set((u.name || u.id || u.email).toLowerCase(), u);
+          }
+        });
+
+        // 2. Merge all chat contacts & friends from active state
+        chats.forEach((c) => {
+          const isDirect = !c.conversationType || c.conversationType === 'direct';
+          if (isDirect && c.participantName) {
+            const key = c.participantName.toLowerCase();
+            if (!usersMap.has(key)) {
+              usersMap.set(key, {
+                id: c.id,
+                name: c.participantName,
+                email: '',
+                handle: `@${c.participantName.toLowerCase().replace(/\s+/g, '')}`,
+                avatar: c.participantAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300',
+                bio: c.roleOrContext || 'Aditi Friend',
+                location: 'Kerala, India',
+                zodiacSign: 'Leo',
+                isVerified: true
+              });
+            }
+          }
+        });
+
+        // 3. Merge registeredUsers from context
+        registeredUsers.forEach((u) => {
+          if (u && (u.id || u.email || u.name)) {
+            const key = (u.name || u.id || u.email).toLowerCase();
+            if (!usersMap.has(key)) {
+              usersMap.set(key, u);
+            }
+          }
+        });
+
         if (isMounted) {
-          setAvailableUsers(usersList);
+          setAvailableUsers(Array.from(usersMap.values()));
         }
       } catch (err) {
         console.warn('Could not fetch discoverable users:', err);
-        if (isMounted && registeredUsers.length > 0) {
-          setAvailableUsers(registeredUsers);
+        if (isMounted) {
+          const fallbackMap = new Map<string, UserProfile>();
+          chats.forEach((c) => {
+            const isDirect = !c.conversationType || c.conversationType === 'direct';
+            if (isDirect && c.participantName) {
+              fallbackMap.set(c.participantName.toLowerCase(), {
+                id: c.id,
+                name: c.participantName,
+                email: '',
+                handle: `@${c.participantName.toLowerCase().replace(/\s+/g, '')}`,
+                avatar: c.participantAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300',
+                bio: c.roleOrContext || 'Aditi Friend',
+                location: 'Kerala, India',
+                zodiacSign: 'Leo',
+                isVerified: true
+              });
+            }
+          });
+          setAvailableUsers(Array.from(fallbackMap.values()));
         }
       } finally {
         if (isMounted) {
@@ -73,7 +130,7 @@ export const AddFriendModal: React.FC<AddFriendModalProps> = ({
     return () => {
       isMounted = false;
     };
-  }, [isOpen, registeredUsers]);
+  }, [isOpen, registeredUsers, chats]);
 
   if (!isOpen) return null;
 
@@ -94,6 +151,21 @@ export const AddFriendModal: React.FC<AddFriendModalProps> = ({
     return !isSelfId && !isSelfEmail && !isSelfName;
   });
 
+  // Check if a user is already in chats / friends
+  const getExistingChat = (targetUser: UserProfile) => {
+    return chats.find(
+      (c) =>
+        c.participantName.toLowerCase() === targetUser.name.toLowerCase() ||
+        (targetUser.id && c.id === targetUser.id)
+    );
+  };
+
+  // Group into Added Friends and New Users
+  const myAddedFriends = otherUsers.filter((u) => {
+    const existing = getExistingChat(u);
+    return Boolean(existing && (existing.isFriend !== false));
+  });
+
   // Dynamic Search filter across name, handle, email, location, bio
   const query = searchQuery.trim().toLowerCase();
   const filteredUsers = otherUsers.filter((u) => {
@@ -106,14 +178,12 @@ export const AddFriendModal: React.FC<AddFriendModalProps> = ({
     return matchName || matchHandle || matchEmail || matchLocation || matchBio;
   });
 
-  // Check if a user is already in chats / friends
-  const getExistingChat = (targetUser: UserProfile) => {
-    return chats.find(
-      (c) =>
-        c.participantName.toLowerCase() === targetUser.name.toLowerCase() ||
-        (targetUser.id && c.id === targetUser.id)
-    );
-  };
+  const filteredFriends = myAddedFriends.filter((u) => {
+    if (!query) return true;
+    const matchName = u.name?.toLowerCase().includes(query);
+    const matchHandle = u.handle?.toLowerCase().includes(query);
+    return matchName || matchHandle;
+  });
 
   // Add friend from directory
   const handleAddFromDirectory = (targetUser: UserProfile) => {
@@ -241,37 +311,50 @@ export const AddFriendModal: React.FC<AddFriendModalProps> = ({
         </div>
 
         {/* Tab Navigation */}
-        <div className="flex items-center p-1 rounded-2xl bg-slate-950 border border-slate-800">
+        <div className="flex items-center p-1 rounded-2xl bg-slate-950 border border-slate-800 gap-1 overflow-x-auto">
+          <button
+            type="button"
+            onClick={() => setActiveTab('friends')}
+            className={`flex-1 min-w-[100px] py-2 px-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 whitespace-nowrap ${
+              activeTab === 'friends'
+                ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <UserCheck className="w-3.5 h-3.5" />
+            <span>My Friends ({myAddedFriends.length})</span>
+          </button>
+
           <button
             type="button"
             onClick={() => setActiveTab('search')}
-            className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+            className={`flex-1 min-w-[100px] py-2 px-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 whitespace-nowrap ${
               activeTab === 'search'
-                ? 'bg-indigo-600 text-white shadow-md'
+                ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
                 : 'text-slate-400 hover:text-white'
             }`}
           >
             <Search className="w-3.5 h-3.5" />
-            <span>Search Users ({otherUsers.length})</span>
+            <span>Discover ({otherUsers.length})</span>
           </button>
 
           <button
             type="button"
             onClick={() => setActiveTab('invite')}
-            className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+            className={`flex-1 min-w-[90px] py-2 px-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 whitespace-nowrap ${
               activeTab === 'invite'
                 ? 'bg-indigo-600 text-white shadow-md'
                 : 'text-slate-400 hover:text-white'
             }`}
           >
             <Share2 className="w-3.5 h-3.5" />
-            <span>Invite Link & QR</span>
+            <span>Invite & QR</span>
           </button>
 
           <button
             type="button"
             onClick={() => setActiveTab('custom')}
-            className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+            className={`flex-1 min-w-[90px] py-2 px-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 whitespace-nowrap ${
               activeTab === 'custom'
                 ? 'bg-indigo-600 text-white shadow-md'
                 : 'text-slate-400 hover:text-white'
@@ -283,7 +366,105 @@ export const AddFriendModal: React.FC<AddFriendModalProps> = ({
         </div>
 
         {/* ========================================================================= */}
-        {/* TAB 1: SEARCH & ADD FROM REGISTERED USERS DIRECTORY */}
+        {/* TAB 1: MY ADDED FRIENDS (എന്റെ സുഹൃത്തുക്കൾ) */}
+        {/* ========================================================================= */}
+        {activeTab === 'friends' && (
+          <div className="space-y-3.5 animate-in fade-in">
+            {myAddedFriends.length > 0 && (
+              <div className="relative">
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search among your friends..."
+                  className="w-full pl-9 pr-4 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                />
+              </div>
+            )}
+
+            <div className="space-y-2 max-h-72 overflow-y-auto pr-1 divide-y divide-slate-800/60">
+              {filteredFriends.length > 0 ? (
+                filteredFriends.map((u) => {
+                  const existingChat = getExistingChat(u);
+                  return (
+                    <div
+                      key={u.id || u.email || u.name}
+                      className="pt-2.5 pb-2.5 first:pt-0 flex items-center justify-between gap-3 group"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="relative flex-shrink-0">
+                          <img
+                            src={u.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300'}
+                            alt={u.name}
+                            className="w-10 h-10 rounded-2xl object-cover ring-2 ring-emerald-500/40"
+                            onError={(e) => {
+                              (e.target as HTMLElement).style.display = 'none';
+                            }}
+                          />
+                          <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-400 border-2 border-slate-900" />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <h4 className="font-extrabold text-xs text-white truncate">{u.name}</h4>
+                            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-0.5">
+                              <Check className="w-2.5 h-2.5" />
+                              <span>Added Friend</span>
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-slate-400 truncate">
+                            {existingChat?.lastMessage || u.bio || u.location || 'Connected on AditiChat'}
+                          </p>
+                        </div>
+                      </div>
+
+                      <button
+                        onClick={() => {
+                          if (existingChat) {
+                            onSelectChat(existingChat.id);
+                            onClose();
+                          } else {
+                            handleAddFromDirectory(u);
+                          }
+                        }}
+                        className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs flex items-center gap-1.5 shadow-md shadow-emerald-600/30 transition-all hover:scale-105 active:scale-95 flex-shrink-0"
+                      >
+                        <UserCheck className="w-3.5 h-3.5" />
+                        <span>Open Chat</span>
+                      </button>
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="py-8 text-center space-y-3 text-slate-400 text-xs">
+                  <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto">
+                    <UserPlus className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <p className="font-bold text-slate-300">
+                      {searchQuery ? `No friend found matching "${searchQuery}"` : 'No friends added yet'}
+                    </p>
+                    <p className="text-[11px] text-slate-500 mt-1">
+                      Discover other registered members in the directory or send an instant invite link!
+                    </p>
+                  </div>
+                  <div className="flex items-center justify-center gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('search')}
+                      className="px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs transition-all shadow-md"
+                    >
+                      Discover Users ({otherUsers.length}) →
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ========================================================================= */}
+        {/* TAB 2: SEARCH & DISCOVER REGISTERED USERS DIRECTORY */}
         {/* ========================================================================= */}
         {activeTab === 'search' && (
           <div className="space-y-3.5 animate-in fade-in">
@@ -315,7 +496,7 @@ export const AddFriendModal: React.FC<AddFriendModalProps> = ({
               {filteredUsers.length > 0 ? (
                 filteredUsers.map((u) => {
                   const existingChat = getExistingChat(u);
-                  const isFriend = existingChat?.isFriend;
+                  const isFriend = Boolean(existingChat && existingChat.isFriend !== false);
 
                   return (
                     <div
@@ -327,7 +508,9 @@ export const AddFriendModal: React.FC<AddFriendModalProps> = ({
                           <img
                             src={u.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300'}
                             alt={u.name}
-                            className="w-10 h-10 rounded-2xl object-cover ring-2 ring-indigo-500/30"
+                            className={`w-10 h-10 rounded-2xl object-cover ring-2 ${
+                              isFriend ? 'ring-emerald-500/40' : 'ring-indigo-500/30'
+                            }`}
                             onError={(e) => {
                               (e.target as HTMLElement).style.display = 'none';
                             }}
@@ -340,9 +523,11 @@ export const AddFriendModal: React.FC<AddFriendModalProps> = ({
                             {u.isVerified && (
                               <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />
                             )}
-                            <span className="text-[10px] text-indigo-400 font-mono truncate">
-                              {u.handle || (u.email ? `@${u.email.split('@')[0]}` : '')}
-                            </span>
+                            {isFriend && (
+                              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                                Added Friend
+                              </span>
+                            )}
                           </div>
                           <div className="flex items-center gap-2 text-[11px] text-slate-400 truncate">
                             {u.location && (

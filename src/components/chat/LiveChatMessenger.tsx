@@ -657,6 +657,17 @@ export const LiveChatMessenger: React.FC = () => {
             </button>
             <button
               type="button"
+              onClick={() => setChatFolderTab('friends')}
+              className={`px-2.5 py-1 rounded-lg transition-all text-center whitespace-nowrap ${
+                chatFolderTab === 'friends'
+                  ? 'bg-emerald-600 text-white shadow-sm font-black'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              Friends
+            </button>
+            <button
+              type="button"
               onClick={() => setChatFolderTab('unread')}
               className={`px-2.5 py-1 rounded-lg transition-all text-center whitespace-nowrap ${
                 chatFolderTab === 'unread'

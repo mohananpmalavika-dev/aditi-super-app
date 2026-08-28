@@ -260,7 +260,7 @@ export interface ChatPoll {
 }
 
 export type MessageDeliveryStatus = 'queued' | 'sending' | 'sent' | 'delivered' | 'read' | 'failed';
-export type ChatFolderType = 'all' | 'unread' | 'personal' | 'groups' | 'channels' | 'favorites';
+export type ChatFolderType = 'all' | 'friends' | 'unread' | 'personal' | 'groups' | 'channels' | 'favorites';
 
 export interface ChatMessage {
   id: string;
