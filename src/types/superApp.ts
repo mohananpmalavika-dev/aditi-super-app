@@ -691,7 +691,8 @@ export type JobSourceType =
   | 'aggregator_api'   // e.g. Jooble, Adzuna
   | 'company_career'   // e.g. TCS, Infosys, Wipro, Accenture, HCLTech
   | 'ats'              // e.g. Greenhouse, Lever, Workday feeds
-  | 'direct';          // Directly posted by recruiters on Aditi
+  | 'direct'           // Directly posted by recruiters on Aditi
+  | 'aggregated';
 
 export type JobApplyMode = 
   | 'in_app'              // 1-Click Apply within Aditi Super App
