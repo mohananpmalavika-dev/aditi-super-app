@@ -15,7 +15,8 @@ import {
   Settings,
   Search,
   Briefcase,
-  Wand2
+  Wand2,
+  Newspaper
 } from 'lucide-react';
 import { MiniAppId } from '../../types/superApp';
 import { useSuperApp } from '../../context/SuperAppContext';
@@ -45,6 +46,15 @@ const ALL_MINI_APPS: MiniAppMeta[] = [
     description: 'Real-Time Messaging with Agents, Tutors, Matches & AI Bot',
     badge: 'Live',
     color: 'from-sky-500 to-indigo-600'
+  },
+  {
+    id: 'news',
+    name: 'NewsOS Digital News',
+    category: 'daily',
+    icon: <Newspaper className="w-5 h-5 sm:w-6 sm:h-6" />,
+    description: 'Bilingual AI-Managed News (English & മലയാളം) with Kerala District Feeds, Live Updates & Fact Check',
+    badge: 'Live',
+    color: 'from-blue-600 to-indigo-600'
   },
   {
     id: 'jobs',
@@ -141,8 +151,8 @@ const ALL_MINI_APPS: MiniAppMeta[] = [
   }
 ];
 
-// Display Chat, Jobs, and Astrology in the menu
-const MINI_APPS: MiniAppMeta[] = ALL_MINI_APPS.filter(app => app.id === 'chat' || app.id === 'jobs' || app.id === 'astrology');
+// Display Chat, Jobs, News, and Astrology in the menu
+const MINI_APPS: MiniAppMeta[] = ALL_MINI_APPS.filter(app => app.id === 'chat' || app.id === 'jobs' || app.id === 'news' || app.id === 'astrology');
 
 export const AppLauncherModal: React.FC<AppLauncherModalProps> = ({ isOpen, onClose }) => {
   const { setActiveMiniApp } = useSuperApp();

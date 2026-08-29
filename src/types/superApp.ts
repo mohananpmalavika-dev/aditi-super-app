@@ -9,6 +9,7 @@ export type MiniAppId =
   | 'tutor'
   | 'chat'
   | 'jobs'
+  | 'news'
   | 'productivity'
   | 'utilities'
   | 'settings';

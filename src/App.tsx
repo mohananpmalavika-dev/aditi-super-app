@@ -19,6 +19,7 @@ import { MatrimonyView } from './components/matrimony/MatrimonyView';
 import { TutorView } from './components/tutor/TutorView';
 import { LiveChatMessenger } from './components/chat/LiveChatMessenger';
 import { JobPortalView } from './components/jobs/JobPortalView';
+import { NewsPortalView } from './components/news/NewsPortalView';
 import { TasksAndCalendar } from './components/productivity/TasksAndCalendar';
 import { UtilitiesView } from './components/utilities/UtilitiesView';
 import { SettingsView } from './components/settings/SettingsView';
@@ -72,6 +73,8 @@ const SuperAppContent: React.FC = () => {
         return <LiveChatMessenger />;
       case 'jobs':
         return <JobPortalView />;
+      case 'news':
+        return <NewsPortalView />;
       case 'productivity':
         return <TasksAndCalendar />;
       case 'utilities':

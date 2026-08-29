@@ -2705,4 +2705,48 @@ export function subscribeToJobPortalRealtime(onSync: () => void) {
   };
 }
 
+/* ===== NewsOS Cloud Database Services ===== */
+export async function fetchCloudNewsStories(): Promise<any[]> {
+  if (!supabase || isTestEnv) return [];
+  try {
+    const { data, error } = await supabase.from('news_stories').select('*').order('published_at', { ascending: false });
+    if (error) return [];
+    return data || [];
+  } catch {
+    return [];
+  }
+}
+
+export async function saveCloudNewsStories(stories: any[]): Promise<boolean> {
+  if (!supabase || isTestEnv || !stories.length) return false;
+  try {
+    const { error } = await supabase.from('news_stories').upsert(stories);
+    return !error;
+  } catch {
+    return false;
+  }
+}
+
+export async function fetchCloudNewsArticles(): Promise<any[]> {
+  if (!supabase || isTestEnv) return [];
+  try {
+    const { data, error } = await supabase.from('news_articles').select('*').order('published_at', { ascending: false });
+    if (error) return [];
+    return data || [];
+  } catch {
+    return [];
+  }
+}
+
+export async function saveCloudNewsArticles(articles: any[]): Promise<boolean> {
+  if (!supabase || isTestEnv || !articles.length) return false;
+  try {
+    const { error } = await supabase.from('news_articles').upsert(articles);
+    return !error;
+  } catch {
+    return false;
+  }
+}
+
+
 
