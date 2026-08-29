@@ -4,7 +4,9 @@ import {
   generateFIRDigitalDocument, 
   generateDefamationLegalNotice, 
   PRELOADED_FIR_RECORDS,
-  KEY_LEGAL_ACTS_REFERENCE 
+  KEY_LEGAL_ACTS_REFERENCE,
+  KERALA_POLICE_DISTRICTS_DIRECTORY,
+  getPoliceStationsByDistrict 
 } from '../services/legalIntelligenceService';
 
 describe('AI Legal Intelligence, Case Docket & Defamation Engine', () => {
@@ -122,7 +124,7 @@ describe('AI Legal Intelligence, Case Docket & Defamation Engine', () => {
     expect(customFir.firNumber).toBe('999/2024');
     expect(customFir.policeStation).toBe('Kollam East Police Station');
     expect(customFir.district).toBe('Kollam');
-    expect(customFir.courtDocket.cnrNumber).toContain('KLKO0100');
+    expect(customFir.courtDocket.cnrNumber).toContain('KLKL0100');
     expect(customFir.timeline.length).toBeGreaterThanOrEqual(4);
     expect(customFir.mediaReports.length).toBeGreaterThanOrEqual(1);
     expect(customFir.quashingGrounds.length).toBeGreaterThanOrEqual(3);
@@ -139,5 +141,28 @@ describe('AI Legal Intelligence, Case Docket & Defamation Engine', () => {
     const sec482 = KEY_LEGAL_ACTS_REFERENCE.find((a) => a.ipcSection.includes('482'));
     expect(sec482).toBeDefined();
     expect(sec482?.keyLegalDefence).toContain('Bhajan Lal');
+  });
+
+  it('provides official Kerala 14 Districts and Police Stations directory for auto-filling', () => {
+    expect(KERALA_POLICE_DISTRICTS_DIRECTORY.length).toBeGreaterThanOrEqual(14);
+
+    // Verify Ernakulam
+    const ekm = KERALA_POLICE_DISTRICTS_DIRECTORY.find((d) => d.district === 'Ernakulam');
+    expect(ekm).toBeDefined();
+    expect(ekm?.cnrPrefix).toBe('KLER');
+    expect(ekm?.policeStations.length).toBeGreaterThanOrEqual(10);
+
+    // Verify cascading helper
+    const tvmStations = getPoliceStationsByDistrict('Thiruvananthapuram');
+    expect(tvmStations.length).toBeGreaterThanOrEqual(8);
+    const cantonment = tvmStations.find((s) => s.stationCode === 'TVM-CAN');
+    expect(cantonment).toBeDefined();
+    expect(cantonment?.magistrateCourt).toContain('Chief Judicial Magistrate');
+
+    // Dynamic case lookup with specific station auto-fills proper court
+    const customCase = lookupFIRAndCaseStatus('555/2024', 'Cantonment Police Station', 'Thiruvananthapuram');
+    expect(customCase.district).toBe('Thiruvananthapuram');
+    expect(customCase.courtDocket.cnrNumber).toContain('KLTV0100');
+    expect(customCase.courtDocket.courtName).toContain('Chief Judicial Magistrate Court');
   });
 });

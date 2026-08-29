@@ -10,6 +10,1048 @@ import {
 } from '../types/superApp';
 
 /* ========================================================================= */
+/* 0. OFFICIAL POLICE STATIONS & DISTRICTS DIRECTORY (KERALA & METROS) */
+/* ========================================================================= */
+
+export interface PoliceStationInfo {
+  id: string;
+  name: string;
+  nameMalayalam: string;
+  stationCode: string;
+  magistrateCourt: string;
+  magistrateCourtMalayalam: string;
+  subDivision: string;
+  category: 'Cyber Crime' | 'City Law & Order' | 'Rural / Town' | 'Traffic / Special';
+}
+
+export interface DistrictPoliceDirectory {
+  district: string;
+  districtMalayalam: string;
+  cnrPrefix: string;
+  state: string;
+  magistrateCourtDefault: string;
+  magistrateCourtDefaultMalayalam: string;
+  policeStations: PoliceStationInfo[];
+}
+
+export const KERALA_POLICE_DISTRICTS_DIRECTORY: DistrictPoliceDirectory[] = [
+  {
+    district: 'Ernakulam',
+    districtMalayalam: 'എറണാകുളം (കൊച്ചി)',
+    cnrPrefix: 'KLER',
+    state: 'Kerala',
+    magistrateCourtDefault: 'Judicial First Class Magistrate Court-I, Ernakulam',
+    magistrateCourtDefaultMalayalam: 'ജുഡീഷ്യൽ ഫസ്റ്റ് ക്ലാസ് മജിസ്‌ട്രേറ്റ് കോടതി-I, എറണാകുളം',
+    policeStations: [
+      {
+        id: 'ekm-cyber',
+        name: 'Cyber Crime Police Station, Kochi City',
+        nameMalayalam: 'സൈബർ ക്രൈം പോലീസ് സ്റ്റേഷൻ, കൊച്ചി സിറ്റി',
+        stationCode: 'EKM-CYBER',
+        magistrateCourt: 'Chief Judicial Magistrate Court, Ernakulam',
+        magistrateCourtMalayalam: 'ചീഫ് ജുഡീഷ്യൽ മജിസ്‌ട്രേറ്റ് കോടതി, എറണാകുളം',
+        subDivision: 'Kochi City Cyber Cell',
+        category: 'Cyber Crime'
+      },
+      {
+        id: 'ekm-central',
+        name: 'Ernakulam Central Police Station',
+        nameMalayalam: 'എറണാകുളം സെൻട്രൽ പോലീസ് സ്റ്റേഷൻ',
+        stationCode: 'EKM-CTL',
+        magistrateCourt: 'Judicial First Class Magistrate Court-II, Ernakulam',
+        magistrateCourtMalayalam: 'ജുഡീഷ്യൽ ഫസ്റ്റ് ക്ലാസ് മജിസ്‌ട്രേറ്റ് കോടതി-II, എറണാകുളം',
+        subDivision: 'Ernakulam City',
+        category: 'City Law & Order'
+      },
+      {
+        id: 'ekm-south',
+        name: 'Ernakulam South Police Station',
+        nameMalayalam: 'എറണാകുളം സൗത്ത് പോലീസ് സ്റ്റേഷൻ',
+        stationCode: 'EKM-STH',
+        magistrateCourt: 'Judicial First Class Magistrate Court-I, Ernakulam',
+        magistrateCourtMalayalam: 'ജുഡീഷ്യൽ ഫസ്റ്റ് ക്ലാസ് മജിസ്‌ട്രേറ്റ് കോടതി-I, എറണാകുളം',
+        subDivision: 'Ernakulam City',
+        category: 'City Law & Order'
+      },
+      {
+        id: 'ekm-north',
+        name: 'Ernakulam Town North Police Station',
+        nameMalayalam: 'എറണാകുളം ടൗൺ നോർത്ത് പോലീസ് സ്റ്റേഷൻ',
+        stationCode: 'EKM-NTH',
+        magistrateCourt: 'Judicial First Class Magistrate Court-II, Ernakulam',
+        magistrateCourtMalayalam: 'ജുഡീഷ്യൽ ഫസ്റ്റ് ക്ലാസ് മജിസ്‌ട്രേറ്റ് കോടതി-II, എറണാകുളം',
+        subDivision: 'Ernakulam City',
+        category: 'City Law & Order'
+      },
+      {
+        id: 'ekm-palarivattom',
+        name: 'Palarivattom Police Station',
+        nameMalayalam: 'പാലാരിവട്ടം പോലീസ് സ്റ്റേഷൻ',
+        stationCode: 'EKM-PLR',
+        magistrateCourt: 'Judicial First Class Magistrate Court-IX, Ernakulam',
+        magistrateCourtMalayalam: 'ജുഡീഷ്യൽ ഫസ്റ്റ് ക്ലാസ് മജിസ്‌ട്രേറ്റ് കോടതി-IX, എറണാകുളം',
+        subDivision: 'Thrikkakara',
+        category: 'City Law & Order'
+      },
+      {
+        id: 'ekm-thrikkakara',
+        name: 'Thrikkakara Police Station',
+        nameMalayalam: 'തൃക്കാക്കര പോലീസ് സ്റ്റേഷൻ',
+        stationCode: 'EKM-TKR',
+        magistrateCourt: 'Judicial First Class Magistrate Court-IX, Ernakulam',
+        magistrateCourtMalayalam: 'ജുഡീഷ്യൽ ഫസ്റ്റ് ക്ലാസ് മജിസ്‌ട്രേറ്റ് കോടതി-IX, എറണാകുളം',
+        subDivision: 'Thrikkakara',
+        category: 'City Law & Order'
+      },
+      {
+        id: 'ekm-infopark',
+        name: 'Infopark Police Station, Kakkanad',
+        nameMalayalam: 'ഇൻഫോപാർക്ക് പോലീസ് സ്റ്റേഷൻ, കാക്കനാട്',
+        stationCode: 'EKM-INFO',
+        magistrateCourt: 'Judicial First Class Magistrate Court-IX, Ernakulam',
+        magistrateCourtMalayalam: 'ജുഡീഷ്യൽ ഫസ്റ്റ് ക്ലാസ് മജിസ്‌ട്രേറ്റ് കോടതി-IX, എറണാകുളം',
+        subDivision: 'Thrikkakara',
+        category: 'City Law & Order'
+      },
+      {
+        id: 'ekm-kalamassery',
+        name: 'Kalamassery Police Station',
+        nameMalayalam: 'കളമശ്ശേരി പോലീസ് സ്റ്റേഷൻ',
+        stationCode: 'EKM-KLM',
+        magistrateCourt: 'Judicial First Class Magistrate Court-II, Aluva',
+        magistrateCourtMalayalam: 'ജുഡീഷ്യൽ ഫസ്റ്റ് ക്ലാസ് മജിസ്‌ട്രേറ്റ് കോടതി-II, ആലുവ',
+        subDivision: 'Aluva',
+        category: 'City Law & Order'
+      },
+      {
+        id: 'ekm-aluva-east',
+        name: 'Aluva East Police Station',
+        nameMalayalam: 'ആലുവ ഈസ്റ്റ് പോലീസ് സ്റ്റേഷൻ',
+        stationCode: 'EKM-ALV-E',
+        magistrateCourt: 'Judicial First Class Magistrate Court-I, Aluva',
+        magistrateCourtMalayalam: 'ജുഡീഷ്യൽ ഫസ്റ്റ് ക്ലാസ് മജിസ്‌ട്രേറ്റ് കോടതി-I, ആലുവ',
+        subDivision: 'Aluva',
+        category: 'Rural / Town'
+      },
+      {
+        id: 'ekm-angamaly',
+        name: 'Angamaly Police Station',
+        nameMalayalam: 'അങ്കമാലി പോലീസ് സ്റ്റേഷൻ',
+        stationCode: 'EKM-ANG',
+        magistrateCourt: 'Judicial First Class Magistrate Court, Angamaly',
+        magistrateCourtMalayalam: 'ജുഡീഷ്യൽ ഫസ്റ്റ് ക്ലാസ് മജിസ്‌ട്രേറ്റ് കോടതി, അങ്കമാലി',
+        subDivision: 'Aluva',
+        category: 'Rural / Town'
+      },
+      {
+        id: 'ekm-perumbavoor',
+        name: 'Perumbavoor Police Station',
+        nameMalayalam: 'പെരുമ്പാവൂർ പോലീസ് സ്റ്റേഷൻ',
+        stationCode: 'EKM-PBV',
+        magistrateCourt: 'Judicial First Class Magistrate Court-I, Perumbavoor',
+        magistrateCourtMalayalam: 'ജുഡീഷ്യൽ ഫസ്റ്റ് ക്ലാസ് മജിസ്‌ട്രേറ്റ് കോടതി-I, പെരുമ്പാവൂർ',
+        subDivision: 'Perumbavoor',
+        category: 'Rural / Town'
+      },
+      {
+        id: 'ekm-muvattupuzha',
+        name: 'Muvattupuzha Police Station',
+        nameMalayalam: 'മൂവാറ്റുപുഴ പോലീസ് സ്റ്റേഷൻ',
+        stationCode: 'EKM-MVPA',
+        magistrateCourt: 'Judicial First Class Magistrate Court-I, Muvattupuzha',
+        magistrateCourtMalayalam: 'ജുഡീഷ്യൽ ഫസ്റ്റ് ക്ലാസ് മജിസ്‌ട്രേറ്റ് കോടതി-I, മൂവാറ്റുപുഴ',
+        subDivision: 'Muvattupuzha',
+        category: 'Rural / Town'
+      },
+      {
+        id: 'ekm-fort-kochi',
+        name: 'Fort Kochi Police Station',
+        nameMalayalam: 'ഫോർട്ട് കൊച്ചി പോലീസ് സ്റ്റേഷൻ',
+        stationCode: 'EKM-FTK',
+        magistrateCourt: 'Judicial First Class Magistrate Court-I, Mattancherry',
+        magistrateCourtMalayalam: 'ജുഡീഷ്യൽ ഫസ്റ്റ് ക്ലാസ് മജിസ്‌ട്രേറ്റ് കോടതി-I, മട്ടാഞ്ചേരി',
+        subDivision: 'Mattancherry',
+        category: 'City Law & Order'
+      },
+      {
+        id: 'ekm-panangad',
+        name: 'Panangad Police Station',
+        nameMalayalam: 'പനങ്ങാട് പോലീസ് സ്റ്റേഷൻ',
+        stationCode: 'EKM-PNG',
+        magistrateCourt: 'Judicial First Class Magistrate Court-VIII, Ernakulam',
+        magistrateCourtMalayalam: 'ജുഡീഷ്യൽ ഫസ്റ്റ് ക്ലാസ് മജിസ്‌ട്രേറ്റ് കോടതി-VIII, എറണാകുളം',
+        subDivision: 'Thrikkakara',
+        category: 'City Law & Order'
+      },
+      {
+        id: 'ekm-tripunithura',
+        name: 'Hill Palace Police Station, Tripunithura',
+        nameMalayalam: 'ഹിൽപാലസ് പോലീസ് സ്റ്റേഷൻ, തൃപ്പൂണിത്തുറ',
+        stationCode: 'EKM-HLP',
+        magistrateCourt: 'Judicial First Class Magistrate Court, Tripunithura',
+        magistrateCourtMalayalam: 'ജുഡീഷ്യൽ ഫസ്റ്റ് ക്ലാസ് മജിസ്‌ട്രേറ്റ് കോടതി, തൃപ്പൂണിത്തുറ',
+        subDivision: 'Thrikkakara',
+        category: 'City Law & Order'
+      }
+    ]
+  },
+  {
+    district: 'Thiruvananthapuram',
+    districtMalayalam: 'തിരുവനന്തപുരം',
+    cnrPrefix: 'KLTV',
+    state: 'Kerala',
+    magistrateCourtDefault: 'Chief Judicial Magistrate Court, Thiruvananthapuram',
+    magistrateCourtDefaultMalayalam: 'ചീഫ് ജുഡീഷ്യൽ മജിസ്‌ട്രേറ്റ് കോടതി, തിരുവനന്തപുരം',
+    policeStations: [
+      {
+        id: 'tvm-cantonment',
+        name: 'Cantonment Police Station, Thiruvananthapuram City',
+        nameMalayalam: 'കന്റോൺമെന്റ് പോലീസ് സ്റ്റേഷൻ, തിരുവനന്തപുരം സിറ്റി',
+        stationCode: 'TVM-CAN',
+        magistrateCourt: 'Chief Judicial Magistrate Court, Thiruvananthapuram',
+        magistrateCourtMalayalam: 'ചീഫ് ജുഡീഷ്യൽ മജിസ്‌ട്രേറ്റ് കോടതി, തിരുവനന്തപുരം',
+        subDivision: 'Trivandrum City Central',
+        category: 'City Law & Order'
+      },
+      {
+        id: 'tvm-cyber',
+        name: 'Cyber Crime Police Station, Thiruvananthapuram City',
+        nameMalayalam: 'സൈബർ ക്രൈം പോലീസ് സ്റ്റേഷൻ, തിരുവനന്തപുരം സിറ്റി',
+        stationCode: 'TVM-CYBER',
+        magistrateCourt: 'Chief Judicial Magistrate Court, Thiruvananthapuram',
+        magistrateCourtMalayalam: 'ചീഫ് ജുഡീഷ്യൽ മജിസ്‌ട്രേറ്റ് കോടതി, തിരുവനന്തപുരം',
+        subDivision: 'Trivandrum Cyber Cell',
+        category: 'Cyber Crime'
+      },
+      {
+        id: 'tvm-museum',
+        name: 'Museum Police Station',
+        nameMalayalam: 'മ്യൂസിയം പോലീസ് സ്റ്റേഷൻ',
+        stationCode: 'TVM-MUS',
+        magistrateCourt: 'Judicial First Class Magistrate Court-III, Thiruvananthapuram',
+        magistrateCourtMalayalam: 'ജുഡീഷ്യൽ ഫസ്റ്റ് ക്ലാസ് മജിസ്‌ട്രേറ്റ് കോടതി-III, തിരുവനന്തപുരം',
+        subDivision: 'Trivandrum City Central',
+        category: 'City Law & Order'
+      },
+      {
+        id: 'tvm-fort',
+        name: 'Fort Police Station, Thiruvananthapuram',
+        nameMalayalam: 'ഫോർട്ട് പോലീസ് സ്റ്റേഷൻ, തിരുവനന്തപുരം',
+        stationCode: 'TVM-FRT',
+        magistrateCourt: 'Judicial First Class Magistrate Court-II, Thiruvananthapuram',
+        magistrateCourtMalayalam: 'ജുഡീഷ്യൽ ഫസ്റ്റ് ക്ലാസ് മജിസ്‌ട്രേറ്റ് കോടതി-II, തിരുവനന്തപുരം',
+        subDivision: 'Fort Sub-Division',
+        category: 'City Law & Order'
+      },
+      {
+        id: 'tvm-vanchiyoor',
+        name: 'Vanchiyoor Police Station',
+        nameMalayalam: 'വഞ്ചിയൂർ പോലീസ് സ്റ്റേഷൻ',
+        stationCode: 'TVM-VNC',
+        magistrateCourt: 'Judicial First Class Magistrate Court-I, Thiruvananthapuram',
+        magistrateCourtMalayalam: 'ജുഡീഷ്യൽ ഫസ്റ്റ് ക്ലാസ് മജിസ്‌ട്രേറ്റ് കോടതി-I, തിരുവനന്തപുരം',
+        subDivision: 'Trivandrum City Central',
+        category: 'City Law & Order'
+      },
+      {
+        id: 'tvm-kazhakkoottam',
+        name: 'Kazhakkoottam Police Station (Technopark)',
+        nameMalayalam: 'കഴക്കൂട്ടം പോലീസ് സ്റ്റേഷൻ (ടെക്നോപാർക്ക്)',
+        stationCode: 'TVM-KZK',
+        magistrateCourt: 'Judicial First Class Magistrate Court-IV, Thiruvananthapuram',
+        magistrateCourtMalayalam: 'ജുഡീഷ്യൽ ഫസ്റ്റ് ക്ലാസ് മജിസ്‌ട്രേറ്റ് കോടതി-IV, തിരുവനന്തപുരം',
+        subDivision: 'Kazhakkoottam',
+        category: 'City Law & Order'
+      },
+      {
+        id: 'tvm-medical-college',
+        name: 'Medical College Police Station, Thiruvananthapuram',
+        nameMalayalam: 'മെഡിക്കൽ കോളേജ് പോലീസ് സ്റ്റേഷൻ, തിരുവനന്തപുരം',
+        stationCode: 'TVM-MED',
+        magistrateCourt: 'Judicial First Class Magistrate Court-II, Thiruvananthapuram',
+        magistrateCourtMalayalam: 'ജുഡീഷ്യൽ ഫസ്റ്റ് ക്ലാസ് മജിസ്‌ട്രേറ്റ് കോടതി-II, തിരുവനന്തപുരം',
+        subDivision: 'Medical College Sub-Division',
+        category: 'City Law & Order'
+      },
+      {
+        id: 'tvm-kovalam',
+        name: 'Kovalam Police Station',
+        nameMalayalam: 'കോവളം പോലീസ് സ്റ്റേഷൻ',
+        stationCode: 'TVM-KOV',
+        magistrateCourt: 'Judicial First Class Magistrate Court-III, Neyyattinkara',
+        magistrateCourtMalayalam: 'ജുഡീഷ്യൽ ഫസ്റ്റ് ക്ലാസ് മജിസ്‌ട്രേറ്റ് കോടതി-III, നെയ്യാറ്റിൻകര',
+        subDivision: 'Neyyattinkara',
+        category: 'Rural / Town'
+      },
+      {
+        id: 'tvm-attingal',
+        name: 'Attingal Police Station',
+        nameMalayalam: 'ആറ്റിങ്ങൽ പോലീസ് സ്റ്റേഷൻ',
+        stationCode: 'TVM-ATT',
+        magistrateCourt: 'Judicial First Class Magistrate Court-I, Attingal',
+        magistrateCourtMalayalam: 'ജുഡീഷ്യൽ ഫസ്റ്റ് ക്ലാസ് മജിസ്‌ട്രേറ്റ് കോടതി-I, ആറ്റിങ്ങൽ',
+        subDivision: 'Attingal',
+        category: 'Rural / Town'
+      },
+      {
+        id: 'tvm-nedumangad',
+        name: 'Nedumangad Police Station',
+        nameMalayalam: 'നെടുമങ്ങാട് പോലീസ് സ്റ്റേഷൻ',
+        stationCode: 'TVM-NED',
+        magistrateCourt: 'Judicial First Class Magistrate Court-I, Nedumangad',
+        magistrateCourtMalayalam: 'ജുഡീഷ്യൽ ഫസ്റ്റ് ക്ലാസ് മജിസ്‌ട്രേറ്റ് കോടതി-I, നെടുമങ്ങാട്',
+        subDivision: 'Nedumangad',
+        category: 'Rural / Town'
+      },
+      {
+        id: 'tvm-varkala',
+        name: 'Varkala Police Station',
+        nameMalayalam: 'വർക്കല പോലീസ് സ്റ്റേഷൻ',
+        stationCode: 'TVM-VRK',
+        magistrateCourt: 'Judicial First Class Magistrate Court, Varkala',
+        magistrateCourtMalayalam: 'ജുഡീഷ്യൽ ഫസ്റ്റ് ക്ലാസ് മജിസ്‌ട്രേറ്റ് കോടതി, വർക്കല',
+        subDivision: 'Attingal',
+        category: 'Rural / Town'
+      }
+    ]
+  },
+  {
+    district: 'Kozhikode',
+    districtMalayalam: 'കോഴിക്കോട്',
+    cnrPrefix: 'KLKZ',
+    state: 'Kerala',
+    magistrateCourtDefault: 'Chief Judicial Magistrate Court, Kozhikode',
+    magistrateCourtDefaultMalayalam: 'ചീഫ് ജുഡീഷ്യൽ മജിസ്‌ട്രേറ്റ് കോടതി, കോഴിക്കോട്',
+    policeStations: [
+      {
+        id: 'kz-town',
+        name: 'Kozhikode Town Police Station',
+        nameMalayalam: 'കോഴിക്കോട് ടൗൺ പോലീസ് സ്റ്റേഷൻ',
+        stationCode: 'KKD-TWN',
+        magistrateCourt: 'Chief Judicial Magistrate Court, Kozhikode',
+        magistrateCourtMalayalam: 'ചീഫ് ജുഡീഷ്യൽ മജിസ്‌ട്രേറ്റ് കോടതി, കോഴിക്കോട്',
+        subDivision: 'Kozhikode City',
+        category: 'City Law & Order'
+      },
+      {
+        id: 'kz-cyber',
+        name: 'Cyber Crime Police Station, Kozhikode City',
+        nameMalayalam: 'സൈബർ ക്രൈം പോലീസ് സ്റ്റേഷൻ, കോഴിക്കോട് സിറ്റി',
+        stationCode: 'KKD-CYBER',
+        magistrateCourt: 'Chief Judicial Magistrate Court, Kozhikode',
+        magistrateCourtMalayalam: 'ചീഫ് ജുഡീഷ്യൽ മജിസ്‌ട്രേറ്റ് കോടതി, കോഴിക്കോട്',
+        subDivision: 'Kozhikode Cyber Cell',
+        category: 'Cyber Crime'
+      },
+      {
+        id: 'kz-nadakkavu',
+        name: 'Nadakkavu Police Station',
+        nameMalayalam: 'നടക്കാവ് പോലീസ് സ്റ്റേഷൻ',
+        stationCode: 'KKD-NDK',
+        magistrateCourt: 'Judicial First Class Magistrate Court-IV, Kozhikode',
+        magistrateCourtMalayalam: 'ജുഡീഷ്യൽ ഫസ്റ്റ് ക്ലാസ് മജിസ്‌ട്രേറ്റ് കോടതി-IV, കോഴിക്കോട്',
+        subDivision: 'Kozhikode City',
+        category: 'City Law & Order'
+      },
+      {
+        id: 'kz-kasaba',
+        name: 'Kasaba Police Station, Kozhikode',
+        nameMalayalam: 'കസബ പോലീസ് സ്റ്റേഷൻ, കോഴിക്കോട്',
+        stationCode: 'KKD-KSB',
+        magistrateCourt: 'Judicial First Class Magistrate Court-I, Kozhikode',
+        magistrateCourtMalayalam: 'ജുഡീഷ്യൽ ഫസ്റ്റ് ക്ലാസ് മജിസ്‌ട്രേറ്റ് കോടതി-I, കോഴിക്കോട്',
+        subDivision: 'Kozhikode City',
+        category: 'City Law & Order'
+      },
+      {
+        id: 'kz-medical-college',
+        name: 'Medical College Police Station, Kozhikode',
+        nameMalayalam: 'മെഡിക്കൽ കോളേജ് പോലീസ് സ്റ്റേഷൻ, കോഴിക്കോട്',
+        stationCode: 'KKD-MED',
+        magistrateCourt: 'Judicial First Class Magistrate Court-I, Kozhikode',
+        magistrateCourtMalayalam: 'ജുഡീഷ്യൽ ഫസ്റ്റ് ക്ലാസ് മജിസ്‌ട്രേറ്റ് കോടതി-I, കോഴിക്കോട്',
+        subDivision: 'Medical College Kozhikode',
+        category: 'City Law & Order'
+      },
+      {
+        id: 'kz-vadakara',
+        name: 'Vadakara Police Station',
+        nameMalayalam: 'വടകര പോലീസ് സ്റ്റേഷൻ',
+        stationCode: 'KKD-VDK',
+        magistrateCourt: 'Judicial First Class Magistrate Court, Vadakara',
+        magistrateCourtMalayalam: 'ജുഡീഷ്യൽ ഫസ്റ്റ് ക്ലാസ് മജിസ്‌ട്രേറ്റ് കോടതി, വടകര',
+        subDivision: 'Vadakara',
+        category: 'Rural / Town'
+      },
+      {
+        id: 'kz-koyilandy',
+        name: 'Koyilandy Police Station',
+        nameMalayalam: 'കൊയിലാണ്ടി പോലീസ് സ്റ്റേഷൻ',
+        stationCode: 'KKD-KYL',
+        magistrateCourt: 'Judicial First Class Magistrate Court, Koyilandy',
+        magistrateCourtMalayalam: 'ജുഡീഷ്യൽ ഫസ്റ്റ് ക്ലാസ് മജിസ്‌ട്രേറ്റ് കോടതി, കൊയിലാണ്ടി',
+        subDivision: 'Koyilandy',
+        category: 'Rural / Town'
+      }
+    ]
+  },
+  {
+    district: 'Thrissur',
+    districtMalayalam: 'തൃശ്ശൂർ',
+    cnrPrefix: 'KLTS',
+    state: 'Kerala',
+    magistrateCourtDefault: 'Chief Judicial Magistrate Court, Thrissur',
+    magistrateCourtDefaultMalayalam: 'ചീഫ് ജുഡീഷ്യൽ മജിസ്‌ട്രേറ്റ് കോടതി, തൃശ്ശൂർ',
+    policeStations: [
+      {
+        id: 'ts-east',
+        name: 'Thrissur East Police Station',
+        nameMalayalam: 'തൃശ്ശൂർ ഈസ്റ്റ് പോലീസ് സ്റ്റേഷൻ',
+        stationCode: 'TSR-EST',
+        magistrateCourt: 'Judicial First Class Magistrate Court-I, Thrissur',
+        magistrateCourtMalayalam: 'ജുഡീഷ്യൽ ഫസ്റ്റ് ക്ലാസ് മജിസ്‌ട്രേറ്റ് കോടതി-I, തൃശ്ശൂർ',
+        subDivision: 'Thrissur City',
+        category: 'City Law & Order'
+      },
+      {
+        id: 'ts-west',
+        name: 'Thrissur West Police Station',
+        nameMalayalam: 'തൃശ്ശൂർ വെസ്റ്റ് പോലീസ് സ്റ്റേഷൻ',
+        stationCode: 'TSR-WST',
+        magistrateCourt: 'Judicial First Class Magistrate Court-II, Thrissur',
+        magistrateCourtMalayalam: 'ജുഡീഷ്യൽ ഫസ്റ്റ് ക്ലാസ് മജിസ്‌ട്രേറ്റ് കോടതി-II, തൃശ്ശൂർ',
+        subDivision: 'Thrissur City',
+        category: 'City Law & Order'
+      },
+      {
+        id: 'ts-cyber',
+        name: 'Cyber Crime Police Station, Thrissur',
+        nameMalayalam: 'സൈബർ ക്രൈം പോലീസ് സ്റ്റേഷൻ, തൃശ്ശൂർ',
+        stationCode: 'TSR-CYBER',
+        magistrateCourt: 'Chief Judicial Magistrate Court, Thrissur',
+        magistrateCourtMalayalam: 'ചീഫ് ജുഡീഷ്യൽ മജിസ്‌ട്രേറ്റ് കോടതി, തൃശ്ശൂർ',
+        subDivision: 'Thrissur Cyber Cell',
+        category: 'Cyber Crime'
+      },
+      {
+        id: 'ts-guruvayoor',
+        name: 'Guruvayoor Police Station',
+        nameMalayalam: 'ഗുരുവായൂർ പോലീസ് സ്റ്റേഷൻ',
+        stationCode: 'TSR-GVR',
+        magistrateCourt: 'Judicial First Class Magistrate Court, Chavakkad',
+        magistrateCourtMalayalam: 'ജുഡീഷ്യൽ ഫസ്റ്റ് ക്ലാസ് മജിസ്‌ട്രേറ്റ് കോടതി, ചാവക്കാട്',
+        subDivision: 'Chavakkad',
+        category: 'Rural / Town'
+      },
+      {
+        id: 'ts-irinjalakuda',
+        name: 'Irinjalakuda Police Station',
+        nameMalayalam: 'ഇരിഞ്ഞാലക്കുട പോലീസ് സ്റ്റേഷൻ',
+        stationCode: 'TSR-IJK',
+        magistrateCourt: 'Judicial First Class Magistrate Court, Irinjalakuda',
+        magistrateCourtMalayalam: 'ജുഡീഷ്യൽ ഫസ്റ്റ് ക്ലാസ് മജിസ്‌ട്രേറ്റ് കോടതി, ഇരിഞ്ഞാലക്കുട',
+        subDivision: 'Irinjalakuda',
+        category: 'Rural / Town'
+      },
+      {
+        id: 'ts-chalakudy',
+        name: 'Chalakudy Police Station',
+        nameMalayalam: 'ചാലക്കുടി പോലീസ് സ്റ്റേഷൻ',
+        stationCode: 'TSR-CKD',
+        magistrateCourt: 'Judicial First Class Magistrate Court, Chalakudy',
+        magistrateCourtMalayalam: 'ജുഡീഷ്യൽ ഫസ്റ്റ് ക്ലാസ് മജിസ്‌ട്രേറ്റ് കോടതി, ചാലക്കുടി',
+        subDivision: 'Chalakudy',
+        category: 'Rural / Town'
+      }
+    ]
+  },
+  {
+    district: 'Kollam',
+    districtMalayalam: 'കൊല്ലം',
+    cnrPrefix: 'KLKL',
+    state: 'Kerala',
+    magistrateCourtDefault: 'Chief Judicial Magistrate Court, Kollam',
+    magistrateCourtDefaultMalayalam: 'ചീഫ് ജുഡീഷ്യൽ മജിസ്‌ട്രേറ്റ് കോടതി, കൊല്ലം',
+    policeStations: [
+      {
+        id: 'klm-east',
+        name: 'Kollam East Police Station',
+        nameMalayalam: 'കൊല്ലം ഈസ്റ്റ് പോലീസ് സ്റ്റേഷൻ',
+        stationCode: 'KLM-EST',
+        magistrateCourt: 'Judicial First Class Magistrate Court-I, Kollam',
+        magistrateCourtMalayalam: 'ജുഡീഷ്യൽ ഫസ്റ്റ് ക്ലാസ് മജിസ്‌ട്രേറ്റ് കോടതി-I, കൊല്ലം',
+        subDivision: 'Kollam City',
+        category: 'City Law & Order'
+      },
+      {
+        id: 'klm-west',
+        name: 'Kollam West Police Station',
+        nameMalayalam: 'കൊല്ലം വെസ്റ്റ് പോലീസ് സ്റ്റേഷൻ',
+        stationCode: 'KLM-WST',
+        magistrateCourt: 'Judicial First Class Magistrate Court-II, Kollam',
+        magistrateCourtMalayalam: 'ജുഡീഷ്യൽ ഫസ്റ്റ് ക്ലാസ് മജിസ്‌ട്രേറ്റ് കോടതി-II, കൊല്ലം',
+        subDivision: 'Kollam City',
+        category: 'City Law & Order'
+      },
+      {
+        id: 'klm-cyber',
+        name: 'Cyber Crime Police Station, Kollam',
+        nameMalayalam: 'സൈബർ ക്രൈം പോലീസ് സ്റ്റേഷൻ, കൊല്ലം',
+        stationCode: 'KLM-CYBER',
+        magistrateCourt: 'Chief Judicial Magistrate Court, Kollam',
+        magistrateCourtMalayalam: 'ചീഫ് ജുഡീഷ്യൽ മജിസ്‌ട്രേറ്റ് കോടതി, കൊല്ലം',
+        subDivision: 'Kollam Cyber Cell',
+        category: 'Cyber Crime'
+      },
+      {
+        id: 'klm-karunagappally',
+        name: 'Karunagappally Police Station',
+        nameMalayalam: 'കരുനാഗപ്പള്ളി പോലീസ് സ്റ്റേഷൻ',
+        stationCode: 'KLM-KNP',
+        magistrateCourt: 'Judicial First Class Magistrate Court, Karunagappally',
+        magistrateCourtMalayalam: 'ജുഡീഷ്യൽ ഫസ്റ്റ് ക്ലാസ് മജിസ്‌ട്രേറ്റ് കോടതി, കരുനാഗപ്പള്ളി',
+        subDivision: 'Karunagappally',
+        category: 'Rural / Town'
+      },
+      {
+        id: 'klm-kottarakkara',
+        name: 'Kottarakkara Police Station',
+        nameMalayalam: 'കൊട്ടാരക്കര പോലീസ് സ്റ്റേഷൻ',
+        stationCode: 'KLM-KTR',
+        magistrateCourt: 'Judicial First Class Magistrate Court-I, Kottarakkara',
+        magistrateCourtMalayalam: 'ജുഡീഷ്യൽ ഫസ്റ്റ് ക്ലാസ് മജിസ്‌ട്രേറ്റ് കോടതി-I, കൊട്ടാരക്കര',
+        subDivision: 'Kottarakkara',
+        category: 'Rural / Town'
+      }
+    ]
+  },
+  {
+    district: 'Kottayam',
+    districtMalayalam: 'കോട്ടയം',
+    cnrPrefix: 'KLKT',
+    state: 'Kerala',
+    magistrateCourtDefault: 'Chief Judicial Magistrate Court, Kottayam',
+    magistrateCourtDefaultMalayalam: 'ചീഫ് ജുഡീഷ്യൽ മജിസ്‌ട്രേറ്റ് കോടതി, കോട്ടയം',
+    policeStations: [
+      {
+        id: 'ktm-east',
+        name: 'Kottayam East Police Station',
+        nameMalayalam: 'കോട്ടയം ഈസ്റ്റ് പോലീസ് സ്റ്റേഷൻ',
+        stationCode: 'KTM-EST',
+        magistrateCourt: 'Judicial First Class Magistrate Court-I, Kottayam',
+        magistrateCourtMalayalam: 'ജുഡീഷ്യൽ ഫസ്റ്റ് ക്ലാസ് മജിസ്‌ട്രേറ്റ് കോടതി-I, കോട്ടയം',
+        subDivision: 'Kottayam Town',
+        category: 'City Law & Order'
+      },
+      {
+        id: 'ktm-west',
+        name: 'Kottayam West Police Station',
+        nameMalayalam: 'കോട്ടയം വെസ്റ്റ് പോലീസ് സ്റ്റേഷൻ',
+        stationCode: 'KTM-WST',
+        magistrateCourt: 'Judicial First Class Magistrate Court-II, Kottayam',
+        magistrateCourtMalayalam: 'ജുഡീഷ്യൽ ഫസ്റ്റ് ക്ലാസ് മജിസ്‌ട്രേറ്റ് കോടതി-II, കോട്ടയം',
+        subDivision: 'Kottayam Town',
+        category: 'City Law & Order'
+      },
+      {
+        id: 'ktm-cyber',
+        name: 'Cyber Crime Police Station, Kottayam',
+        nameMalayalam: 'സൈബർ ക്രൈം പോലീസ് സ്റ്റേഷൻ, കോട്ടയം',
+        stationCode: 'KTM-CYBER',
+        magistrateCourt: 'Chief Judicial Magistrate Court, Kottayam',
+        magistrateCourtMalayalam: 'ചീഫ് ജുഡീഷ്യൽ മജിസ്‌ട്രേറ്റ് കോടതി, കോട്ടയം',
+        subDivision: 'Kottayam Cyber Cell',
+        category: 'Cyber Crime'
+      },
+      {
+        id: 'ktm-changanassery',
+        name: 'Changanassery Police Station',
+        nameMalayalam: 'ചങ്ങനാശ്ശേരി പോലീസ് സ്റ്റേഷൻ',
+        stationCode: 'KTM-CHY',
+        magistrateCourt: 'Judicial First Class Magistrate Court-I, Changanassery',
+        magistrateCourtMalayalam: 'ജുഡീഷ്യൽ ഫസ്റ്റ് ക്ലാസ് മജിസ്‌ട്രേറ്റ് കോടതി-I, ചങ്ങനാശ്ശേരി',
+        subDivision: 'Changanassery',
+        category: 'Rural / Town'
+      },
+      {
+        id: 'ktm-pala',
+        name: 'Pala Police Station',
+        nameMalayalam: 'പാലാ പോലീസ് സ്റ്റേഷൻ',
+        stationCode: 'KTM-PLA',
+        magistrateCourt: 'Judicial First Class Magistrate Court, Pala',
+        magistrateCourtMalayalam: 'ജുഡീഷ്യൽ ഫസ്റ്റ് ക്ലാസ് മജിസ്‌ട്രേറ്റ് കോടതി, പാലാ',
+        subDivision: 'Pala',
+        category: 'Rural / Town'
+      }
+    ]
+  },
+  {
+    district: 'Alappuzha',
+    districtMalayalam: 'ആലപ്പുഴ',
+    cnrPrefix: 'KLAL',
+    state: 'Kerala',
+    magistrateCourtDefault: 'Chief Judicial Magistrate Court, Alappuzha',
+    magistrateCourtDefaultMalayalam: 'ചീഫ് ജുഡീഷ്യൽ മജിസ്‌ട്രേറ്റ് കോടതി, ആലപ്പുഴ',
+    policeStations: [
+      {
+        id: 'alp-south',
+        name: 'Alappuzha South Police Station',
+        nameMalayalam: 'ആലപ്പുഴ സൗത്ത് പോലീസ് സ്റ്റേഷൻ',
+        stationCode: 'ALP-STH',
+        magistrateCourt: 'Judicial First Class Magistrate Court-I, Alappuzha',
+        magistrateCourtMalayalam: 'ജുഡീഷ്യൽ ഫസ്റ്റ് ക്ലാസ് മജിസ്‌ട്രേറ്റ് കോടതി-I, ആലപ്പുഴ',
+        subDivision: 'Alappuzha Town',
+        category: 'City Law & Order'
+      },
+      {
+        id: 'alp-north',
+        name: 'Alappuzha North Police Station',
+        nameMalayalam: 'ആലപ്പുഴ നോർത്ത് പോലീസ് സ്റ്റേഷൻ',
+        stationCode: 'ALP-NTH',
+        magistrateCourt: 'Judicial First Class Magistrate Court-II, Alappuzha',
+        magistrateCourtMalayalam: 'ജുഡീഷ്യൽ ഫസ്റ്റ് ക്ലാസ് മജിസ്‌ട്രേറ്റ് കോടതി-II, ആലപ്പുഴ',
+        subDivision: 'Alappuzha Town',
+        category: 'City Law & Order'
+      },
+      {
+        id: 'alp-cyber',
+        name: 'Cyber Crime Police Station, Alappuzha',
+        nameMalayalam: 'സൈബർ ക്രൈം പോലീസ് സ്റ്റേഷൻ, ആലപ്പുഴ',
+        stationCode: 'ALP-CYBER',
+        magistrateCourt: 'Chief Judicial Magistrate Court, Alappuzha',
+        magistrateCourtMalayalam: 'ചീഫ് ജുഡീഷ്യൽ മജിസ്‌ട്രേറ്റ് കോടതി, ആലപ്പുഴ',
+        subDivision: 'Alappuzha Cyber Cell',
+        category: 'Cyber Crime'
+      },
+      {
+        id: 'alp-cherthala',
+        name: 'Cherthala Police Station',
+        nameMalayalam: 'ചേർത്തല പോലീസ് സ്റ്റേഷൻ',
+        stationCode: 'ALP-CTL',
+        magistrateCourt: 'Judicial First Class Magistrate Court-I, Cherthala',
+        magistrateCourtMalayalam: 'ജുഡീഷ്യൽ ഫസ്റ്റ് ക്ലാസ് മജിസ്‌ട്രേറ്റ് കോടതി-I, ചേർത്തല',
+        subDivision: 'Cherthala',
+        category: 'Rural / Town'
+      },
+      {
+        id: 'alp-kayamkulam',
+        name: 'Kayamkulam Police Station',
+        nameMalayalam: 'കായംകുളം പോലീസ് സ്റ്റേഷൻ',
+        stationCode: 'ALP-KYM',
+        magistrateCourt: 'Judicial First Class Magistrate Court, Kayamkulam',
+        magistrateCourtMalayalam: 'ജുഡീഷ്യൽ ഫസ്റ്റ് ക്ലാസ് മജിസ്‌ട്രേറ്റ് കോടതി, കായംകുളം',
+        subDivision: 'Kayamkulam',
+        category: 'Rural / Town'
+      }
+    ]
+  },
+  {
+    district: 'Kannur',
+    districtMalayalam: 'കണ്ണൂർ',
+    cnrPrefix: 'KLKN',
+    state: 'Kerala',
+    magistrateCourtDefault: 'Chief Judicial Magistrate Court, Kannur',
+    magistrateCourtDefaultMalayalam: 'ചീഫ് ജുഡീഷ്യൽ മജിസ്‌ട്രേറ്റ് കോടതി, കണ്ണൂർ',
+    policeStations: [
+      {
+        id: 'knr-town',
+        name: 'Kannur Town Police Station',
+        nameMalayalam: 'കണ്ണൂർ ടൗൺ പോലീസ് സ്റ്റേഷൻ',
+        stationCode: 'KNR-TWN',
+        magistrateCourt: 'Judicial First Class Magistrate Court-I, Kannur',
+        magistrateCourtMalayalam: 'ജുഡീഷ്യൽ ഫസ്റ്റ് ക്ലാസ് മജിസ്‌ട്രേറ്റ് കോടതി-I, കണ്ണൂർ',
+        subDivision: 'Kannur City',
+        category: 'City Law & Order'
+      },
+      {
+        id: 'knr-cyber',
+        name: 'Cyber Crime Police Station, Kannur',
+        nameMalayalam: 'സൈബർ ക്രൈം പോലീസ് സ്റ്റേഷൻ, കണ്ണൂർ',
+        stationCode: 'KNR-CYBER',
+        magistrateCourt: 'Chief Judicial Magistrate Court, Kannur',
+        magistrateCourtMalayalam: 'ചീഫ് ജുഡീഷ്യൽ മജിസ്‌ട്രേറ്റ് കോടതി, കണ്ണൂർ',
+        subDivision: 'Kannur Cyber Cell',
+        category: 'Cyber Crime'
+      },
+      {
+        id: 'knr-thalassery',
+        name: 'Thalassery Police Station',
+        nameMalayalam: 'തലശ്ശേരി പോലീസ് സ്റ്റേഷൻ',
+        stationCode: 'KNR-TLY',
+        magistrateCourt: 'Judicial First Class Magistrate Court, Thalassery',
+        magistrateCourtMalayalam: 'ജുഡീഷ്യൽ ഫസ്റ്റ് ക്ലാസ് മജിസ്‌ട്രേറ്റ് കോടതി, തലശ്ശേരി',
+        subDivision: 'Thalassery',
+        category: 'Rural / Town'
+      },
+      {
+        id: 'knr-payyannur',
+        name: 'Payyannur Police Station',
+        nameMalayalam: 'പയ്യന്നൂർ പോലീസ് സ്റ്റേഷൻ',
+        stationCode: 'KNR-PYR',
+        magistrateCourt: 'Judicial First Class Magistrate Court, Payyannur',
+        magistrateCourtMalayalam: 'ജുഡീഷ്യൽ ഫസ്റ്റ് ക്ലാസ് മജിസ്‌ട്രേറ്റ് കോടതി, പയ്യന്നൂർ',
+        subDivision: 'Payyannur',
+        category: 'Rural / Town'
+      }
+    ]
+  },
+  {
+    district: 'Malappuram',
+    districtMalayalam: 'മലപ്പുറം',
+    cnrPrefix: 'KLMA',
+    state: 'Kerala',
+    magistrateCourtDefault: 'Chief Judicial Magistrate Court, Manjeri',
+    magistrateCourtDefaultMalayalam: 'ചീഫ് ജുഡീഷ്യൽ മജിസ്‌ട്രേറ്റ് കോടതി, മഞ്ചേരി',
+    policeStations: [
+      {
+        id: 'mlp-town',
+        name: 'Malappuram Police Station',
+        nameMalayalam: 'മലപ്പുറം പോലീസ് സ്റ്റേഷൻ',
+        stationCode: 'MLP-TWN',
+        magistrateCourt: 'Judicial First Class Magistrate Court, Malappuram',
+        magistrateCourtMalayalam: 'ജുഡീഷ്യൽ ഫസ്റ്റ് ക്ലാസ് മജിസ്‌ട്രേറ്റ് കോടതി, മലപ്പുറം',
+        subDivision: 'Malappuram',
+        category: 'City Law & Order'
+      },
+      {
+        id: 'mlp-cyber',
+        name: 'Cyber Crime Police Station, Malappuram',
+        nameMalayalam: 'സൈബർ ക്രൈം പോലീസ് സ്റ്റേഷൻ, മലപ്പുറം',
+        stationCode: 'MLP-CYBER',
+        magistrateCourt: 'Chief Judicial Magistrate Court, Manjeri',
+        magistrateCourtMalayalam: 'ചീഫ് ജുഡീഷ്യൽ മജിസ്‌ട്രേറ്റ് കോടതി, മഞ്ചേരി',
+        subDivision: 'Malappuram Cyber Cell',
+        category: 'Cyber Crime'
+      },
+      {
+        id: 'mlp-manjeri',
+        name: 'Manjeri Police Station',
+        nameMalayalam: 'മഞ്ചേരി പോലീസ് സ്റ്റേഷൻ',
+        stationCode: 'MLP-MJR',
+        magistrateCourt: 'Judicial First Class Magistrate Court-I, Manjeri',
+        magistrateCourtMalayalam: 'ജുഡീഷ്യൽ ഫസ്റ്റ് ക്ലാസ് മജിസ്‌ട്രേറ്റ് കോടതി-I, മഞ്ചേരി',
+        subDivision: 'Manjeri',
+        category: 'Rural / Town'
+      },
+      {
+        id: 'mlp-tirur',
+        name: 'Tirur Police Station',
+        nameMalayalam: 'തിരൂർ പോലീസ് സ്റ്റേഷൻ',
+        stationCode: 'MLP-TRR',
+        magistrateCourt: 'Judicial First Class Magistrate Court, Tirur',
+        magistrateCourtMalayalam: 'ജുഡീഷ്യൽ ഫസ്റ്റ് ക്ലാസ് മജിസ്‌ട്രേറ്റ് കോടതി, തിരൂർ',
+        subDivision: 'Tirur',
+        category: 'Rural / Town'
+      },
+      {
+        id: 'mlp-perinthalmanna',
+        name: 'Perinthalmanna Police Station',
+        nameMalayalam: 'പെരിന്തൽമണ്ണ പോലീസ് സ്റ്റേഷൻ',
+        stationCode: 'MLP-PTM',
+        magistrateCourt: 'Judicial First Class Magistrate Court, Perinthalmanna',
+        magistrateCourtMalayalam: 'ജുഡീഷ്യൽ ഫസ്റ്റ് ക്ലാസ് മജിസ്‌ട്രേറ്റ് കോടതി, പെരിന്തൽമണ്ണ',
+        subDivision: 'Perinthalmanna',
+        category: 'Rural / Town'
+      }
+    ]
+  },
+  {
+    district: 'Palakkad',
+    districtMalayalam: 'പാലക്കാട്',
+    cnrPrefix: 'KLPL',
+    state: 'Kerala',
+    magistrateCourtDefault: 'Chief Judicial Magistrate Court, Palakkad',
+    magistrateCourtDefaultMalayalam: 'ചീഫ് ജുഡീഷ്യൽ മജിസ്‌ട്രേറ്റ് കോടതി, പാലക്കാട്',
+    policeStations: [
+      {
+        id: 'pkd-town-south',
+        name: 'Palakkad Town South Police Station',
+        nameMalayalam: 'പാലക്കാട് ടൗൺ സൗത്ത് പോലീസ് സ്റ്റേഷൻ',
+        stationCode: 'PKD-STH',
+        magistrateCourt: 'Judicial First Class Magistrate Court-I, Palakkad',
+        magistrateCourtMalayalam: 'ജുഡീഷ്യൽ ഫസ്റ്റ് ക്ലാസ് മജിസ്‌ട്രേറ്റ് കോടതി-I, പാലക്കാട്',
+        subDivision: 'Palakkad Town',
+        category: 'City Law & Order'
+      },
+      {
+        id: 'pkd-cyber',
+        name: 'Cyber Crime Police Station, Palakkad',
+        nameMalayalam: 'സൈബർ ക്രൈം പോലീസ് സ്റ്റേഷൻ, പാലക്കാട്',
+        stationCode: 'PKD-CYBER',
+        magistrateCourt: 'Chief Judicial Magistrate Court, Palakkad',
+        magistrateCourtMalayalam: 'ചീഫ് ജുഡീഷ്യൽ മജിസ്‌ട്രേറ്റ് കോടതി, പാലക്കാട്',
+        subDivision: 'Palakkad Cyber Cell',
+        category: 'Cyber Crime'
+      },
+      {
+        id: 'pkd-ottapalam',
+        name: 'Ottapalam Police Station',
+        nameMalayalam: 'ഒറ്റപ്പാലം പോലീസ് സ്റ്റേഷൻ',
+        stationCode: 'PKD-OTP',
+        magistrateCourt: 'Judicial First Class Magistrate Court, Ottapalam',
+        magistrateCourtMalayalam: 'ജുഡീഷ്യൽ ഫസ്റ്റ് ക്ലാസ് മജിസ്‌ട്രേറ്റ് കോടതി, ഒറ്റപ്പാലം',
+        subDivision: 'Ottapalam',
+        category: 'Rural / Town'
+      },
+      {
+        id: 'pkd-alathur',
+        name: 'Alathur Police Station',
+        nameMalayalam: 'ആലത്തൂർ പോലീസ് സ്റ്റേഷൻ',
+        stationCode: 'PKD-ALT',
+        magistrateCourt: 'Judicial First Class Magistrate Court, Alathur',
+        magistrateCourtMalayalam: 'ജുഡീഷ്യൽ ഫസ്റ്റ് ക്ലാസ് മജിസ്‌ട്രേറ്റ് കോടതി, ആലത്തൂർ',
+        subDivision: 'Alathur',
+        category: 'Rural / Town'
+      }
+    ]
+  },
+  {
+    district: 'Pathanamthitta',
+    districtMalayalam: 'പത്തനംതിട്ട',
+    cnrPrefix: 'KLPT',
+    state: 'Kerala',
+    magistrateCourtDefault: 'Chief Judicial Magistrate Court, Pathanamthitta',
+    magistrateCourtDefaultMalayalam: 'ചീഫ് ജുഡീഷ്യൽ മജിസ്‌ട്രേറ്റ് കോടതി, പത്തനംതിട്ട',
+    policeStations: [
+      {
+        id: 'pta-town',
+        name: 'Pathanamthitta Police Station',
+        nameMalayalam: 'പത്തനംതിട്ട പോലീസ് സ്റ്റേഷൻ',
+        stationCode: 'PTA-TWN',
+        magistrateCourt: 'Judicial First Class Magistrate Court-I, Pathanamthitta',
+        magistrateCourtMalayalam: 'ജുഡീഷ്യൽ ഫസ്റ്റ് ക്ലാസ് മജിസ്‌ട്രേറ്റ് കോടതി-I, പത്തനംതിട്ട',
+        subDivision: 'Pathanamthitta',
+        category: 'City Law & Order'
+      },
+      {
+        id: 'pta-cyber',
+        name: 'Cyber Crime Police Station, Pathanamthitta',
+        nameMalayalam: 'സൈബർ ക്രൈം പോലീസ് സ്റ്റേഷൻ, പത്തനംതിട്ട',
+        stationCode: 'PTA-CYBER',
+        magistrateCourt: 'Chief Judicial Magistrate Court, Pathanamthitta',
+        magistrateCourtMalayalam: 'ചീഫ് ജുഡീഷ്യൽ മജിസ്‌ട്രേറ്റ് കോടതി, പത്തനംതിട്ട',
+        subDivision: 'Pathanamthitta Cyber Cell',
+        category: 'Cyber Crime'
+      },
+      {
+        id: 'pta-adoor',
+        name: 'Adoor Police Station',
+        nameMalayalam: 'അടൂർ പോലീസ് സ്റ്റേഷൻ',
+        stationCode: 'PTA-ADR',
+        magistrateCourt: 'Judicial First Class Magistrate Court, Adoor',
+        magistrateCourtMalayalam: 'ജുഡീഷ്യൽ ഫസ്റ്റ് ക്ലാസ് മജിസ്‌ട്രേറ്റ് കോടതി, അടൂർ',
+        subDivision: 'Adoor',
+        category: 'Rural / Town'
+      },
+      {
+        id: 'pta-thiruvalla',
+        name: 'Thiruvalla Police Station',
+        nameMalayalam: 'തിരുവല്ല പോലീസ് സ്റ്റേഷൻ',
+        stationCode: 'PTA-TVL',
+        magistrateCourt: 'Judicial First Class Magistrate Court, Thiruvalla',
+        magistrateCourtMalayalam: 'ജുഡീഷ്യൽ ഫസ്റ്റ് ക്ലാസ് മജിസ്‌ട്രേറ്റ് കോടതി, തിരുവല്ല',
+        subDivision: 'Thiruvalla',
+        category: 'Rural / Town'
+      }
+    ]
+  },
+  {
+    district: 'Idukki',
+    districtMalayalam: 'ഇടുക്കി',
+    cnrPrefix: 'KLID',
+    state: 'Kerala',
+    magistrateCourtDefault: 'Chief Judicial Magistrate Court, Thodupuzha',
+    magistrateCourtDefaultMalayalam: 'ചീഫ് ജുഡീഷ്യൽ മജിസ്‌ട്രേറ്റ് കോടതി, തൊടുപുഴ',
+    policeStations: [
+      {
+        id: 'idk-thodupuzha',
+        name: 'Thodupuzha Police Station',
+        nameMalayalam: 'തൊടുപുഴ പോലീസ് സ്റ്റേഷൻ',
+        stationCode: 'IDK-TDZ',
+        magistrateCourt: 'Judicial First Class Magistrate Court-I, Thodupuzha',
+        magistrateCourtMalayalam: 'ജുഡീഷ്യൽ ഫസ്റ്റ് ക്ലാസ് മജിസ്‌ട്രേറ്റ് കോടതി-I, തൊടുപുഴ',
+        subDivision: 'Thodupuzha',
+        category: 'City Law & Order'
+      },
+      {
+        id: 'idk-cyber',
+        name: 'Cyber Crime Police Station, Idukki',
+        nameMalayalam: 'സൈബർ ക്രൈം പോലീസ് സ്റ്റേഷൻ, ഇടുക്കി',
+        stationCode: 'IDK-CYBER',
+        magistrateCourt: 'Chief Judicial Magistrate Court, Thodupuzha',
+        magistrateCourtMalayalam: 'ചീഫ് ജുഡീഷ്യൽ മജിസ്‌ട്രേറ്റ് കോടതി, തൊടുപുഴ',
+        subDivision: 'Idukki Cyber Cell',
+        category: 'Cyber Crime'
+      },
+      {
+        id: 'idk-kattappana',
+        name: 'Kattappana Police Station',
+        nameMalayalam: 'കട്ടപ്പന പോലീസ് സ്റ്റേഷൻ',
+        stationCode: 'IDK-KTP',
+        magistrateCourt: 'Judicial First Class Magistrate Court, Kattappana',
+        magistrateCourtMalayalam: 'ജുഡീഷ്യൽ ഫസ്റ്റ് ക്ലാസ് മജിസ്‌ട്രേറ്റ് കോടതി, കട്ടപ്പന',
+        subDivision: 'Kattappana',
+        category: 'Rural / Town'
+      },
+      {
+        id: 'idk-munnar',
+        name: 'Munnar Police Station',
+        nameMalayalam: 'മൂന്നാർ പോലീസ് സ്റ്റേഷൻ',
+        stationCode: 'IDK-MNR',
+        magistrateCourt: 'Judicial First Class Magistrate Court, Devikulam',
+        magistrateCourtMalayalam: 'ജുഡീഷ്യൽ ഫസ്റ്റ് ക്ലാസ് മജിസ്‌ട്രേറ്റ് കോടതി, ദേവികുളം',
+        subDivision: 'Devikulam',
+        category: 'Rural / Town'
+      }
+    ]
+  },
+  {
+    district: 'Kasaragod',
+    districtMalayalam: 'കാസർഗോഡ്',
+    cnrPrefix: 'KLKS',
+    state: 'Kerala',
+    magistrateCourtDefault: 'Chief Judicial Magistrate Court, Kasaragod',
+    magistrateCourtDefaultMalayalam: 'ചീഫ് ജുഡീഷ്യൽ മജിസ്‌ട്രേറ്റ് കോടതി, കാസർഗോഡ്',
+    policeStations: [
+      {
+        id: 'ksd-town',
+        name: 'Kasaragod Police Station',
+        nameMalayalam: 'കാസർഗോഡ് പോലീസ് സ്റ്റേഷൻ',
+        stationCode: 'KSD-TWN',
+        magistrateCourt: 'Judicial First Class Magistrate Court-I, Kasaragod',
+        magistrateCourtMalayalam: 'ജുഡീഷ്യൽ ഫസ്റ്റ് ക്ലാസ് മജിസ്‌ട്രേറ്റ് കോടതി-I, കാസർഗോഡ്',
+        subDivision: 'Kasaragod',
+        category: 'City Law & Order'
+      },
+      {
+        id: 'ksd-cyber',
+        name: 'Cyber Crime Police Station, Kasaragod',
+        nameMalayalam: 'സൈബർ ക്രൈം പോലീസ് സ്റ്റേഷൻ, കാസർഗോഡ്',
+        stationCode: 'KSD-CYBER',
+        magistrateCourt: 'Chief Judicial Magistrate Court, Kasaragod',
+        magistrateCourtMalayalam: 'ചീഫ് ജുഡീഷ്യൽ മജിസ്‌ട്രേറ്റ് കോടതി, കാസർഗോഡ്',
+        subDivision: 'Kasaragod Cyber Cell',
+        category: 'Cyber Crime'
+      },
+      {
+        id: 'ksd-hosdurg',
+        name: 'Hosdurg Police Station (Kanhangad)',
+        nameMalayalam: 'ഹോസ്ദുർഗ്ഗ് പോലീസ് സ്റ്റേഷൻ (കാഞ്ഞങ്ങാട്)',
+        stationCode: 'KSD-HSD',
+        magistrateCourt: 'Judicial First Class Magistrate Court-I, Hosdurg',
+        magistrateCourtMalayalam: 'ജുഡീഷ്യൽ ഫസ്റ്റ് ക്ലാസ് മജിസ്‌ട്രേറ്റ് കോടതി-I, ഹോസ്ദുർഗ്ഗ്',
+        subDivision: 'Kanhangad',
+        category: 'Rural / Town'
+      }
+    ]
+  },
+  {
+    district: 'Wayanad',
+    districtMalayalam: 'വയനാട്',
+    cnrPrefix: 'KLWY',
+    state: 'Kerala',
+    magistrateCourtDefault: 'Chief Judicial Magistrate Court, Kalpetta',
+    magistrateCourtDefaultMalayalam: 'ചീഫ് ജുഡീഷ്യൽ മജിസ്‌ട്രേറ്റ് കോടതി, കൽപ്പറ്റ',
+    policeStations: [
+      {
+        id: 'wyd-kalpetta',
+        name: 'Kalpetta Police Station',
+        nameMalayalam: 'കൽപ്പറ്റ പോലീസ് സ്റ്റേഷൻ',
+        stationCode: 'WYD-KLP',
+        magistrateCourt: 'Judicial First Class Magistrate Court-I, Kalpetta',
+        magistrateCourtMalayalam: 'ജുഡീഷ്യൽ ഫസ്റ്റ് ക്ലാസ് മജിസ്‌ട്രേറ്റ് കോടതി-I, കൽപ്പറ്റ',
+        subDivision: 'Kalpetta',
+        category: 'City Law & Order'
+      },
+      {
+        id: 'wyd-cyber',
+        name: 'Cyber Crime Police Station, Wayanad',
+        nameMalayalam: 'സൈബർ ക്രൈം പോലീസ് സ്റ്റേഷൻ, വയനാട്',
+        stationCode: 'WYD-CYBER',
+        magistrateCourt: 'Chief Judicial Magistrate Court, Kalpetta',
+        magistrateCourtMalayalam: 'ചീഫ് ജുഡീഷ്യൽ മജിസ്‌ട്രേറ്റ് കോടതി, കൽപ്പറ്റ',
+        subDivision: 'Wayanad Cyber Cell',
+        category: 'Cyber Crime'
+      },
+      {
+        id: 'wyd-sulthan-bathery',
+        name: 'Sulthan Bathery Police Station',
+        nameMalayalam: 'സുൽത്താൻ ബത്തേരി പോലീസ് സ്റ്റേഷൻ',
+        stationCode: 'WYD-SBY',
+        magistrateCourt: 'Judicial First Class Magistrate Court, Sulthan Bathery',
+        magistrateCourtMalayalam: 'ജുഡീഷ്യൽ ഫസ്റ്റ് ക്ലാസ് മജിസ്‌ട്രേറ്റ് കോടതി, സുൽത്താൻ ബത്തേരി',
+        subDivision: 'Sulthan Bathery',
+        category: 'Rural / Town'
+      },
+      {
+        id: 'wyd-mananthavady',
+        name: 'Mananthavady Police Station',
+        nameMalayalam: 'മാനന്തവാടി പോലീസ് സ്റ്റേഷൻ',
+        stationCode: 'WYD-MNV',
+        magistrateCourt: 'Judicial First Class Magistrate Court, Mananthavady',
+        magistrateCourtMalayalam: 'ജുഡീഷ്യൽ ഫസ്റ്റ് ക്ലാസ് മജിസ്‌ട്രേറ്റ് കോടതി, മാനന്തവാടി',
+        subDivision: 'Mananthavady',
+        category: 'Rural / Town'
+      }
+    ]
+  },
+  {
+    district: 'Bengaluru Urban',
+    districtMalayalam: 'ബെംഗളൂരു (കർണാടക)',
+    cnrPrefix: 'KABL',
+    state: 'Karnataka',
+    magistrateCourtDefault: 'Chief Metropolitan Magistrate Court, Bengaluru',
+    magistrateCourtDefaultMalayalam: 'ചീഫ് മെട്രോപൊളിറ്റൻ മജിസ്‌ട്രേറ്റ് കോടതി, ബെംഗളൂരു',
+    policeStations: [
+      {
+        id: 'blr-cyber',
+        name: 'Cyber Crime Police Station (CEN), Bengaluru Central',
+        nameMalayalam: 'സൈബർ ക്രൈം പോലീസ് സ്റ്റേഷൻ (CEN), ബെംഗളൂരു സെൻട്രൽ',
+        stationCode: 'BLR-CEN',
+        magistrateCourt: 'Chief Metropolitan Magistrate Court, Bengaluru',
+        magistrateCourtMalayalam: 'ചീഫ് മെട്രോപൊളിറ്റൻ മജിസ്‌ട്രേറ്റ് കോടതി, ബെംഗളൂരു',
+        subDivision: 'Bengaluru Central',
+        category: 'Cyber Crime'
+      },
+      {
+        id: 'blr-indiranagar',
+        name: 'Indiranagar Police Station, Bengaluru',
+        nameMalayalam: 'ഇന്ദിരാനഗർ പോലീസ് സ്റ്റേഷൻ, ബെംഗളൂരു',
+        stationCode: 'BLR-IND',
+        magistrateCourt: 'Metropolitan Magistrate Court-X, Bengaluru',
+        magistrateCourtMalayalam: 'മെട്രോപൊളിറ്റൻ മജിസ്‌ട്രേറ്റ് കോടതി-X, ബെംഗളൂരു',
+        subDivision: 'East Division',
+        category: 'City Law & Order'
+      },
+      {
+        id: 'blr-whitefield',
+        name: 'Whitefield Police Station, Bengaluru',
+        nameMalayalam: 'വൈറ്റ്ഫീൽഡ് പോലീസ് സ്റ്റേഷൻ, ബെംഗളൂരു',
+        stationCode: 'BLR-WTF',
+        magistrateCourt: 'Metropolitan Magistrate Court-VI, Bengaluru',
+        magistrateCourtMalayalam: 'മെട്രോപൊളിറ്റൻ മജിസ്‌ട്രേറ്റ് കോടതി-VI, ബെംഗളൂരു',
+        subDivision: 'Whitefield Division',
+        category: 'City Law & Order'
+      }
+    ]
+  }
+];
+
+export function getPoliceStationsByDistrict(districtName: string): PoliceStationInfo[] {
+  const found = KERALA_POLICE_DISTRICTS_DIRECTORY.find(
+    (d) => d.district.toLowerCase() === districtName.trim().toLowerCase()
+  );
+  return found ? found.policeStations : KERALA_POLICE_DISTRICTS_DIRECTORY[0].policeStations;
+}
+
+export function getDistrictInfo(districtName: string): DistrictPoliceDirectory {
+  const found = KERALA_POLICE_DISTRICTS_DIRECTORY.find(
+    (d) => d.district.toLowerCase() === districtName.trim().toLowerCase()
+  );
+  return found || KERALA_POLICE_DISTRICTS_DIRECTORY[0];
+}
+
+/* ========================================================================= */
 /* 1. PRE-LOADED AUTHENTIC BENCHMARK FIR & COURT DOCKET RECORDS */
 /* ========================================================================= */
 
@@ -519,28 +1561,45 @@ export function lookupFIRAndCaseStatus(
     return existing;
   }
 
-  // 2. Generate dynamic, realistic case docket for any custom FIR entered by user
+  // 2. Generate dynamic, realistic case docket for custom FIR entered by user
   const cleanFirNum = firQuery.includes('/') ? firQuery.trim() : `${firQuery || '101'}/2024`;
-  const cleanStation = stationQuery || 'Cyber Crime Police Station, Central District';
+  const cleanYear = cleanFirNum.split('/')[1] || '2024';
   const cleanDistrict = districtQuery || 'Ernakulam';
-  const cnrNum = `KL${cleanDistrict.slice(0, 2).toUpperCase()}0100${Math.floor(100000 + Math.random() * 900000)}2024`;
+  
+  // Resolve district and police station from official directory
+  const distInfo = getDistrictInfo(cleanDistrict);
+  const matchedStation = distInfo.policeStations.find(
+    (s) =>
+      (stationQuery && s.name.toLowerCase().includes(stationQuery.toLowerCase())) ||
+      (stationQuery && s.nameMalayalam.toLowerCase().includes(stationQuery.toLowerCase()))
+  ) || distInfo.policeStations[0];
+
+  const cleanStation = stationQuery ? stationQuery.trim() : matchedStation.name;
+  const cleanStationMalayalam = matchedStation.nameMalayalam || `${cleanStation} (കേരള പോലീസ്)`;
+  const cnrNum = `${distInfo.cnrPrefix}0100${Math.floor(100000 + Math.random() * 900000)}${cleanYear}`;
+  const courtName = matchedStation.magistrateCourt || distInfo.magistrateCourtDefault;
+  const courtNameMalayalam = matchedStation.magistrateCourtMalayalam || distInfo.magistrateCourtDefaultMalayalam;
+
+  const isCyber = cleanStation.toLowerCase().includes('cyber');
+  const ioName = isCyber ? 'Sreejith K. Nair' : 'Harikrishnan P. Pillai';
+  const ioRank = isCyber ? 'Inspector of Police (Cyber Crime Cell)' : 'Sub-Inspector of Police (Station House Officer)';
 
   return {
-    id: `fir-${cleanDistrict.toLowerCase()}-${cleanFirNum.replace(/[^a-zA-Z0-9]/g, '-')}`,
+    id: `fir-${distInfo.district.toLowerCase()}-${cleanFirNum.replace(/[^a-zA-Z0-9]/g, '-')}`,
     firNumber: cleanFirNum,
     crimeNumber: `Crime No. ${cleanFirNum}`,
-    year: cleanFirNum.split('/')[1] || '2024',
+    year: cleanYear,
     policeStation: cleanStation,
-    policeStationMalayalam: `${cleanStation} (കേരള പോലീസ്)`,
-    district: cleanDistrict,
-    districtMalayalam: cleanDistrict,
-    state: stateQuery,
-    dateOfRegistration: '2024-04-10',
+    policeStationMalayalam: cleanStationMalayalam,
+    district: distInfo.district,
+    districtMalayalam: distInfo.districtMalayalam,
+    state: distInfo.state || stateQuery,
+    dateOfRegistration: `${cleanYear}-04-10`,
     timeOfRegistration: '10:00 AM',
     complainantName: 'Confidential Complainant (Private Informant)',
-    complainantAddress: `${cleanDistrict}, ${stateQuery}, India`,
-    investigatingOfficer: 'Sub-Inspector of Police (Special Investigation Team)',
-    investigatingOfficerRank: 'Sub-Inspector (SI)',
+    complainantAddress: `${distInfo.district}, ${distInfo.state}, India`,
+    investigatingOfficer: ioName,
+    investigatingOfficerRank: ioRank,
     actsAndSections: [
       {
         act: 'Indian Penal Code, 1860 / Bharatiya Nyaya Sanhita, 2023',
@@ -561,10 +1620,10 @@ export function lookupFIRAndCaseStatus(
         punishmentMaxYears: '3 Years & Fine'
       },
       {
-        act: 'Information Technology Act, 2000',
-        section: 'Section 66D',
-        description: 'Cheating by Personation using Computer Resource',
-        descriptionMalayalam: 'ഡിജിറ്റൽ മാധ്യമം വഴിയുള്ള വഞ്ചന',
+        act: isCyber ? 'Information Technology Act, 2000' : 'Indian Penal Code, 1860',
+        section: isCyber ? 'Section 66D IT Act' : 'Section 120B IPC',
+        description: isCyber ? 'Cheating by Personation using Computer Resource' : 'Criminal Conspiracy',
+        descriptionMalayalam: isCyber ? 'ഡിജിറ്റൽ മാധ്യമം വഴിയുള്ള വഞ്ചന' : 'ക്രിമിനൽ ഗൂഢാലോചന',
         bailable: false,
         cognizable: true,
         punishmentMaxYears: '3 Years & Fine'
@@ -579,27 +1638,27 @@ export function lookupFIRAndCaseStatus(
         bailStatus: 'Anticipatory Bail Granted'
       }
     ],
-    briefAllegation: `Allegation registered under Crime No. ${cleanFirNum} alleging commercial dispute and financial irregularity. The accused asserts that the dispute is civil in nature with no criminal intent.`,
-    briefAllegationMalayalam: `ക്രൈം നമ്പർ ${cleanFirNum} പ്രകാരം രജിസ്റ്റർ ചെയ്ത പരാതി. ഇത് സാമ്പത്തിക ഇടപാടിലെ തെറ്റിദ്ധാരണ മൂലം ഉണ്ടായ സിവിൽ തർക്കമാണെന്ന് പ്രതിഭാഗം വ്യക്തമാക്കുന്നു.`,
+    briefAllegation: `Allegation registered under Crime No. ${cleanFirNum} at ${cleanStation} alleging commercial dispute and financial irregularity. The accused asserts that the dispute is civil in nature with no criminal intent.`,
+    briefAllegationMalayalam: `${cleanStation}ൽ രജിസ്റ്റർ ചെയ്ത ക്രൈം നമ്പർ ${cleanFirNum} പ്രകാരമുള്ള പരാതി. ഇത് സാമ്പത്തിക ഇടപാടിലെ തെറ്റിദ്ധാരണ മൂലം ഉണ്ടായ സിവിൽ തർക്കമാണെന്ന് വ്യക്തമാക്കുന്നു.`,
     firSummary: `Case docket for ${cleanFirNum} registered at ${cleanStation}. High Court quashing grounds under Section 482 CrPC apply due to lack of criminal mens rea and commercial nature of transaction.`,
-    firSummaryMalayalam: `${cleanStation} സ്റ്റേഷനിൽ രജിസ്റ്റർ ചെയ്ത ${cleanFirNum} കേസ്. ക്രിമിനൽ ഉദ്ദേശ്യമില്ലാത്തതിനാൽ 482-ാം വകുപ്പ് പ്രകാരം ഹൈക്കോടതിയിൽ കേസ് റദ്ദാക്കാൻ അർഹതയുള്ള കേസ്.`,
+    firSummaryMalayalam: `${cleanStation}ൽ രജിസ്റ്റർ ചെയ്ത ${cleanFirNum} കേസ്. ക്രിമിനൽ ഉദ്ദേശ്യമില്ലാത്തതിനാൽ 482-ാം വകുപ്പ് പ്രകാരം ഹൈക്കോടതിയിൽ കേസ് റദ്ദാക്കാൻ അർഹതയുള്ള കേസ്.`,
     courtDocket: {
       cnrNumber: cnrNum,
-      courtName: `Judicial First Class Magistrate Court-I, ${cleanDistrict}`,
-      courtNameMalayalam: `ജുഡീഷ്യൽ ഫസ്റ്റ് ക്ലാസ് മജിസ്‌ട്രേറ്റ് കോടതി, ${cleanDistrict}`,
+      courtName: courtName,
+      courtNameMalayalam: courtNameMalayalam,
       caseType: 'CC / Crl.M.C.',
-      caseNumber: `CC ${Math.floor(100 + Math.random() * 900)}/2024`,
-      filingDate: '2024-04-15',
+      caseNumber: `CC ${Math.floor(100 + Math.random() * 900)}/${cleanYear}`,
+      filingDate: `${cleanYear}-04-15`,
       currentStage: 'Investigation & Section 482 High Court Quashing Review',
       currentStageMalayalam: 'അന്വേഷണവും ഹൈക്കോടതി 482 കേസ് റദ്ദാക്കൽ ഹർജിയും',
       nextHearingDate: '2026-09-25',
       purposeOfHearing: 'Hearing on Stay of Police Proceedings / Quashing Petition',
       purposeOfHearingMalayalam: 'തുടർനടപടികൾ സ്റ്റേ ചെയ്യൽ / റദ്ദാക്കൽ ഹർജിയിലെ വാദം',
-      presidingJudge: `Hon. Magistrate, JFCM-I, ${cleanDistrict}`,
-      courtRoomNumber: 'Court Hall No. 2',
-      petitionerOrState: `State of ${stateQuery}`,
-      respondentOrAccused: 'Accused Party & Ors.',
-      caseStatus: 'Pending Trial'
+      presidingJudge: `Hon. Magistrate, ${courtName}`,
+      courtRoomNumber: 'Court Hall No. 1',
+      petitionerOrState: `State of ${distInfo.state}`,
+      respondentOrAccused: 'Accused (A1 to A3)',
+      caseStatus: 'Stayed by High Court'
     },
     timeline: [
       {
