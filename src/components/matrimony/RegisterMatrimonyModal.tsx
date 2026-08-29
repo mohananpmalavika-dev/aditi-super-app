@@ -595,7 +595,7 @@ export const RegisterMatrimonyModal: React.FC<RegisterMatrimonyModalProps> = ({
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1">
-                <span className="text-[10px] text-slate-400 font-bold">Contact Phone / WhatsApp *</span>
+                <span className="text-[10px] text-slate-400 font-bold">Contact Phone / Mobile *</span>
                 <input
                   type="text"
                   value={contactPhone}

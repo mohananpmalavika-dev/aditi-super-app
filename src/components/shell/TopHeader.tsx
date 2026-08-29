@@ -307,10 +307,10 @@ export const TopHeader: React.FC<TopHeaderProps> = ({ onOpenLauncher }) => {
                           title: 'Aditi Super App',
                           text: 'Explore Aditi Super App on malabarbazaar.shop',
                           url: window.location.origin
-                        });
-                      } else {
-                        const waText = encodeURIComponent(`Explore Aditi Super App at ${window.location.origin}`);
-                        window.open(`https://api.whatsapp.com/send?text=${waText}`, '_blank');
+                        }).catch(() => {});
+                      } else if (navigator.clipboard) {
+                        navigator.clipboard.writeText(window.location.origin);
+                        alert('App link copied to clipboard: ' + window.location.origin);
                       }
                     }}
                     className="w-full p-2 rounded-xl text-left text-indigo-300 hover:bg-slate-800 hover:text-white transition-colors flex items-center gap-2"

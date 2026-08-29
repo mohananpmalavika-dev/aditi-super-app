@@ -110,7 +110,7 @@ export const StickerGifPickerModal: React.FC<StickerGifPickerModalProps> = ({
               }`}
             >
               <Smile className="w-4 h-4" />
-              <span>Stickers (Telegram & Viber)</span>
+              <span>Animated Stickers</span>
             </button>
 
             <button
@@ -123,7 +123,7 @@ export const StickerGifPickerModal: React.FC<StickerGifPickerModalProps> = ({
               }`}
             >
               <Film className="w-4 h-4" />
-              <span>Trending GIFs (Giphy)</span>
+              <span>Trending GIFs</span>
             </button>
           </div>
 

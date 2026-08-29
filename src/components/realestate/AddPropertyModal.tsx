@@ -505,7 +505,7 @@ export const AddPropertyModal: React.FC<AddPropertyModalProps> = ({ isOpen, onCl
               </div>
 
               <div>
-                <label className="text-[11px] font-medium text-slate-400 block mb-1">Phone / WhatsApp</label>
+                <label className="text-[11px] font-medium text-slate-400 block mb-1">Phone / Mobile Number</label>
                 <div className="relative">
                   <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
                   <input

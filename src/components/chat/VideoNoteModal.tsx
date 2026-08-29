@@ -95,7 +95,7 @@ export const VideoNoteModal: React.FC<VideoNoteModalProps> = ({
         <div className="w-full flex items-center justify-between">
           <div className="flex items-center gap-2 text-indigo-400">
             <Video className="w-5 h-5" />
-            <h3 className="font-extrabold text-sm text-white">Circular Video Note (Telegram Style)</h3>
+            <h3 className="font-extrabold text-sm text-white">Circular Video Message</h3>
           </div>
           <button
             onClick={onClose}

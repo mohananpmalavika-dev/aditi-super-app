@@ -161,10 +161,9 @@ export const AuthPage: React.FC = () => {
       } catch (err) {
         // Share cancelled
       }
-    } else {
-      // WhatsApp share fallback
-      const waText = encodeURIComponent(`Explore Aditi Super App at ${appUrl}`);
-      window.open(`https://api.whatsapp.com/send?text=${waText}`, '_blank');
+    } else if (navigator.clipboard) {
+      navigator.clipboard.writeText(appUrl);
+      showToast('📋 App link copied to clipboard!');
     }
   };
 

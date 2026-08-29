@@ -38,7 +38,7 @@ export const StarredMessagesDrawer: React.FC<StarredMessagesDrawerProps> = ({
           <div className="p-4 sm:p-5 border-b border-slate-800 flex items-center justify-between bg-slate-900/90">
             <div className="flex items-center gap-2 text-yellow-400">
               <Star className="w-5 h-5 fill-current" />
-              <h3 className="font-extrabold text-sm text-white">Starred Messages (WhatsApp Style)</h3>
+              <h3 className="font-extrabold text-sm text-white">Starred Messages & Bookmarks</h3>
             </div>
             <button
               onClick={onClose}

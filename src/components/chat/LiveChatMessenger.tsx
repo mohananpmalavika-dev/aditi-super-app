@@ -354,7 +354,7 @@ export const LiveChatMessenger: React.FC = () => {
   const [addFriendModalOpen, setAddFriendModalOpen] = useState(false);
   const [detailsDrawerOpen, setDetailsDrawerOpen] = useState(false);
 
-  // WhatsApp & Telegram Super Features Modals
+  // Interactive Chat Features & Media Modals
   const [pollModalOpen, setPollModalOpen] = useState(false);
   const [stickerModalOpen, setStickerModalOpen] = useState(false);
   const [videoNoteModalOpen, setVideoNoteModalOpen] = useState(false);
@@ -689,7 +689,7 @@ export const LiveChatMessenger: React.FC = () => {
                       className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-slate-200 hover:bg-slate-800 transition-colors text-left"
                     >
                       <Radio className="w-4 h-4 text-emerald-400" />
-                      <span>WhatsApp Broadcast</span>
+                      <span>Broadcast Message</span>
                     </button>
                     <button
                       type="button"
@@ -735,7 +735,7 @@ export const LiveChatMessenger: React.FC = () => {
               <button
                 onClick={() => setStarredDrawerOpen(true)}
                 className="p-1.5 rounded-xl bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 transition-colors"
-                title="Starred Bookmarks (WhatsApp)"
+                title="Starred Bookmarks"
               >
                 <Star className="w-3.5 h-3.5 fill-current" />
               </button>
@@ -749,14 +749,14 @@ export const LiveChatMessenger: React.FC = () => {
               <button
                 onClick={() => setChannelModalOpen(true)}
                 className="p-1.5 rounded-xl bg-purple-600/20 hover:bg-purple-600/30 text-purple-400 border border-purple-500/30 transition-colors"
-                title="New Broadcast Channel (Telegram)"
+                title="New Broadcast Channel"
               >
                 <Megaphone className="w-3.5 h-3.5" />
               </button>
               <button
                 onClick={() => setBroadcastModalOpen(true)}
                 className="p-1.5 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 border border-emerald-500/30 transition-colors"
-                title="Broadcast Message (WhatsApp)"
+                title="Broadcast to Multiple Contacts"
               >
                 <Radio className="w-3.5 h-3.5" />
               </button>
@@ -1631,7 +1631,7 @@ export const LiveChatMessenger: React.FC = () => {
                               type="button"
                               onClick={() => toggleAudioSpeed(msg.id)}
                               className="px-2 py-0.5 rounded-full bg-white/20 hover:bg-white/30 text-[10px] font-extrabold text-white transition-colors"
-                              title="Playback Speed (WhatsApp/Telegram)"
+                              title="Playback Speed"
                             >
                               {audioSpeedMap[msg.id] || 1}x
                             </button>
@@ -2251,7 +2251,7 @@ export const LiveChatMessenger: React.FC = () => {
                   </div>
                 )}
 
-                {/* Smart Attachments & Advanced Tools Sheet (WhatsApp / Telegram 3D Grid) */}
+                {/* Smart Attachments & Advanced Tools Sheet (3D Grid) */}
                 {showAttachmentsMenu && (
                   <div className="p-3 bg-slate-900/95 border-b border-slate-800 border-t border-indigo-500/30 animate-in slide-in-from-bottom-2 shadow-2xl">
                     <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-800">
@@ -2546,7 +2546,7 @@ export const LiveChatMessenger: React.FC = () => {
         />
       )}
 
-      {/* Ephemeral Snaps (Snapchat) */}
+      {/* Ephemeral Disappearing Snaps */}
       <SnapCameraModal
         isOpen={snapModalOpen}
         onClose={() => setSnapModalOpen(false)}
@@ -2667,7 +2667,7 @@ export const LiveChatMessenger: React.FC = () => {
         onSelectChat={(chatId) => handleSelectChat(chatId)}
       />
 
-      {/* Broadcast Channel Creator Modal (Telegram) */}
+      {/* Broadcast Channel Creator Modal */}
       <ChannelCreateModal
         isOpen={channelModalOpen}
         onClose={() => setChannelModalOpen(false)}
@@ -2677,7 +2677,7 @@ export const LiveChatMessenger: React.FC = () => {
         }}
       />
 
-      {/* Broadcast Message to Multiple Contacts Modal (WhatsApp) */}
+      {/* Broadcast Message to Multiple Contacts Modal */}
       <BroadcastModal
         isOpen={broadcastModalOpen}
         onClose={() => setBroadcastModalOpen(false)}
@@ -2687,7 +2687,7 @@ export const LiveChatMessenger: React.FC = () => {
         }}
       />
 
-      {/* Live Poll Creator Modal (WhatsApp & Telegram) */}
+      {/* Live Poll Creator Modal */}
       <PollModal
         isOpen={pollModalOpen}
         onClose={() => setPollModalOpen(false)}
@@ -2699,7 +2699,7 @@ export const LiveChatMessenger: React.FC = () => {
         }}
       />
 
-      {/* Stickers & Trending GIFs Studio Modal (Telegram, WhatsApp & Viber) */}
+      {/* Stickers & Trending GIFs Studio Modal */}
       <StickerGifPickerModal
         isOpen={stickerModalOpen}
         onClose={() => setStickerModalOpen(false)}
@@ -2711,7 +2711,7 @@ export const LiveChatMessenger: React.FC = () => {
         }}
       />
 
-      {/* Telegram Round Video Memo Modal */}
+      {/* Circular Video Memo Modal */}
       <VideoNoteModal
         isOpen={videoNoteModalOpen}
         onClose={() => setVideoNoteModalOpen(false)}
@@ -2728,7 +2728,7 @@ export const LiveChatMessenger: React.FC = () => {
         }}
       />
 
-      {/* Forward Message to Multiple Contacts Modal (WhatsApp & Telegram) */}
+      {/* Forward Message to Multiple Contacts Modal */}
       <ForwardModal
         isOpen={forwardModalOpen}
         onClose={() => {
@@ -2740,7 +2740,7 @@ export const LiveChatMessenger: React.FC = () => {
         onForwardMessage={handleForwardMessage}
       />
 
-      {/* Starred Messages Drawer (WhatsApp) */}
+      {/* Starred Messages Drawer */}
       <StarredMessagesDrawer
         isOpen={starredDrawerOpen}
         onClose={() => setStarredDrawerOpen(false)}
@@ -2749,7 +2749,7 @@ export const LiveChatMessenger: React.FC = () => {
         onUnstarMessage={(chatId, msgId) => toggleStarMessage(chatId, msgId)}
       />
 
-      {/* Chat Wallpapers & Themes Switcher (WhatsApp & Telegram) */}
+      {/* Chat Wallpapers & Themes Switcher */}
       <WallpaperModal
         isOpen={wallpaperModalOpen}
         onClose={() => setWallpaperModalOpen(false)}

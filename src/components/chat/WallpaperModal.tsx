@@ -16,14 +16,14 @@ const WALLPAPERS = [
     preview: 'bg-slate-950 border-slate-800'
   },
   {
-    id: 'whatsapp-doodle',
-    name: 'WhatsApp Emerald Doodle',
+    id: 'emerald-doodle',
+    name: 'Emerald Textured Doodle',
     style: 'bg-[#0b141a] bg-[radial-gradient(#1f2c34_1px,transparent_1px)] [background-size:16px_16px]',
     preview: 'bg-[#0b141a] border-emerald-500/40'
   },
   {
-    id: 'telegram-midnight',
-    name: 'Telegram Midnight Purple',
+    id: 'midnight-purple',
+    name: 'Deep Midnight Purple',
     style: 'bg-gradient-to-b from-[#182533] via-[#0e1621] to-[#17212b]',
     preview: 'bg-gradient-to-b from-[#182533] to-[#0e1621] border-indigo-500/40'
   },

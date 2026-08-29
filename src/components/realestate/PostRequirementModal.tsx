@@ -412,7 +412,7 @@ export const PostRequirementModal: React.FC<PostRequirementModalProps> = ({
               </div>
 
               <div className="space-y-1">
-                <span className="text-[10px] text-slate-400 font-bold">Phone / WhatsApp</span>
+                <span className="text-[10px] text-slate-400 font-bold">Phone / Mobile Number</span>
                 <input
                   type="text"
                   value={contactPhone}

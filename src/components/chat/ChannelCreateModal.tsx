@@ -95,7 +95,7 @@ export const ChannelCreateModal: React.FC<ChannelCreateModalProps> = ({
               <h3 className="font-extrabold text-sm sm:text-base text-white flex items-center gap-2">
                 <span>Create Broadcast Channel</span>
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30">
-                  Telegram Standard
+                  Super Channel
                 </span>
               </h3>
               <p className="text-[11px] text-slate-400">Broadcast updates, news & announcements to unlimited subscribers</p>

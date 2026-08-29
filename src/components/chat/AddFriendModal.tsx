@@ -268,12 +268,22 @@ export const AddFriendModal: React.FC<AddFriendModalProps> = ({
     }
   };
 
-  // WhatsApp Invite
-  const handleWhatsAppInvite = () => {
-    const text = encodeURIComponent(
-      `Hey! Connect with me on AditiChat (The Boundless Super App with WebRTC Video Calls, GPS Location, and AI Studio). Click here to add me: ${userInviteUrl}`
-    );
-    window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank');
+  // Instant Messaging Invite Share
+  const handleInstantShareInvite = async () => {
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: `Connect with ${user.name} on AditiChat`,
+          text: `Hey! Connect with me on AditiChat (The Boundless Super App with WebRTC Video Calls, GPS Location, and AI Studio). Click here to add me:`,
+          url: userInviteUrl
+        });
+        showToast('🚀 Invite shared successfully!');
+      } catch {
+        // Share cancelled
+      }
+    } else {
+      handleCopyLink();
+    }
   };
 
   // Native Device Share
@@ -290,7 +300,7 @@ export const AddFriendModal: React.FC<AddFriendModalProps> = ({
         // Share cancelled
       }
     } else {
-      handleWhatsAppInvite();
+      handleCopyLink();
     }
   };
 
@@ -833,7 +843,7 @@ export const AddFriendModal: React.FC<AddFriendModalProps> = ({
         )}
 
         {/* ========================================================================= */}
-        {/* TAB 4: 1-CLICK INVITE FRIENDS (WHATSAPP, SMS, QR, EMAIL) */}
+        {/* TAB 4: 1-CLICK INVITE FRIENDS (INSTANT SHARE, SMS, QR, EMAIL) */}
         {/* ========================================================================= */}
         {activeTab === 'invite' && (
           <div className="space-y-4 animate-in fade-in text-xs">
@@ -859,14 +869,14 @@ export const AddFriendModal: React.FC<AddFriendModalProps> = ({
             {/* Quick 1-Click Share Options */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               
-              {/* WhatsApp */}
+              {/* Instant Share */}
               <button
                 type="button"
-                onClick={handleWhatsAppInvite}
+                onClick={handleInstantShareInvite}
                 className="p-3 rounded-2xl bg-emerald-950/60 hover:bg-emerald-900/60 border border-emerald-500/40 text-emerald-300 font-bold flex flex-col items-center justify-center gap-1.5 transition-all hover:scale-105"
               >
                 <span className="text-xl">💬</span>
-                <span className="text-[11px]">WhatsApp</span>
+                <span className="text-[11px]">Instant Share</span>
               </button>
 
               {/* Mobile SMS / Native Share */}
