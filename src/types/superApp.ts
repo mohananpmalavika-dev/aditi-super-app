@@ -10,6 +10,7 @@ export type MiniAppId =
   | 'chat'
   | 'productivity'
   | 'utilities'
+  | 'legal'
   | 'settings';
 
 export interface UserProfile {
@@ -535,3 +536,133 @@ export interface ProactiveAlert {
   timestamp: string;
   priority: 'info' | 'important' | 'warning';
 }
+
+/* ==================== LEGAL INTELLIGENCE & CASE DOCKET ==================== */
+export interface FIRSectionDetail {
+  act: string;
+  section: string;
+  description: string;
+  descriptionMalayalam?: string;
+  bailable: boolean;
+  cognizable: boolean;
+  punishmentMaxYears: string;
+}
+
+export interface AccusedPerson {
+  name: string;
+  rank: number; // Accused No. 1 (A1), A2, etc.
+  age?: number;
+  role: string;
+  bailStatus: 'Anticipatory Bail Granted' | 'Regular Bail Granted' | 'Remand / In Custody' | 'Notice Issued (Sec 41A CrPC)' | 'Discharged / Quashed' | 'Acquitted';
+}
+
+export interface CaseHistoryMilestone {
+  stageNumber: number;
+  stageName: 'FIR' | 'Investigation & 41A' | 'Bail / Remand' | 'Chargesheet (Sec 173)' | 'Cognizance & Summons' | 'Framing of Charges' | 'Evidence & Trial' | 'Section 482 HC Quash' | 'Final Judgment / Closure';
+  stageNameMalayalam: string;
+  title: string;
+  titleMalayalam: string;
+  date: string;
+  courtOrAuthority: string;
+  description: string;
+  descriptionMalayalam: string;
+  courtOrderExcerpt?: string;
+  isCompleted: boolean;
+  status: 'Completed' | 'Current Stage' | 'Upcoming';
+}
+
+export interface CourtCaseDocket {
+  cnrNumber: string;
+  courtName: string;
+  courtNameMalayalam: string;
+  caseType: string;
+  caseNumber: string;
+  filingDate: string;
+  currentStage: string;
+  currentStageMalayalam: string;
+  nextHearingDate: string;
+  purposeOfHearing: string;
+  purposeOfHearingMalayalam: string;
+  presidingJudge: string;
+  courtRoomNumber: string;
+  petitionerOrState: string;
+  respondentOrAccused: string;
+  caseStatus: 'Pending Trial' | 'Under Investigation' | 'Stayed by High Court' | 'Disposed / Acquitted' | 'Quashed under Sec 482 CrPC';
+}
+
+export interface MediaDiscrepancyReport {
+  id: string;
+  channelOrOutlet: string;
+  outletLogo?: string;
+  headline: string;
+  headlineMalayalam?: string;
+  publishedDate: string;
+  mediaType: 'TV Channel Broadcast' | 'Online News Portal' | 'YouTube Video Report' | 'Print Newspaper';
+  distortedClaims: string[];
+  actualLegalFacts: string[];
+  isDiscrepancy: boolean;
+  libelSeverity: 'Severe / Actionable Defamation' | 'Sensationalized Distortion' | 'Fair & Factual';
+  defamatoryQuotes: string[];
+  impactOnAccused: string;
+  suggestedAction: string;
+}
+
+export interface DefencePrecedent {
+  citation: string;
+  court: 'Supreme Court of India' | 'High Court of Kerala' | 'High Court of Delhi' | 'High Court of Bombay';
+  title: string;
+  year: number;
+  ratioDecidendi: string;
+  ratioDecidendiMalayalam: string;
+  applicabilityToCase: string;
+}
+
+export interface FIRRecord {
+  id: string;
+  firNumber: string;
+  crimeNumber: string;
+  year: string;
+  policeStation: string;
+  policeStationMalayalam: string;
+  district: string;
+  districtMalayalam: string;
+  state: string;
+  dateOfRegistration: string;
+  timeOfRegistration: string;
+  complainantName: string;
+  complainantAddress?: string;
+  investigatingOfficer: string;
+  investigatingOfficerRank: string;
+  actsAndSections: FIRSectionDetail[];
+  accusedList: AccusedPerson[];
+  briefAllegation: string;
+  briefAllegationMalayalam: string;
+  firSummary: string;
+  firSummaryMalayalam: string;
+  courtDocket: CourtCaseDocket;
+  timeline: CaseHistoryMilestone[];
+  mediaReports: MediaDiscrepancyReport[];
+  defencePrecedents: DefencePrecedent[];
+  quashingGrounds: string[];
+  quashingGroundsMalayalam: string[];
+  evidenceChecklist: string[];
+}
+
+export interface LegalNoticeDraft {
+  noticeDate: string;
+  accusedName: string;
+  accusedAddress: string;
+  advocateName: string;
+  advocateEnrollment: string;
+  advocateOffice: string;
+  targetMediaOutlets: string[];
+  firNumber: string;
+  claimedCompensationAmount: string;
+  demandDeadlineDays: number;
+  noticeTextEnglish: string;
+  noticeTextMalayalam: string;
+  criminalComplaintDraftEnglish: string;
+  regulatoryComplaintNBDSA: string;
+  quashingPetitionSec482Draft: string;
+}
+

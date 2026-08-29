@@ -15,7 +15,8 @@ import {
   CheckSquare, 
   Flame, 
   CheckCircle2, 
-  UserCheck 
+  UserCheck,
+  Scale 
 } from 'lucide-react';
 import { useSuperApp } from '../../context/SuperAppContext';
 import { useOmniBrain } from '../../context/OmniBrainContext';
@@ -471,6 +472,42 @@ export const SuperAppHome: React.FC = () => {
                   🎨 FLUX.1 Pro Generative Synthesis & Kerala Kasavu AI
                 </p>
               </div>
+            </div>
+          </div>
+
+          {/* Legal & Court Case Tracker Spotlight */}
+          <div className="p-4 sm:p-5 rounded-3xl card-3d space-y-3.5 border-amber-500/30">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                  <Scale className="w-4 h-4" />
+                </div>
+                <h3 className="font-extrabold text-sm text-white">Court Case & FIR Portal</h3>
+              </div>
+              <button
+                onClick={() => setActiveMiniApp('legal')}
+                className="text-xs font-bold text-amber-400 hover:underline"
+              >
+                Track Case
+              </button>
+            </div>
+
+            <div
+              onClick={() => setActiveMiniApp('legal')}
+              className="p-3.5 rounded-2xl bg-slate-950/80 hover:bg-slate-950 border border-slate-800 space-y-2 cursor-pointer group transition-all"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 font-bold">
+                  FIR & Defamation AI
+                </span>
+                <span className="text-[10px] font-bold text-slate-400">e-Courts Live</span>
+              </div>
+              <p className="text-xs font-bold text-white group-hover:text-amber-300 transition-colors">
+                ⚖️ Trace Full Case Timeline, Media Defamation Notices & HC Quashing
+              </p>
+              <p className="text-[10px] text-slate-400">
+                1-Click Statutory 15-Day Notices under IPC §499/500 & Section 482 CrPC Blueprints.
+              </p>
             </div>
           </div>
 
