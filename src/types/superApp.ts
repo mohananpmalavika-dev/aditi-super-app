@@ -8,6 +8,7 @@ export type MiniAppId =
   | 'matrimony'
   | 'tutor'
   | 'chat'
+  | 'jobs'
   | 'productivity'
   | 'utilities'
   | 'settings';
@@ -664,4 +665,246 @@ export interface LegalNoticeDraft {
   regulatoryComplaintNBDSA: string;
   quashingPetitionSec482Draft: string;
 }
+
+/* ==================== JOB PORTAL & LOCAL WORKERS ==================== */
+export type JobType = 'Full-time' | 'Part-time' | 'Contract' | 'Urgent / Gig' | 'Internship' | 'Remote' | 'Freelance' | 'Temporary';
+
+export type JobCategory = 
+  | 'Technology & IT' 
+  | 'Local Trades & Skilled Labor' 
+  | 'Domestic & Housekeeping' 
+  | 'Sales & Marketing' 
+  | 'Healthcare & Nursing' 
+  | 'Finance & Accounting' 
+  | 'Education & Tutoring' 
+  | 'Hospitality & Cooking' 
+  | 'Logistics & Driving' 
+  | 'Construction & Civil' 
+  | 'Beauty & Wellness' 
+  | 'Security & Facility' 
+  | 'Other';
+
+export interface JobVacancy {
+  id: string;
+  title: string;
+  company: string;
+  companyLogo?: string;
+  category: JobCategory;
+  subcategory?: string;
+  jobType: JobType;
+  workMode?: 'remote' | 'hybrid' | 'onsite';
+  location: string;
+  city: string;
+  district?: string;
+  state?: string;
+  pincode?: string;
+  latitude?: number;
+  longitude?: number;
+  isRemote?: boolean;
+  salaryMin?: number;
+  salaryMax?: number;
+  salaryPeriod?: 'hour' | 'day' | 'month' | 'year';
+  salaryFormatted: string; // e.g. "₹25,000 - ₹40,000 / mo" or "₹800 / day"
+  experienceRequired: string; // e.g. "1-3 Years", "Freshers Welcome", "5+ Years"
+  qualificationRequired: string; // e.g. "B.Tech / BCA", "10th / 12th Pass", "ITI Certified", "None"
+  description: string;
+  responsibilities?: string[];
+  skills: string[];
+  contactName: string;
+  contactPhone: string;
+  contactEmail?: string;
+  contactAvatar?: string;
+  openingsCount: number;
+  isUrgent?: boolean;
+  isFeatured?: boolean;
+  isVerified?: boolean;
+  applicationCount?: number;
+  viewCount?: number;
+  status?: 'active' | 'closed' | 'draft';
+  isSaved?: boolean;
+  postedByUserId?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface JobSeekerProfile {
+  id: string;
+  fullName: string;
+  desiredRole: string;
+  category: JobCategory;
+  jobTypePreference: JobType;
+  qualification: string; // e.g. "B.Com, Tally Certified", "Diploma in Electrical", "10th Pass"
+  specialization?: string;
+  experienceYears: number;
+  currentCompany?: string;
+  experienceSummary: string; // Past projects, experience details
+  expectedSalary: string; // e.g. "₹30,000 / month" or "₹850 / day"
+  preferredLocation: string; // e.g. "Kozhikode, Kochi or Remote"
+  city: string;
+  skills: string[];
+  languages?: string[];
+  portfolioUrl?: string;
+  resumeUrl?: string;
+  resumeHeadline: string;
+  bio: string;
+  phone: string;
+  email?: string;
+  avatar: string;
+  availability: 'Immediate' | 'Within 15 Days' | 'Within 1 Month';
+  isVerified?: boolean;
+  isSaved?: boolean;
+  postedByUserId?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export type WorkerTrade = 
+  | 'Electrician' 
+  | 'Plumber' 
+  | 'Housemaid / Domestic Help' 
+  | 'Driver (Car / Heavy)' 
+  | 'Carpenter' 
+  | 'Painter' 
+  | 'Cook / Home Chef' 
+  | 'Appliance & AC Technician' 
+  | 'Mason / Construction' 
+  | 'Gardener / Landscaping' 
+  | 'Welder' 
+  | 'Tailor / Stitching' 
+  | 'Beautician & Hair Stylist' 
+  | 'Cleaning Worker / Deep Cleaner' 
+  | 'Security Guard' 
+  | 'Delivery Worker' 
+  | 'Mechanic / Auto Repair';
+
+export interface LocalWorkerProfile {
+  id: string;
+  name: string;
+  trade: WorkerTrade;
+  subTrade?: string;
+  experienceYears: number;
+  dailyRateOrCharge: string; // e.g. "₹850 / day", "₹350 / visit"
+  rateType?: 'hour' | 'visit' | 'day' | 'fixed' | 'negotiable';
+  serviceAreas: string[]; // e.g. ["Mavoor Road", "Palayam", "Calicut Beach", "Feroke"]
+  city: string;
+  district?: string;
+  latitude?: number;
+  longitude?: number;
+  serviceRadiusKm?: number;
+  rating: number; // e.g. 4.9
+  reviewCount: number;
+  isAvailableToday: boolean;
+  verifiedBadge?: boolean;
+  verificationStatus?: 'unverified' | 'pending' | 'verified';
+  skills: string[];
+  bio: string;
+  phone: string;
+  whatsapp?: string;
+  avatar: string;
+  completedJobsCount: number;
+  isSaved?: boolean;
+  postedByUserId?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+/* ==================== JOB APPLICATION SYSTEM ==================== */
+export type JobApplicationStatus = 
+  | 'Applied' 
+  | 'Under Review' 
+  | 'Shortlisted' 
+  | 'Interview' 
+  | 'Selected' 
+  | 'Rejected' 
+  | 'Withdrawn';
+
+export interface JobApplication {
+  id: string;
+  jobId: string;
+  jobTitle: string;
+  company: string;
+  candidateId: string;
+  candidateName: string;
+  candidateAvatar?: string;
+  candidatePhone?: string;
+  candidateEmail?: string;
+  recruiterId?: string;
+  resumeUrl?: string;
+  coverLetter?: string;
+  qualification?: string;
+  experienceYears?: number;
+  status: JobApplicationStatus;
+  appliedAt: string;
+  updatedAt?: string;
+  recruiterNotes?: string;
+  candidateNotes?: string;
+}
+
+/* ==================== SERVICE BOOKING SYSTEM ==================== */
+export type ServiceBookingStatus = 
+  | 'Requested' 
+  | 'Accepted' 
+  | 'Rejected' 
+  | 'Scheduled' 
+  | 'On The Way' 
+  | 'Started' 
+  | 'Completed' 
+  | 'Cancelled' 
+  | 'Disputed';
+
+export interface ServiceBooking {
+  id: string;
+  customerId: string;
+  customerName: string;
+  customerPhone?: string;
+  customerAvatar?: string;
+  workerId: string;
+  workerName: string;
+  workerTrade: string;
+  workerAvatar?: string;
+  serviceType: string;
+  description: string;
+  requestedDate: string;
+  requestedTime: string;
+  address: string;
+  city: string;
+  district?: string;
+  latitude?: number;
+  longitude?: number;
+  estimatedPrice: string;
+  finalPrice?: string;
+  status: ServiceBookingStatus;
+  workerNotes?: string;
+  customerNotes?: string;
+  createdAt: string;
+  completedAt?: string;
+}
+
+/* ==================== WORKER REVIEWS & RATINGS ==================== */
+export interface WorkerReview {
+  id: string;
+  workerId: string;
+  reviewerId: string;
+  reviewerName: string;
+  reviewerAvatar?: string;
+  rating: number; // 1 - 5
+  review: string;
+  bookingId?: string;
+  createdAt: string;
+}
+
+/* ==================== MODERATION & ABUSE REPORTING ==================== */
+export interface JobReport {
+  id: string;
+  targetType: 'job' | 'worker' | 'candidate';
+  targetId: string;
+  targetTitle: string;
+  reporterId: string;
+  reason: 'Fake Job / Scam' | 'Wrong Information' | 'Abusive Content' | 'Illegal Service' | 'Spam' | 'Impersonation' | 'Other';
+  details?: string;
+  status: 'Pending' | 'Reviewed' | 'Dismissed';
+  createdAt: string;
+}
+
+
 

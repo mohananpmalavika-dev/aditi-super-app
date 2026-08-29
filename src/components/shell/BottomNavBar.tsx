@@ -1,7 +1,8 @@
 import React from 'react';
 import { 
   MessageSquare,
-  MoonStar
+  MoonStar,
+  Briefcase
 } from 'lucide-react';
 import { useSuperApp } from '../../context/SuperAppContext';
 import { MiniAppId } from '../../types/superApp';
@@ -13,10 +14,11 @@ interface BottomNavBarProps {
 export const BottomNavBar: React.FC<BottomNavBarProps> = ({ onOpenLauncher: _onOpenLauncher }) => {
   const { activeMiniApp, setActiveMiniApp } = useSuperApp();
 
-  // All other mini-app navigation items are preserved in code but hidden from menu as requested
+  // Mini-app navigation items for primary verticals
   const navItems: Array<{ id: MiniAppId; label: string; icon: React.ReactNode }> = [
-    { id: 'chat', label: 'Chat & Messenger', icon: <MessageSquare className="w-5 h-5" /> },
-    { id: 'astrology', label: 'Astrology & Tarot', icon: <MoonStar className="w-5 h-5" /> },
+    { id: 'chat', label: 'Chat', icon: <MessageSquare className="w-5 h-5" /> },
+    { id: 'jobs', label: 'Jobs & Workers', icon: <Briefcase className="w-5 h-5" /> },
+    { id: 'astrology', label: 'Astrology', icon: <MoonStar className="w-5 h-5" /> },
   ];
 
   return (

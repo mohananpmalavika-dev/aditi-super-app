@@ -53,7 +53,33 @@ import {
   sendCloudFriendRequest,
   acceptCloudFriendRequest,
   declineCloudFriendRequest,
-  cancelCloudFriendRequest
+  getCloudJobVacancies,
+  createCloudJobVacancy,
+  updateCloudJobVacancy,
+  deleteCloudJobVacancy,
+  toggleCloudSaveJob,
+  getCloudJobSeekers,
+  createCloudJobSeeker,
+  updateCloudJobSeeker,
+  deleteCloudJobSeeker,
+  toggleCloudSaveJobSeeker,
+  getCloudLocalWorkers,
+  createCloudLocalWorker,
+  updateCloudLocalWorker,
+  deleteCloudLocalWorker,
+  toggleCloudSaveLocalWorker,
+  getCloudJobApplications,
+  createCloudJobApplication,
+  updateCloudJobApplicationStatus,
+  withdrawCloudJobApplication,
+  getCloudServiceBookings,
+  createCloudServiceBooking,
+  updateCloudServiceBookingStatus,
+  cancelCloudServiceBooking,
+  getCloudWorkerReviews,
+  createCloudWorkerReview,
+  getCloudReports,
+  createCloudReport
 } from '../services/cloudDatabaseService';
 import {
   ChatConversation,
@@ -62,6 +88,15 @@ import {
   ChatReminder,
   FriendRequest,
   FriendshipStatus,
+  JobVacancy,
+  JobSeekerProfile,
+  LocalWorkerProfile,
+  JobApplication,
+  JobApplicationStatus,
+  ServiceBooking,
+  ServiceBookingStatus,
+  WorkerReview,
+  JobReport,
   HabitItem,
   LoginCredentials,
   MatrimonyProfile,
@@ -135,6 +170,45 @@ interface SuperAppContextType {
   addComment: (postId: string, content: string) => Promise<void>;
   createPost: (content: string, mediaUrl?: string, tags?: string[]) => Promise<void>;
   
+  // Job Portal & Local Workers
+  jobVacancies: JobVacancy[];
+  addJobVacancy: (newJob: Omit<JobVacancy, 'id'> | JobVacancy) => Promise<JobVacancy>;
+  updateJobVacancy: (id: string, updates: Partial<JobVacancy>) => Promise<void>;
+  deleteJobVacancy: (id: string) => Promise<void>;
+  toggleSaveJob: (id: string) => Promise<void>;
+  
+  jobSeekers: JobSeekerProfile[];
+  addJobSeeker: (newSeeker: Omit<JobSeekerProfile, 'id'> | JobSeekerProfile) => Promise<JobSeekerProfile>;
+  updateJobSeeker: (id: string, updates: Partial<JobSeekerProfile>) => Promise<void>;
+  deleteJobSeeker: (id: string) => Promise<void>;
+  toggleSaveJobSeeker: (id: string) => Promise<void>;
+  
+  localWorkers: LocalWorkerProfile[];
+  addLocalWorker: (newWorker: Omit<LocalWorkerProfile, 'id'> | LocalWorkerProfile) => Promise<LocalWorkerProfile>;
+  updateLocalWorker: (id: string, updates: Partial<LocalWorkerProfile>) => Promise<void>;
+  deleteLocalWorker: (id: string) => Promise<void>;
+  toggleSaveLocalWorker: (id: string) => Promise<void>;
+
+  // Job Applications
+  jobApplications: JobApplication[];
+  applyForJob: (newApp: Omit<JobApplication, 'id'> | JobApplication) => Promise<JobApplication>;
+  updateApplicationStatus: (id: string, status: JobApplicationStatus, notes?: string) => Promise<void>;
+  withdrawApplication: (id: string) => Promise<void>;
+
+  // Service Bookings
+  serviceBookings: ServiceBooking[];
+  createServiceBooking: (newBooking: Omit<ServiceBooking, 'id'> | ServiceBooking) => Promise<ServiceBooking>;
+  updateServiceBookingStatus: (id: string, status: ServiceBookingStatus, notes?: string) => Promise<void>;
+  cancelServiceBooking: (id: string, reason?: string) => Promise<void>;
+
+  // Worker Reviews
+  workerReviews: WorkerReview[];
+  addWorkerReview: (newRev: Omit<WorkerReview, 'id'> | WorkerReview) => Promise<void>;
+
+  // Reports & Moderation
+  jobReports: JobReport[];
+  reportListing: (report: Omit<JobReport, 'id'> | JobReport) => Promise<void>;
+
   // Chat
   chats: ChatConversation[];
   activeChatId: string;
@@ -230,6 +304,13 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [propertyRequirements, setPropertyRequirements] = useState<PropertyRequirement[]>([]);
   const [matrimonyProfiles, setMatrimonyProfiles] = useState<MatrimonyProfile[]>([]);
   const [tutors, setTutors] = useState<TutorProfile[]>([]);
+  const [jobVacancies, setJobVacancies] = useState<JobVacancy[]>([]);
+  const [jobSeekers, setJobSeekers] = useState<JobSeekerProfile[]>([]);
+  const [localWorkers, setLocalWorkers] = useState<LocalWorkerProfile[]>([]);
+  const [jobApplications, setJobApplications] = useState<JobApplication[]>([]);
+  const [serviceBookings, setServiceBookings] = useState<ServiceBooking[]>([]);
+  const [workerReviews, setWorkerReviews] = useState<WorkerReview[]>([]);
+  const [jobReports, setJobReports] = useState<JobReport[]>([]);
   const [bookings, setBookings] = useState<TutorBooking[]>([]);
   const [posts, setPosts] = useState<SocialPost[]>([]);
   const [stories] = useState<SocialStory[]>([]);
@@ -381,7 +462,7 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   useEffect(() => {
     async function loadCloudData() {
       try {
-        const [u, p, reqs, m, t, b, pos, ch, tsk, h, regUsers] = await Promise.all([
+        const [u, p, reqs, m, t, b, pos, ch, tsk, h, regUsers, jv, js, lw, apps, sbs, wrs, rps] = await Promise.all([
           getCloudUserProfile(),
           getCloudProperties(),
           getCloudPropertyRequirements(),
@@ -392,7 +473,14 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           getCloudChats(),
           getCloudTasks(),
           getCloudHabits(),
-          getCloudRegisteredUsers()
+          getCloudRegisteredUsers(),
+          getCloudJobVacancies(),
+          getCloudJobSeekers(),
+          getCloudLocalWorkers(),
+          getCloudJobApplications(),
+          getCloudServiceBookings(),
+          getCloudWorkerReviews(),
+          getCloudReports()
         ]);
         if (u && u.email) setUser(u);
         if (p && p.length > 0) setProperties(p);
@@ -405,6 +493,13 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         if (tsk && tsk.length > 0) setTasks(tsk);
         if (h && h.length > 0) setHabits(h);
         if (regUsers && regUsers.length > 0) setRegisteredUsers(regUsers);
+        if (jv && jv.length > 0) setJobVacancies(jv);
+        if (js && js.length > 0) setJobSeekers(js);
+        if (lw && lw.length > 0) setLocalWorkers(lw);
+        if (apps && apps.length > 0) setJobApplications(apps);
+        if (sbs && sbs.length > 0) setServiceBookings(sbs);
+        if (wrs && wrs.length > 0) setWorkerReviews(wrs);
+        if (rps && rps.length > 0) setJobReports(rps);
       } catch (e) {
         console.warn('Cloud database sync initialized with remote state');
       }
@@ -447,7 +542,7 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
       setIsDeviceLocked(false);
       setIsAuthenticated(true);
-      setActiveMiniApp('home');
+      setActiveMiniApp('chat');
       refreshRegisteredUsers();
       confetti({ particleCount: 70, spread: 60, origin: { y: 0.6 } });
       showToast(`Welcome back, ${res.user.name}! 🌟`);
@@ -480,7 +575,7 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
       setIsDeviceLocked(false);
       setIsAuthenticated(true);
-      setActiveMiniApp('home');
+      setActiveMiniApp('chat');
       refreshRegisteredUsers();
       confetti({ particleCount: 90, spread: 80, origin: { y: 0.6 } });
       showToast(`🎉 Registration complete! Welcome to Aditi, ${res.user.name}!`);
@@ -513,7 +608,7 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
       setIsDeviceLocked(false);
       setIsAuthenticated(true);
-      setActiveMiniApp('home');
+      setActiveMiniApp('chat');
       refreshRegisteredUsers();
       confetti({ particleCount: 90, spread: 80, origin: { y: 0.6 } });
       showToast(`🎉 Welcome to Aditi, ${res.user.name}! Signed in via Google.`);
@@ -670,6 +765,175 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     confetti({ particleCount: 80, spread: 70, origin: { y: 0.6 } });
     showToast(`🎉 Mentorship session scheduled with ${tutor.name}!`);
     return true;
+  };
+
+  // Job Portal Actions
+  const addJobVacancy = async (newJob: Omit<JobVacancy, 'id'> | JobVacancy): Promise<JobVacancy> => {
+    const jobId = ('id' in newJob && newJob.id) ? newJob.id : `job-${Date.now()}`;
+    const fullJob: JobVacancy = {
+      ...newJob,
+      id: jobId,
+      createdAt: newJob.createdAt || 'Just now',
+      isSaved: false
+    };
+    const updated = await createCloudJobVacancy(fullJob);
+    setJobVacancies(updated);
+    confetti({ particleCount: 70, spread: 70, origin: { y: 0.6 } });
+    showToast(`💼 Vacancy "${fullJob.title}" published successfully!`);
+    return fullJob;
+  };
+
+  const deleteJobVacancy = async (id: string) => {
+    const updated = await deleteCloudJobVacancy(id);
+    setJobVacancies(updated);
+    showToast('🗑️ Job vacancy removed.');
+  };
+
+  const toggleSaveJob = async (id: string) => {
+    const updated = await toggleCloudSaveJob(id);
+    setJobVacancies(updated);
+    showToast('Bookmark updated!');
+  };
+
+  const addJobSeeker = async (newSeeker: Omit<JobSeekerProfile, 'id'> | JobSeekerProfile): Promise<JobSeekerProfile> => {
+    const seekerId = ('id' in newSeeker && newSeeker.id) ? newSeeker.id : `seeker-${Date.now()}`;
+    const fullSeeker: JobSeekerProfile = {
+      ...newSeeker,
+      id: seekerId,
+      createdAt: newSeeker.createdAt || 'Just now',
+      isSaved: false
+    };
+    const updated = await createCloudJobSeeker(fullSeeker);
+    setJobSeekers(updated);
+    confetti({ particleCount: 70, spread: 70, origin: { y: 0.6 } });
+    showToast(`🎯 Profile for "${fullSeeker.fullName}" posted to talent pool!`);
+    return fullSeeker;
+  };
+
+  const deleteJobSeeker = async (id: string) => {
+    const updated = await deleteCloudJobSeeker(id);
+    setJobSeekers(updated);
+    showToast('🗑️ Candidate profile removed.');
+  };
+
+  const toggleSaveJobSeeker = async (id: string) => {
+    const updated = await toggleCloudSaveJobSeeker(id);
+    setJobSeekers(updated);
+    showToast('Candidate bookmark updated!');
+  };
+
+  const addLocalWorker = async (newWorker: Omit<LocalWorkerProfile, 'id'> | LocalWorkerProfile): Promise<LocalWorkerProfile> => {
+    const workerId = ('id' in newWorker && newWorker.id) ? newWorker.id : `worker-${Date.now()}`;
+    const fullWorker: LocalWorkerProfile = {
+      ...newWorker,
+      id: workerId,
+      rating: newWorker.rating || 5.0,
+      reviewCount: newWorker.reviewCount || 1,
+      completedJobsCount: newWorker.completedJobsCount || 1,
+      createdAt: newWorker.createdAt || 'Just now',
+      isSaved: false
+    };
+    const updated = await createCloudLocalWorker(fullWorker);
+    setLocalWorkers(updated);
+    confetti({ particleCount: 80, spread: 80, origin: { y: 0.6 } });
+    showToast(`🛠️ Service listing for "${fullWorker.name} (${fullWorker.trade})" published!`);
+    return fullWorker;
+  };
+
+  const deleteLocalWorker = async (id: string) => {
+    const updated = await deleteCloudLocalWorker(id);
+    setLocalWorkers(updated);
+    showToast('🗑️ Service listing removed.');
+  };
+
+  const updateJobVacancy = async (id: string, updates: Partial<JobVacancy>) => {
+    const updated = await updateCloudJobVacancy(id, updates);
+    setJobVacancies(updated);
+    showToast('Job vacancy updated.');
+  };
+
+  const updateJobSeeker = async (id: string, updates: Partial<JobSeekerProfile>) => {
+    const updated = await updateCloudJobSeeker(id, updates);
+    setJobSeekers(updated);
+    showToast('Candidate profile updated.');
+  };
+
+  const updateLocalWorker = async (id: string, updates: Partial<LocalWorkerProfile>) => {
+    const updated = await updateCloudLocalWorker(id, updates);
+    setLocalWorkers(updated);
+    showToast('Worker profile updated.');
+  };
+
+  // Job Applications
+  const applyForJob = async (newApp: Omit<JobApplication, 'id'> | JobApplication): Promise<JobApplication> => {
+    const appId = ('id' in newApp && newApp.id) ? newApp.id : `app-${Date.now()}`;
+    const fullApp: JobApplication = {
+      ...newApp,
+      id: appId,
+      appliedAt: newApp.appliedAt || 'Just now',
+      status: 'Applied'
+    };
+    const updated = await createCloudJobApplication(fullApp);
+    setJobApplications(updated);
+    confetti({ particleCount: 75, spread: 70, origin: { y: 0.6 } });
+    showToast(`🎉 Application submitted for "${fullApp.jobTitle}"!`);
+    return fullApp;
+  };
+
+  const updateApplicationStatus = async (id: string, status: JobApplicationStatus, notes?: string) => {
+    const updated = await updateCloudJobApplicationStatus(id, status, notes);
+    setJobApplications(updated);
+    showToast(`Application status moved to "${status}".`);
+  };
+
+  const withdrawApplication = async (id: string) => {
+    const updated = await withdrawCloudJobApplication(id);
+    setJobApplications(updated);
+    showToast('Application withdrawn.');
+  };
+
+  // Service Bookings
+  const createServiceBooking = async (newBooking: Omit<ServiceBooking, 'id'> | ServiceBooking): Promise<ServiceBooking> => {
+    const bookingId = ('id' in newBooking && newBooking.id) ? newBooking.id : `booking-${Date.now()}`;
+    const fullBooking: ServiceBooking = {
+      ...newBooking,
+      id: bookingId,
+      status: 'Requested',
+      createdAt: 'Just now'
+    };
+    const updated = await createCloudServiceBooking(fullBooking);
+    setServiceBookings(updated);
+    confetti({ particleCount: 80, spread: 80, origin: { y: 0.6 } });
+    showToast(`🛠️ Service requested from ${fullBooking.workerName}! Worker will confirm shortly.`);
+    return fullBooking;
+  };
+
+  const updateServiceBookingStatus = async (id: string, status: ServiceBookingStatus, notes?: string) => {
+    const updated = await updateCloudServiceBookingStatus(id, status, notes);
+    setServiceBookings(updated);
+    showToast(`Booking updated to "${status}".`);
+  };
+
+  const cancelServiceBooking = async (id: string, reason?: string) => {
+    const updated = await cancelCloudServiceBooking(id, reason);
+    setServiceBookings(updated);
+    showToast('Booking cancelled.');
+  };
+
+  // Worker Reviews
+  const addWorkerReview = async (newRev: Omit<WorkerReview, 'id'> | WorkerReview) => {
+    const { reviews, updatedWorkerList } = await createCloudWorkerReview(newRev);
+    setWorkerReviews(reviews);
+    setLocalWorkers(updatedWorkerList);
+    confetti({ particleCount: 60, spread: 60, origin: { y: 0.6 } });
+    showToast('⭐ Thank you! Your review and rating have been posted.');
+  };
+
+  // Reports
+  const reportListing = async (report: Omit<JobReport, 'id'> | JobReport) => {
+    const updated = await createCloudReport(report);
+    setJobReports(updated);
+    showToast('🛡️ Thank you for your report. Our moderation team is reviewing this item.');
   };
 
   // Social Actions
@@ -1737,6 +2001,33 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         tutors,
         bookings,
         bookTutorSession,
+        jobVacancies,
+        addJobVacancy,
+        updateJobVacancy,
+        deleteJobVacancy,
+        toggleSaveJob,
+        jobSeekers,
+        addJobSeeker,
+        updateJobSeeker,
+        deleteJobSeeker,
+        toggleSaveJobSeeker,
+        localWorkers,
+        addLocalWorker,
+        updateLocalWorker,
+        deleteLocalWorker,
+        toggleSaveLocalWorker,
+        jobApplications,
+        applyForJob,
+        updateApplicationStatus,
+        withdrawApplication,
+        serviceBookings,
+        createServiceBooking,
+        updateServiceBookingStatus,
+        cancelServiceBooking,
+        workerReviews,
+        addWorkerReview,
+        jobReports,
+        reportListing,
         posts,
         stories,
         likePost,

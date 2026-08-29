@@ -13,7 +13,9 @@ import {
   CheckSquare, 
   Wrench, 
   Settings,
-  Search
+  Search,
+  Briefcase,
+  Wand2
 } from 'lucide-react';
 import { MiniAppId } from '../../types/superApp';
 import { useSuperApp } from '../../context/SuperAppContext';
@@ -45,6 +47,15 @@ const ALL_MINI_APPS: MiniAppMeta[] = [
     color: 'from-sky-500 to-indigo-600'
   },
   {
+    id: 'jobs',
+    name: 'Jobs & Local Workers',
+    category: 'commerce',
+    icon: <Briefcase className="w-5 h-5 sm:w-6 sm:h-6" />,
+    description: 'Recruiter Vacancies, Job Seekers & Local Trade Services (Electrician, Plumber, Maid, Driver)',
+    badge: 'New',
+    color: 'from-indigo-600 to-purple-600'
+  },
+  {
     id: 'astrology',
     name: 'Astrology & Tarot',
     category: 'lifestyle',
@@ -68,33 +79,33 @@ const ALL_MINI_APPS: MiniAppMeta[] = [
     icon: <Sparkles className="w-5 h-5 sm:w-6 sm:h-6" />,
     description: 'Autonomous AI Core, Cross-App Dispatcher & Reasoning Memory',
     badge: 'AGY AI',
-    color: 'from-purple-500 to-pink-500'
+    color: 'from-purple-500 to-pink-600'
   },
   {
     id: 'media_studio',
-    name: 'AI Media Studio',
+    name: 'AI Media & Video Studio',
     category: 'creative',
-    icon: <Palette className="w-5 h-5 sm:w-6 sm:h-6" />,
-    description: 'FLUX Image Generator, Text-to-Video & Web Video Editor',
-    badge: '100% Free',
+    icon: <Wand2 className="w-5 h-5 sm:w-6 sm:h-6" />,
+    description: 'Generate 4K Photorealistic Images, HD Videos & Voiceovers',
+    badge: 'GenAI',
     color: 'from-pink-500 to-rose-600'
   },
   {
     id: 'social',
-    name: 'Social Media Feed',
-    category: 'lifestyle',
+    name: 'Social Network & Stories',
+    category: 'daily',
     icon: <Share2 className="w-5 h-5 sm:w-6 sm:h-6" />,
-    description: 'Explore Stories, Posts, Creator Feed & Trending Hashtags',
-    color: 'from-cyan-500 to-blue-600'
+    description: 'Discover Stories, Community Feeds, Like & Share Rich Media Posts',
+    color: 'from-rose-500 to-orange-500'
   },
   {
     id: 'matrimony',
-    name: 'Matrimony & Matchmaking',
+    name: 'Vedic Matrimony',
     category: 'lifestyle',
     icon: <Heart className="w-5 h-5 sm:w-6 sm:h-6" />,
-    description: 'Verified Matchmaking, Compatibility Scoring & Connection Requests',
-    badge: 'Verified',
-    color: 'from-rose-500 to-red-600'
+    description: 'Kerala Astrology Kundali Matchmaking & Verified Profiles',
+    badge: 'Kerala',
+    color: 'from-red-500 to-pink-600'
   },
   {
     id: 'realestate',
@@ -130,8 +141,8 @@ const ALL_MINI_APPS: MiniAppMeta[] = [
   }
 ];
 
-// Display only Chat and Astrology in the menu
-const MINI_APPS: MiniAppMeta[] = ALL_MINI_APPS.filter(app => app.id === 'chat' || app.id === 'astrology');
+// Display Chat, Jobs, and Astrology in the menu
+const MINI_APPS: MiniAppMeta[] = ALL_MINI_APPS.filter(app => app.id === 'chat' || app.id === 'jobs' || app.id === 'astrology');
 
 export const AppLauncherModal: React.FC<AppLauncherModalProps> = ({ isOpen, onClose }) => {
   const { setActiveMiniApp } = useSuperApp();
