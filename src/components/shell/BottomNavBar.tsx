@@ -2,7 +2,8 @@ import React from 'react';
 import { 
   MessageSquare,
   MoonStar,
-  Briefcase
+  Briefcase,
+  Newspaper
 } from 'lucide-react';
 import { useSuperApp } from '../../context/SuperAppContext';
 import { MiniAppId } from '../../types/superApp';
@@ -18,12 +19,13 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({ onOpenLauncher: _onO
   const navItems: Array<{ id: MiniAppId; label: string; icon: React.ReactNode }> = [
     { id: 'chat', label: 'Chat', icon: <MessageSquare className="w-5 h-5" /> },
     { id: 'jobs', label: 'Jobs & Workers', icon: <Briefcase className="w-5 h-5" /> },
+    { id: 'news', label: 'News', icon: <Newspaper className="w-5 h-5" /> },
     { id: 'astrology', label: 'Astrology', icon: <MoonStar className="w-5 h-5" /> },
   ];
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-40 glass-nav px-3 sm:px-6 pt-1.5 pb-[max(0.6rem,env(safe-area-inset-bottom,0px))] select-none border-t border-white/10 shadow-[0_-10px_30px_rgba(0,0,0,0.6)] backdrop-blur-xl">
-      <div className="max-w-md mx-auto flex items-center justify-center gap-3 sm:gap-6">
+    <nav className="fixed bottom-0 left-0 right-0 z-40 glass-nav px-2 sm:px-6 pt-1.5 pb-[max(0.6rem,env(safe-area-inset-bottom,0px))] select-none border-t border-white/10 shadow-[0_-10px_30px_rgba(0,0,0,0.6)] backdrop-blur-xl">
+      <div className="max-w-lg mx-auto flex items-center justify-center gap-1.5 sm:gap-4">
         {navItems.map((item) => {
           const isActive = activeMiniApp === item.id;
           return (
@@ -32,7 +34,7 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({ onOpenLauncher: _onO
               onClick={() => {
                 setActiveMiniApp(item.id);
               }}
-              className={`flex items-center justify-center gap-2.5 py-2 px-5 sm:px-7 rounded-2xl transition-all duration-300 flex-1 max-w-[200px] min-h-[48px] group active:scale-95 border ${
+              className={`flex items-center justify-center gap-1.5 sm:gap-2 py-2 px-2.5 sm:px-4 rounded-2xl transition-all duration-300 flex-1 min-h-[46px] group active:scale-95 border ${
                 isActive
                   ? 'bg-gradient-to-r from-indigo-600/30 via-purple-600/30 to-indigo-600/20 text-indigo-200 font-bold border-indigo-400/40 shadow-[0_4px_20px_rgba(99,102,241,0.25)]'
                   : 'bg-slate-900/50 text-slate-400 hover:text-slate-200 font-medium hover:bg-slate-800/60 border-slate-800/60'

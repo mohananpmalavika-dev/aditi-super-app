@@ -15,7 +15,9 @@ import {
   CheckSquare, 
   Flame, 
   CheckCircle2, 
-  UserCheck
+  UserCheck,
+  Briefcase,
+  Newspaper
 } from 'lucide-react';
 import { useSuperApp } from '../../context/SuperAppContext';
 import { useOmniBrain } from '../../context/OmniBrainContext';
@@ -164,26 +166,28 @@ export const SuperAppHome: React.FC = () => {
           <span className="text-[11px] text-indigo-300 font-bold">1-Tap 3D Launch</span>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 max-w-2xl">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           {[
             { id: 'chat', name: 'Chat & Messenger', icon: <Send className="w-5 h-5" />, desc: 'P2P Video, Voice & Real-time Messaging', color: 'from-blue-600 via-indigo-600 to-blue-700', shadow: 'shadow-[0_8px_20px_-4px_rgba(59,130,246,0.5)]' },
-            { id: 'astrology', name: 'Astrology & Tarot', icon: <MoonStar className="w-5 h-5" />, desc: 'Daily Horoscopes, Vedic Kundali & Tarot', color: 'from-purple-500 via-indigo-600 to-purple-700', shadow: 'shadow-[0_8px_20px_-4px_rgba(168,85,247,0.5)]' },
+            { id: 'news', name: 'NewsOS Digital News', icon: <Newspaper className="w-5 h-5" />, desc: 'Bilingual AI-Managed News (EN & ML)', color: 'from-indigo-600 via-cyan-600 to-blue-600', shadow: 'shadow-[0_8px_20px_-4px_rgba(99,102,241,0.5)]' },
+            { id: 'jobs', name: 'Jobs & Workers', icon: <Briefcase className="w-5 h-5" />, desc: 'Pan-India Vacancies & Local Trade Workers', color: 'from-purple-600 via-pink-600 to-indigo-700', shadow: 'shadow-[0_8px_20px_-4px_rgba(168,85,247,0.5)]' },
+            { id: 'astrology', name: 'Astrology & Tarot', icon: <MoonStar className="w-5 h-5" />, desc: 'Daily Horoscopes, Vedic Kundali & Tarot', color: 'from-violet-500 via-indigo-600 to-purple-700', shadow: 'shadow-[0_8px_20px_-4px_rgba(139,92,246,0.5)]' },
           ].map((app) => (
             <button
               key={app.id}
               onClick={() => setActiveMiniApp(app.id as MiniAppId)}
-              className="p-4 sm:p-5 rounded-3xl card-3d card-3d-interactive text-left transition-all group flex items-center gap-4"
+              className="p-4 sm:p-5 rounded-3xl card-3d card-3d-interactive text-left transition-all group flex items-center gap-3.5"
             >
-              <div className={`w-12 h-12 rounded-2xl bg-gradient-to-tr ${app.color} flex items-center justify-center text-white ${app.shadow} flex-shrink-0 group-hover:scale-110 group-hover:-translate-y-1 transition-all border border-white/25 shadow-inner`}>
+              <div className={`w-11 h-11 rounded-2xl bg-gradient-to-tr ${app.color} flex items-center justify-center text-white ${app.shadow} flex-shrink-0 group-hover:scale-110 group-hover:-translate-y-1 transition-all border border-white/25 shadow-inner`}>
                 {app.icon}
               </div>
               <div className="min-w-0 flex-1">
-                <h3 className="font-extrabold text-sm sm:text-base text-white group-hover:text-indigo-200 transition-colors truncate">
+                <h3 className="font-extrabold text-xs sm:text-sm text-white group-hover:text-indigo-200 transition-colors truncate">
                   {app.name}
                 </h3>
-                <p className="text-xs text-slate-400 mt-0.5 truncate">{app.desc}</p>
+                <p className="text-[11px] text-slate-400 mt-0.5 truncate">{app.desc}</p>
               </div>
-              <span className="text-slate-500 group-hover:text-indigo-300 font-bold group-hover:translate-x-1 transition-transform">→</span>
+              <span className="text-slate-500 group-hover:text-indigo-300 font-bold group-hover:translate-x-1 transition-transform text-xs">→</span>
             </button>
           ))}
         </div>
