@@ -807,7 +807,7 @@ export interface JobVacancy {
   updatedAt?: string;
 
   // Multi-source Pan-India Fields
-  sourceType?: 'direct' | 'aggregated' | 'government' | 'corporate_ats' | 'state_portal';
+  sourceType?: JobSourceType;
   primarySource?: string; // e.g. "National Career Service (NCS)" or "TCS Careers"
   sources?: JobSourceAttribution[];
   canonicalApplyUrl?: string;
