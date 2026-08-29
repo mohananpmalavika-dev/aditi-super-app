@@ -1942,7 +1942,7 @@ export async function getCloudJobVacancies(): Promise<JobVacancy[]> {
         supabase.from('job_vacancies').select('*').order('created_at', { ascending: false }),
         new Promise<{ data: any; error: any }>((res) => setTimeout(() => res({ data: null, error: 'timeout' }), 1200))
       ]);
-      if (!error && data) {
+      if (!error && data && data.length > 0) {
         try { localStorage.setItem(JOB_VACANCIES_STORAGE_KEY, JSON.stringify(data)); } catch {}
         return data;
       }
@@ -1955,9 +1955,22 @@ export async function getCloudJobVacancies(): Promise<JobVacancy[]> {
     const local = localStorage.getItem(JOB_VACANCIES_STORAGE_KEY);
     if (local) {
       const parsed = JSON.parse(local);
-      if (Array.isArray(parsed)) {
+      if (Array.isArray(parsed) && parsed.length > 0) {
         return parsed.filter((j: JobVacancy) => !['job-1', 'job-2', 'job-3', 'job-4', 'job-5'].includes(j.id));
       }
+    }
+  } catch {}
+
+  // Auto-sync initial Pan-India aggregator feeds (NCS, State Portals, Jooble, Adzuna, Corporate ATS)
+  try {
+    const { runJobAggregationSync } = await import('./jobs/jobAggregatorService');
+    const syncRes = await runJobAggregationSync();
+    if (syncRes.unifiedJobs && syncRes.unifiedJobs.length > 0) {
+      try { localStorage.setItem(JOB_VACANCIES_STORAGE_KEY, JSON.stringify(syncRes.unifiedJobs)); } catch {}
+      if (supabase && !isTestEnv) {
+        try { await supabase.from('job_vacancies').upsert(syncRes.unifiedJobs); } catch {}
+      }
+      return syncRes.unifiedJobs;
     }
   } catch {}
 

@@ -77,6 +77,7 @@ export const JobPortalView: React.FC = () => {
     deleteLocalWorker,
     jobApplications,
     serviceBookings,
+    syncJobSources,
     startNewChatWith,
     setActiveMiniApp,
     showToast 
@@ -549,18 +550,31 @@ export const JobPortalView: React.FC = () => {
       {activeTab === 'vacancies' && (
         <div>
           {filteredVacancies.length === 0 ? (
-            <div className="text-center py-16 px-4 rounded-3xl bg-slate-900/40 border border-slate-800">
-              <Briefcase className="w-12 h-12 text-slate-600 mx-auto mb-3" />
-              <h3 className="text-base font-bold text-white mb-1">No Job Vacancies Found</h3>
-              <p className="text-xs text-slate-400 max-w-sm mx-auto mb-4">
-                No matching vacancies found for your criteria. Try adjusting your search query or location filter.
-              </p>
-              <button
-                onClick={() => setIsPostJobModalOpen(true)}
-                className="px-4 py-2 rounded-xl bg-indigo-600 text-white font-bold text-xs"
-              >
-                + Post a New Vacancy
-              </button>
+            <div className="text-center py-16 px-4 rounded-3xl bg-slate-900/40 border border-slate-800 space-y-4">
+              <Briefcase className="w-12 h-12 text-indigo-400 mx-auto" />
+              <div>
+                <h3 className="text-base sm:text-lg font-bold text-white mb-1">No Job Vacancies Found</h3>
+                <p className="text-xs text-slate-400 max-w-md mx-auto">
+                  No active vacancies match your current filters. You can sync live postings from National Career Service (NCS), State Portals, and MNCs, or post a new vacancy.
+                </p>
+              </div>
+              
+              <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+                <button
+                  onClick={() => syncJobSources()}
+                  className="px-5 py-3 rounded-2xl bg-gradient-to-r from-indigo-600 to-cyan-600 hover:from-indigo-500 hover:to-cyan-500 text-white font-black text-xs shadow-lg shadow-indigo-500/25 flex items-center gap-2 active:scale-95 transition-all"
+                >
+                  <Landmark className="w-4 h-4" />
+                  <span>🔄 Sync Live Pan-India Jobs (NCS, Portals, MNCs)</span>
+                </button>
+
+                <button
+                  onClick={() => setIsPostJobModalOpen(true)}
+                  className="px-5 py-3 rounded-2xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs border border-slate-700 active:scale-95 transition-all"
+                >
+                  + Post a Direct Vacancy
+                </button>
+              </div>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
