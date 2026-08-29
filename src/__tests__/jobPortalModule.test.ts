@@ -56,9 +56,12 @@ describe('Job Portal & Local Worker Marketplace Module', () => {
   });
 
   describe('1. Job Vacancies (Recruiter Openings)', () => {
-    it('returns default initial vacancies when storage is empty', async () => {
+    it('returns default initial vacancies including verified Infopark Kochi openings', async () => {
       const vacancies = await getCloudJobVacancies();
-      expect(vacancies.length).toBeGreaterThanOrEqual(4);
+      expect(vacancies.length).toBeGreaterThanOrEqual(12);
+      expect(vacancies.some(j => j.location.includes('Infopark') && j.city === 'Kochi')).toBe(true);
+      expect(vacancies.some(j => j.company.includes('Thinkpalm') || j.company.includes('Experion'))).toBe(true);
+      expect(vacancies.some(j => j.company.includes('Tecforz') || j.company.includes('AlignMinds'))).toBe(true);
       expect(vacancies.some(j => j.category === 'Technology & IT')).toBe(true);
       expect(vacancies.some(j => j.category === 'Local Trades & Skilled Labor')).toBe(true);
     });
