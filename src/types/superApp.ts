@@ -684,6 +684,85 @@ export type JobCategory =
   | 'Security & Facility' 
   | 'Other';
 
+/* ==================== PAN-INDIA JOB AGGREGATION & MULTI-SOURCE TYPES ==================== */
+export type JobSourceType = 
+  | 'government'       // e.g. National Career Service (NCS), Employment News
+  | 'state_portal'     // e.g. Kerala Niyukthi, Karnataka Kaushalkar, Mahaswayam
+  | 'aggregator_api'   // e.g. Jooble, Adzuna
+  | 'company_career'   // e.g. TCS, Infosys, Wipro, Accenture, HCLTech
+  | 'ats'              // e.g. Greenhouse, Lever, Workday feeds
+  | 'direct';          // Directly posted by recruiters on Aditi
+
+export type JobApplyMode = 
+  | 'in_app'              // 1-Click Apply within Aditi Super App
+  | 'external_redirect'   // Canonical external redirect to official career portal / NCS
+  | 'official_email';     // Direct email to corporate talent acquisition desk
+
+export interface JobSourceAttribution {
+  sourceId: string;
+  sourceName: string;
+  sourceType: JobSourceType;
+  sourceUrl: string;
+  externalJobId?: string;
+  verified: boolean;
+  discoveredAt: string;
+}
+
+export interface JobSource {
+  id: string;
+  name: string;
+  type: JobSourceType;
+  country: string;
+  state?: string;
+  baseUrl: string;
+  apiUrl?: string;
+  isActive: boolean;
+  requiresApiKey: boolean;
+  apiKeyEnvVar?: string;
+  lastSyncAt?: string;
+  nextSyncAt?: string;
+  syncIntervalMinutes: number;
+  totalImported: number;
+  totalActive: number;
+  statusMessage?: string;
+}
+
+export interface ImportedJob {
+  id: string;
+  sourceId: string;
+  sourceName: string;
+  sourceType: JobSourceType;
+  externalJobId?: string;
+  externalUrl: string;
+  title: string;
+  company: string;
+  companyLogo?: string;
+  location: string;
+  city?: string;
+  district?: string;
+  state?: string;
+  pincode?: string;
+  isRemote?: boolean;
+  workMode?: 'remote' | 'hybrid' | 'onsite';
+  description?: string;
+  salaryMin?: number;
+  salaryMax?: number;
+  salaryText?: string;
+  jobType?: JobType;
+  category?: JobCategory;
+  subcategory?: string;
+  experience?: string;
+  qualification?: string;
+  skills?: string[];
+  contactName?: string;
+  contactEmail?: string;
+  sourcePublishedAt?: string;
+  importedAt: string;
+  lastSeenAt: string;
+  status: 'new' | 'active' | 'expired' | 'duplicate' | 'rejected';
+  fingerprint: string;
+}
+
 export interface JobVacancy {
   id: string;
   title: string;
@@ -725,6 +804,15 @@ export interface JobVacancy {
   postedByUserId?: string;
   createdAt?: string;
   updatedAt?: string;
+
+  // Multi-source Pan-India Fields
+  sourceType?: 'direct' | 'aggregated' | 'government' | 'corporate_ats' | 'state_portal';
+  primarySource?: string; // e.g. "National Career Service (NCS)" or "TCS Careers"
+  sources?: JobSourceAttribution[];
+  canonicalApplyUrl?: string;
+  applyMode?: JobApplyMode;
+  fingerprint?: string;
+  lastSeenAt?: string;
 }
 
 export interface JobSeekerProfile {

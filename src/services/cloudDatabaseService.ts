@@ -6,6 +6,7 @@ import {
   FriendshipStatus,
   HabitItem, 
   JobVacancy,
+  JobSource,
   JobSeekerProfile,
   LocalWorkerProfile,
   JobApplication,
@@ -1838,6 +1839,101 @@ export const INITIAL_JOB_SEEKERS: JobSeekerProfile[] = [];
 
 export const INITIAL_LOCAL_WORKERS: LocalWorkerProfile[] = [];
 
+/* ===== Pan-India Job Sources CRUD & Aggregator Synchronization ===== */
+export const JOB_SOURCES_STORAGE_KEY = 'aditi-job-sources';
+
+export async function getCloudJobSources(): Promise<JobSource[]> {
+  if (supabase && !isTestEnv) {
+    try {
+      const { data, error } = await Promise.race([
+        supabase.from('job_sources').select('*').order('name'),
+        new Promise<{ data: any; error: any }>((res) => setTimeout(() => res({ data: null, error: 'timeout' }), 1200))
+      ]);
+      if (!error && data && data.length > 0) {
+        try { localStorage.setItem(JOB_SOURCES_STORAGE_KEY, JSON.stringify(data)); } catch {}
+        return data;
+      }
+    } catch (err) {
+      console.warn('Supabase job_sources query error:', err);
+    }
+  }
+
+  try {
+    const local = localStorage.getItem(JOB_SOURCES_STORAGE_KEY);
+    if (local) {
+      const parsed = JSON.parse(local);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed;
+      }
+    }
+  } catch {}
+
+  const { INITIAL_JOB_SOURCES } = await import('./jobs/jobSourceService');
+  try {
+    localStorage.setItem(JOB_SOURCES_STORAGE_KEY, JSON.stringify(INITIAL_JOB_SOURCES));
+  } catch {}
+  return [...INITIAL_JOB_SOURCES];
+}
+
+export async function updateCloudJobSource(sourceId: string, isActive: boolean): Promise<JobSource[]> {
+  const sources = await getCloudJobSources();
+  const updated = sources.map(s => s.id === sourceId ? { ...s, isActive } : s);
+
+  try {
+    localStorage.setItem(JOB_SOURCES_STORAGE_KEY, JSON.stringify(updated));
+  } catch {}
+
+  if (supabase && !isTestEnv) {
+    try {
+      await supabase.from('job_sources').update({ is_active: isActive }).eq('id', sourceId);
+    } catch {}
+  }
+
+  return updated;
+}
+
+export async function syncAllCloudJobSources(targetSourceId?: string): Promise<{
+  sources: JobSource[];
+  vacancies: JobVacancy[];
+  stats: { totalImported: number; mergedDuplicates: number; activeCount: number };
+}> {
+  const { runJobAggregationSync } = await import('./jobs/jobAggregatorService');
+  const syncResult = await runJobAggregationSync(targetSourceId);
+
+  // Combine with existing direct user postings
+  const existingVacancies = await getCloudJobVacancies();
+  const directPostings = existingVacancies.filter(j => j.sourceType === 'direct');
+  
+  // Merge direct postings with aggregated sync results
+  const combinedVacancies = [...directPostings, ...syncResult.unifiedJobs.filter(j => !directPostings.some(d => d.id === j.id))];
+
+  try {
+    localStorage.setItem(JOB_VACANCIES_STORAGE_KEY, JSON.stringify(combinedVacancies));
+  } catch {}
+
+  if (supabase && !isTestEnv) {
+    try {
+      if (syncResult.unifiedJobs.length > 0) {
+        await supabase.from('job_vacancies').upsert(syncResult.unifiedJobs);
+      }
+    } catch (err) {
+      console.warn('Failed to upsert synchronized vacancies to Supabase:', err);
+    }
+  }
+
+  const updatedSources = await getCloudJobSources();
+
+  return {
+    sources: updatedSources,
+    vacancies: combinedVacancies,
+    stats: {
+      totalImported: syncResult.totalImported,
+      mergedDuplicates: syncResult.mergedDuplicates,
+      activeCount: combinedVacancies.length
+    }
+  };
+}
+
 /* ===== Job Vacancies CRUD ===== */
 export async function getCloudJobVacancies(): Promise<JobVacancy[]> {
   if (supabase && !isTestEnv) {
@@ -1910,6 +2006,23 @@ export async function deleteCloudJobVacancy(id: string): Promise<JobVacancy[]> {
   }
 
   return currentList;
+}
+
+export async function clearAllCloudJobVacancies(): Promise<JobVacancy[]> {
+  try {
+    localStorage.removeItem(JOB_VACANCIES_STORAGE_KEY);
+    localStorage.setItem(JOB_VACANCIES_STORAGE_KEY, JSON.stringify([]));
+  } catch {}
+
+  if (supabase && !isTestEnv) {
+    try {
+      await supabase.from('job_vacancies').delete().neq('id', '');
+    } catch (err) {
+      console.warn('Supabase delete all job_vacancies error:', err);
+    }
+  }
+
+  return [];
 }
 
 export async function toggleCloudSaveJob(id: string): Promise<JobVacancy[]> {

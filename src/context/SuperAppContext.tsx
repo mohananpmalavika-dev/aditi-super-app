@@ -53,11 +53,14 @@ import {
   sendCloudFriendRequest,
   acceptCloudFriendRequest,
   declineCloudFriendRequest,
-  cancelCloudFriendRequest,
+  getCloudJobSources,
+  updateCloudJobSource,
+  syncAllCloudJobSources,
   getCloudJobVacancies,
   createCloudJobVacancy,
   updateCloudJobVacancy,
   deleteCloudJobVacancy,
+  clearAllCloudJobVacancies,
   toggleCloudSaveJob,
   getCloudJobSeekers,
   createCloudJobSeeker,
@@ -91,6 +94,7 @@ import {
   FriendRequest,
   FriendshipStatus,
   JobVacancy,
+  JobSource,
   JobSeekerProfile,
   LocalWorkerProfile,
   JobApplication,
@@ -174,9 +178,13 @@ interface SuperAppContextType {
   
   // Job Portal & Local Workers
   jobVacancies: JobVacancy[];
+  jobSources: JobSource[];
+  toggleJobSource: (id: string, isActive: boolean) => Promise<void>;
+  syncJobSources: (targetSourceId?: string) => Promise<{ totalImported: number; mergedDuplicates: number; activeCount: number }>;
   addJobVacancy: (newJob: Omit<JobVacancy, 'id'> | JobVacancy) => Promise<JobVacancy>;
   updateJobVacancy: (id: string, updates: Partial<JobVacancy>) => Promise<void>;
   deleteJobVacancy: (id: string) => Promise<void>;
+  clearAllJobVacancies: () => Promise<void>;
   toggleSaveJob: (id: string) => Promise<void>;
   
   jobSeekers: JobSeekerProfile[];
@@ -307,6 +315,7 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [matrimonyProfiles, setMatrimonyProfiles] = useState<MatrimonyProfile[]>([]);
   const [tutors, setTutors] = useState<TutorProfile[]>([]);
   const [jobVacancies, setJobVacancies] = useState<JobVacancy[]>([]);
+  const [jobSources, setJobSources] = useState<JobSource[]>([]);
   const [jobSeekers, setJobSeekers] = useState<JobSeekerProfile[]>([]);
   const [localWorkers, setLocalWorkers] = useState<LocalWorkerProfile[]>([]);
   const [jobApplications, setJobApplications] = useState<JobApplication[]>([]);
@@ -476,6 +485,7 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           getCloudTasks(),
           getCloudHabits(),
           getCloudRegisteredUsers(),
+          getCloudJobSources(),
           getCloudJobVacancies(),
           getCloudJobSeekers(),
           getCloudLocalWorkers(),
@@ -495,6 +505,7 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         if (tsk && tsk.length > 0) setTasks(tsk);
         if (h && h.length > 0) setHabits(h);
         if (regUsers && regUsers.length > 0) setRegisteredUsers(regUsers);
+        if (sources && sources.length > 0) setJobSources(sources);
         if (jv) setJobVacancies(jv);
         if (js) setJobSeekers(js);
         if (lw) setLocalWorkers(lw);
@@ -511,7 +522,8 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     // Multi-device runtime realtime sync subscription
     const unsubscribeJobRealtime = subscribeToJobPortalRealtime(async () => {
       try {
-        const [jv, js, lw, apps, sbs, wrs] = await Promise.all([
+        const [sources, jv, js, lw, apps, sbs, wrs] = await Promise.all([
+          getCloudJobSources(),
           getCloudJobVacancies(),
           getCloudJobSeekers(),
           getCloudLocalWorkers(),
@@ -519,6 +531,7 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           getCloudServiceBookings(),
           getCloudWorkerReviews()
         ]);
+        if (sources && sources.length > 0) setJobSources(sources);
         if (jv) setJobVacancies(jv);
         if (js) setJobSeekers(js);
         if (lw) setLocalWorkers(lw);
@@ -817,10 +830,32 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     showToast('🗑️ Job vacancy removed.');
   };
 
+  const clearAllJobVacancies = async () => {
+    const updated = await clearAllCloudJobVacancies();
+    setJobVacancies(updated);
+    showToast('🗑️ All job vacancies deleted.');
+  };
+
   const toggleSaveJob = async (id: string) => {
     const updated = await toggleCloudSaveJob(id);
     setJobVacancies(updated);
     showToast('Bookmark updated!');
+  };
+
+  const toggleJobSource = async (id: string, isActive: boolean) => {
+    const updated = await updateCloudJobSource(id, isActive);
+    setJobSources(updated);
+    showToast(`Data source status updated.`);
+  };
+
+  const syncJobSources = async (targetSourceId?: string) => {
+    showToast('🔄 Synchronizing Pan-India Job Data Sources...');
+    const result = await syncAllCloudJobSources(targetSourceId);
+    setJobSources(result.sources);
+    setJobVacancies(result.vacancies);
+    confetti({ particleCount: 80, spread: 75, origin: { y: 0.6 } });
+    showToast(`✅ Synced ${result.stats.totalImported} listings (${result.stats.mergedDuplicates} duplicates merged). Active: ${result.stats.activeCount} jobs`);
+    return result.stats;
   };
 
   const addJobSeeker = async (newSeeker: Omit<JobSeekerProfile, 'id'> | JobSeekerProfile): Promise<JobSeekerProfile> => {
@@ -2036,9 +2071,13 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         bookings,
         bookTutorSession,
         jobVacancies,
+        jobSources,
+        toggleJobSource,
+        syncJobSources,
         addJobVacancy,
         updateJobVacancy,
         deleteJobVacancy,
+        clearAllJobVacancies,
         toggleSaveJob,
         jobSeekers,
         addJobSeeker,

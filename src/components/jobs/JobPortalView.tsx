@@ -30,7 +30,10 @@ import {
   Navigation,
   ShieldAlert,
   User,
-  CheckSquare
+  CheckSquare,
+  Globe2,
+  Landmark,
+  Layers
 } from 'lucide-react';
 import { useSuperApp } from '../../context/SuperAppContext';
 import { 
@@ -54,10 +57,11 @@ import { JobApplicationModal } from './JobApplicationModal';
 import { ServiceBookingModal } from './ServiceBookingModal';
 import { JobReportModal } from './JobReportModal';
 
-// Role Dashboards
+// Role Dashboards & Admin Sources
 import { RecruiterDashboardView } from './RecruiterDashboardView';
 import { CandidateDashboardView } from './CandidateDashboardView';
 import { WorkerDashboardView } from './WorkerDashboardView';
+import { AdminJobSourcesDashboard } from './AdminJobSourcesDashboard';
 
 export const JobPortalView: React.FC = () => {
   const { 
@@ -80,13 +84,14 @@ export const JobPortalView: React.FC = () => {
 
   // Active Tab
   const [activeTab, setActiveTab] = useState<
-    'vacancies' | 'seekers' | 'workers' | 'recruiter_dash' | 'candidate_dash' | 'worker_dash' | 'my_posts'
+    'vacancies' | 'seekers' | 'workers' | 'admin_sources' | 'recruiter_dash' | 'candidate_dash' | 'worker_dash' | 'my_posts'
   >('vacancies');
 
   // Search and Filters
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCity, setSelectedCity] = useState('All');
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
+  const [selectedSourceType, setSelectedSourceType] = useState<string>('all');
   const [filterUrgentOnly, setFilterUrgentOnly] = useState(false);
   const [nearMeRadiusKm, setNearMeRadiusKm] = useState<number | null>(null);
 
@@ -105,19 +110,25 @@ export const JobPortalView: React.FC = () => {
   const [workerToBook, setWorkerToBook] = useState<LocalWorkerProfile | null>(null);
   const [reportTarget, setReportTarget] = useState<{ type: 'job' | 'worker' | 'candidate'; id: string; title: string } | null>(null);
 
-  // Cities List
+  // Pan-India Cities & States List
   const CITIES = [
-    'All', 
-    'Kozhikode', 
-    'Kochi', 
-    'Thiruvananthapuram', 
-    'Thrissur', 
-    'Malappuram', 
-    'Kannur', 
-    'Palakkad',
-    'Kollam',
-    'Kottayam',
-    'Bangalore',
+    'All',
+    'All India',
+    'Bengaluru',
+    'Kochi',
+    'Hyderabad',
+    'Mumbai',
+    'Chennai',
+    'New Delhi',
+    'Pune',
+    'Gurugram',
+    'Noida',
+    'Kozhikode',
+    'Thiruvananthapuram',
+    'Thrissur',
+    'Mysuru',
+    'Ahmedabad',
+    'Kolkata',
     'Remote'
   ];
 
@@ -158,15 +169,21 @@ export const JobPortalView: React.FC = () => {
         job.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         job.company.toLowerCase().includes(searchQuery.toLowerCase()) ||
         job.skills.some(s => s.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        job.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
         job.location.toLowerCase().includes(searchQuery.toLowerCase());
       
-      const matchesCity = selectedCity === 'All' || job.city.toLowerCase().includes(selectedCity.toLowerCase()) || (selectedCity === 'Remote' && job.isRemote);
+      const matchesCity = selectedCity === 'All' || selectedCity === 'All India' || 
+        job.city.toLowerCase().includes(selectedCity.toLowerCase()) || 
+        (job.state && job.state.toLowerCase().includes(selectedCity.toLowerCase())) ||
+        (selectedCity === 'Remote' && job.isRemote);
+
       const matchesCategory = selectedCategory === 'All' || job.category === selectedCategory;
       const matchesUrgent = !filterUrgentOnly || job.isUrgent;
+      const matchesSource = selectedSourceType === 'all' || job.sourceType === selectedSourceType;
 
-      return matchesSearch && matchesCity && matchesCategory && matchesUrgent;
+      return matchesSearch && matchesCity && matchesCategory && matchesUrgent && matchesSource;
     });
-  }, [jobVacancies, searchQuery, selectedCity, selectedCategory, filterUrgentOnly]);
+  }, [jobVacancies, searchQuery, selectedCity, selectedCategory, selectedSourceType, filterUrgentOnly]);
 
   // Filtered Job Seekers
   const filteredSeekers = useMemo(() => {
@@ -243,13 +260,13 @@ export const JobPortalView: React.FC = () => {
           <div className="space-y-2.5 max-w-2xl">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 text-xs font-black tracking-wide">
               <Sparkles className="w-3.5 h-3.5 text-yellow-300 animate-pulse" />
-              <span>Jobs, Talent & Local Trade Services</span>
+              <span>Pan-India Career Aggregation & Local Trade Services</span>
             </div>
             <h1 className="text-2xl sm:text-4xl font-black text-white tracking-tight leading-tight">
-              Hire & Find Work Instantly in Kerala
+              Aditi Jobs — India's Jobs & Career Marketplace
             </h1>
             <p className="text-xs sm:text-sm text-slate-300 font-medium leading-relaxed">
-              Connect directly with verified employers, qualified professionals, and on-demand local workers (Electricians, Plumbers, Housemaids, Drivers, Carpenters, Beauticians & Tech Pros).
+              Connect directly with official vacancies across India (National Career Service, Top MNCs, State Exchanges) alongside on-demand local skilled trades (Electricians, Plumbers, Tech Pros & Artisans).
             </p>
 
             {/* Quick Metrics Bar */}
@@ -392,10 +409,22 @@ export const JobPortalView: React.FC = () => {
           <span>Saved / Mine</span>
         </button>
 
+        <button
+          onClick={() => setActiveTab('admin_sources')}
+          className={`py-2.5 px-3.5 rounded-xl font-extrabold text-xs flex items-center justify-center gap-1.5 whitespace-nowrap transition-all ${
+            activeTab === 'admin_sources'
+              ? 'bg-gradient-to-r from-indigo-600 to-cyan-600 text-white shadow-lg shadow-indigo-500/30'
+              : 'text-indigo-400 hover:text-white hover:bg-indigo-950/40 border border-indigo-500/20'
+          }`}
+        >
+          <Landmark className="w-4 h-4" />
+          <span>Data Sources (NCS / APIs)</span>
+        </button>
+
       </div>
 
       {/* ==================== SEARCH & FILTERS CONTROLS ==================== */}
-      {activeTab !== 'my_posts' && activeTab !== 'recruiter_dash' && activeTab !== 'candidate_dash' && activeTab !== 'worker_dash' && (
+      {activeTab !== 'my_posts' && activeTab !== 'recruiter_dash' && activeTab !== 'candidate_dash' && activeTab !== 'worker_dash' && activeTab !== 'admin_sources' && (
         <div className="space-y-3 mb-6">
           
           {/* Main Search Bar + City Selector + Near Me Button */}
@@ -485,6 +514,34 @@ export const JobPortalView: React.FC = () => {
             ))}
           </div>
 
+          {/* Pan-India Data Source Chips (when browsing vacancies) */}
+          {activeTab === 'vacancies' && (
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none text-[10px]">
+              <span className="text-slate-500 font-bold uppercase tracking-wider px-1">Source:</span>
+              {[
+                { id: 'all', label: 'All Sources', icon: <Layers className="w-3 h-3" /> },
+                { id: 'government', label: '🏛️ Govt NCS', icon: <Landmark className="w-3 h-3 text-amber-400" /> },
+                { id: 'company_career', label: '🏢 Top MNCs', icon: <Building2 className="w-3 h-3 text-indigo-400" /> },
+                { id: 'state_portal', label: '🌐 State Portals', icon: <Globe2 className="w-3 h-3 text-emerald-400" /> },
+                { id: 'aggregator_api', label: '⚡ Aggregators', icon: <Zap className="w-3 h-3 text-cyan-400" /> },
+                { id: 'direct', label: '🎯 Direct Recruiter', icon: <User className="w-3 h-3 text-rose-400" /> }
+              ].map((src) => (
+                <button
+                  key={src.id}
+                  onClick={() => setSelectedSourceType(src.id)}
+                  className={`px-2.5 py-1 rounded-lg font-bold flex items-center gap-1 whitespace-nowrap transition-all ${
+                    selectedSourceType === src.id
+                      ? 'bg-indigo-600/30 text-indigo-300 border border-indigo-500/50'
+                      : 'bg-slate-900/60 text-slate-400 hover:text-white border border-slate-800/80'
+                  }`}
+                >
+                  {src.icon}
+                  <span>{src.label}</span>
+                </button>
+              ))}
+            </div>
+          )}
+
         </div>
       )}
 
@@ -525,6 +582,26 @@ export const JobPortalView: React.FC = () => {
                           <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-800 text-slate-300">
                             {job.jobType}
                           </span>
+                          
+                          {/* Pan-India Source Attribution Badge */}
+                          {job.primarySource ? (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-500/10 text-amber-300 border border-amber-500/30 flex items-center gap-1">
+                              <Landmark className="w-2.5 h-2.5" />
+                              <span>{job.primarySource.split('(')[0].trim()}</span>
+                            </span>
+                          ) : (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-800/80 text-emerald-400 border border-emerald-500/20 flex items-center gap-1">
+                              <Zap className="w-2.5 h-2.5" />
+                              <span>Aditi Direct</span>
+                            </span>
+                          )}
+
+                          {job.sources && job.sources.length > 1 && (
+                            <span className="px-1.5 py-0.5 rounded-md text-[9px] font-black bg-indigo-900/60 text-indigo-300 border border-indigo-500/40">
+                              +{job.sources.length} sources
+                            </span>
+                          )}
+
                           {job.isUrgent && (
                             <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-500/20 text-rose-300 border border-rose-500/40 flex items-center gap-1">
                               <Zap className="w-2.5 h-2.5 fill-rose-400 text-rose-400" />
@@ -610,7 +687,7 @@ export const JobPortalView: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Recruiter Bar & Quick Action */}
+                  {/* Recruiter Bar & Smart Action */}
                   <div className="pt-3 border-t border-slate-800/80 flex items-center justify-between gap-3" onClick={(e) => e.stopPropagation()}>
                     <div className="flex items-center gap-2.5 min-w-0">
                       <img
@@ -620,7 +697,9 @@ export const JobPortalView: React.FC = () => {
                       />
                       <div className="text-[11px] min-w-0">
                         <div className="font-bold text-white truncate">{job.contactName}</div>
-                        <div className="text-slate-400 text-[10px] truncate">{job.contactEmail || job.contactPhone || 'HR Desk'}</div>
+                        <div className="text-slate-400 text-[10px] truncate">
+                          {job.primarySource || job.contactEmail || job.contactPhone || 'Verified Posting'}
+                        </div>
                       </div>
                     </div>
 
@@ -643,13 +722,25 @@ export const JobPortalView: React.FC = () => {
                           <Phone className="w-4 h-4 text-emerald-400" />
                         </a>
                       )}
-                      <button
-                        onClick={() => setJobToApply(job)}
-                        className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold text-xs shadow-md shadow-indigo-500/20 flex items-center gap-1.5 active:scale-95 transition-all"
-                      >
-                        <Send className="w-3.5 h-3.5" />
-                        <span>Apply Now</span>
-                      </button>
+                      {job.canonicalApplyUrl && job.applyMode === 'external_redirect' ? (
+                        <a
+                          href={job.canonicalApplyUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="px-4 py-2 rounded-xl bg-gradient-to-r from-indigo-600 to-cyan-600 hover:from-indigo-500 hover:to-cyan-500 text-white font-extrabold text-xs shadow-md shadow-indigo-500/20 flex items-center gap-1.5 active:scale-95 transition-all"
+                        >
+                          <span>Apply on Official Portal</span>
+                          <ExternalLink className="w-3.5 h-3.5" />
+                        </a>
+                      ) : (
+                        <button
+                          onClick={() => setJobToApply(job)}
+                          className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold text-xs shadow-md shadow-indigo-500/20 flex items-center gap-1.5 active:scale-95 transition-all"
+                        >
+                          <Send className="w-3.5 h-3.5" />
+                          <span>Apply Now</span>
+                        </button>
+                      )}
                     </div>
                   </div>
 
@@ -1146,6 +1237,11 @@ export const JobPortalView: React.FC = () => {
           </div>
 
         </div>
+      )}
+
+      {/* ==================== TAB 5: ADMIN JOB DATA SOURCES ==================== */}
+      {activeTab === 'admin_sources' && (
+        <AdminJobSourcesDashboard />
       )}
 
       {/* ==================== POSTING MODALS ==================== */}

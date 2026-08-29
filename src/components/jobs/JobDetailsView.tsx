@@ -16,7 +16,11 @@ import {
   ShieldAlert, 
   Zap, 
   Users, 
-  Send 
+  Send,
+  ExternalLink,
+  Landmark,
+  Globe2,
+  Layers
 } from 'lucide-react';
 import { useSuperApp } from '../../context/SuperAppContext';
 import { JobVacancy } from '../../types/superApp';
@@ -204,6 +208,40 @@ export const JobDetailsView: React.FC<JobDetailsViewProps> = ({
             </div>
           </div>
 
+          {/* Pan-India Multi-Source Provenance */}
+          {job.sources && job.sources.length > 0 && (
+            <div className="p-3.5 rounded-2xl bg-indigo-950/40 border border-indigo-500/20 space-y-2">
+              <div className="flex items-center gap-2 text-indigo-400 font-bold text-xs">
+                <Landmark className="w-4 h-4" />
+                <span>Verified Multi-Source Ingestion & Attribution</span>
+              </div>
+              <p className="text-[11px] text-slate-400">
+                This vacancy was aggregated and validated through Aditi's Pan-India Job Engine across permitted official feeds:
+              </p>
+              <div className="space-y-1.5 pt-1">
+                {job.sources.map((src, idx) => (
+                  <div key={idx} className="flex items-center justify-between gap-2 p-2 rounded-xl bg-slate-900/80 border border-slate-800 text-[11px]">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                      <span className="font-semibold text-slate-200 truncate">{src.sourceName}</span>
+                    </div>
+                    {src.sourceUrl && (
+                      <a
+                        href={src.sourceUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-[10px] text-indigo-400 hover:text-indigo-300 font-bold flex items-center gap-1 shrink-0"
+                      >
+                        <span>View Source</span>
+                        <ExternalLink className="w-3 h-3" />
+                      </a>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Recruiter Details */}
           <div className="p-3.5 rounded-2xl bg-slate-900/90 border border-slate-800 flex items-center justify-between gap-3">
             <div className="flex items-center gap-3 min-w-0">
@@ -277,6 +315,16 @@ export const JobDetailsView: React.FC<JobDetailsViewProps> = ({
               <div className="px-5 py-2.5 rounded-xl bg-emerald-500/20 text-emerald-300 font-extrabold border border-emerald-500/30">
                 Applied ({existingApp.status})
               </div>
+            ) : job.canonicalApplyUrl && job.applyMode === 'external_redirect' ? (
+              <a
+                href={job.canonicalApplyUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 via-purple-600 to-cyan-600 hover:from-indigo-500 hover:to-cyan-500 text-white font-extrabold shadow-lg shadow-indigo-500/30 flex items-center gap-2 active:scale-95 transition-all"
+              >
+                <span>Apply on Official Portal</span>
+                <ExternalLink className="w-4 h-4" />
+              </a>
             ) : (
               <button
                 onClick={() => { onClose(); onApply(job); }}
