@@ -18,7 +18,21 @@ import {
   Grid3X3, 
   TrendingUp, 
   Landmark, 
-  Hourglass 
+  Hourglass,
+  BookOpen,
+  Volume2,
+  VolumeX,
+  Copy,
+  Printer,
+  FileText,
+  Star,
+  Award,
+  Crown,
+  Flame,
+  Shield,
+  Layers,
+  ChevronDown,
+  Check
 } from 'lucide-react';
 import { calculateVedicKundali, TAROT_DECK } from '../../services/astrologyEngine';
 import { 
@@ -34,7 +48,9 @@ import {
   generatePersonalizedJathakamForecast,
   askPersonalizedAstroOracle,
   PersonalizedJathakamForecast,
-  PersonalizedAstroOracleResult
+  PersonalizedAstroOracleResult,
+  generateDetailedJathakamInWords,
+  DetailedJathakamInWordsReport
 } from '../../services/keralaAstroEngine';
 import { TarotCardData } from '../../types/superApp';
 import { useSuperApp } from '../../context/SuperAppContext';
@@ -51,8 +67,11 @@ export const AstrologyView: React.FC = () => {
   const [forecastHorizon, setForecastHorizon] = useState<'today' | 'tomorrow' | 'thisWeek' | 'thisMonth' | 'thisYear' | 'nextThreeYears'>('today');
   const [forecastMode, setForecastMode] = useState<'personalized' | 'rashiGeneral'>('personalized');
   
-  // Kundali Chart View Mode
+  // Kundali View Mode & Sub-Tabs
+  const [jathakamSubView, setJathakamSubView] = useState<'wordsReport' | 'chartsAndTables' | 'dashaDetails'>('wordsReport');
   const [kundaliChartMode, setKundaliChartMode] = useState<'keralaGrid' | 'navamsha' | 'bhavaList'>('keralaGrid');
+  const [bhavaFilter, setBhavaFilter] = useState<'all' | 'kendra' | 'trikona' | 'wealth'>('all');
+  const [isSpeaking, setIsSpeaking] = useState(false);
 
   // Selected Malayalam Rashi for General Forecasts
   const [selectedRashi, setSelectedRashi] = useState<MalayalamRashiInfo>(() => {
@@ -96,17 +115,62 @@ export const AstrologyView: React.FC = () => {
     )
   );
 
+  const [detailedJathakamInWords, setDetailedJathakamInWords] = useState<DetailedJathakamInWordsReport>(() =>
+    generateDetailedJathakamInWords(
+      user.dateOfBirth || '1998-08-15',
+      user.timeOfBirth || '10:30',
+      user.placeOfBirth || 'Kollam, Kerala, India',
+      user.name || 'User'
+    )
+  );
+
   const handleComputeKundali = (e: React.FormEvent) => {
     e.preventDefault();
     const result = calculateVedicKundali(birthName, birthDate, birthTime, birthPlace);
     const chakra = generateKeralaRashiChakra(birthName, birthDate, birthTime, birthPlace);
     const forecast = generatePersonalizedJathakamForecast(birthDate, birthTime, birthPlace, birthName);
+    const detailedWords = generateDetailedJathakamInWords(birthDate, birthTime, birthPlace, birthName);
     
     setKundaliReport(result);
     setKeralaChakra(chakra);
     setPersonalizedForecast(forecast);
+    setDetailedJathakamInWords(detailedWords);
     confetti({ particleCount: 50, spread: 60 });
-    showToast(lang === 'ml' ? '✨ ജാതക ഗണിതവും ഫലങ്ങളും തയ്യാറായി!' : '✨ Vedic Kundali & Forecasts Generated!');
+    showToast(lang === 'ml' ? '✨ സമ്പൂർണ്ണ ജാതക ഫലവിവരണം തയ്യാറായി!' : '✨ Complete Detailed Jathakam Generated!');
+  };
+
+  const handleToggleVoiceNarration = (text: string) => {
+    if (!('speechSynthesis' in window)) {
+      showToast(lang === 'ml' ? 'ബ്രൗസറിൽ വോയ്‌സ് സപ്പോർട്ട് ലഭ്യമല്ല' : 'Speech synthesis not supported in this browser');
+      return;
+    }
+    if (isSpeaking) {
+      window.speechSynthesis.cancel();
+      setIsSpeaking(false);
+      showToast(lang === 'ml' ? 'ശ്രവണം നിർത്തി' : 'Voice narration stopped');
+    } else {
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = lang === 'ml' ? 'ml-IN' : 'en-IN';
+      utterance.rate = 0.92;
+      utterance.onend = () => setIsSpeaking(false);
+      utterance.onerror = () => setIsSpeaking(false);
+      window.speechSynthesis.speak(utterance);
+      setIsSpeaking(true);
+      showToast(lang === 'ml' ? '🔊 ജാതക വായന ആരംഭിച്ചു...' : '🔊 Reading Jathakam in words...');
+    }
+  };
+
+  const handleCopyFullJathakam = () => {
+    const textToCopy = lang === 'ml' 
+      ? detailedJathakamInWords.fullTextDocumentMalayalam 
+      : detailedJathakamInWords.fullTextDocumentEnglish;
+    navigator.clipboard.writeText(textToCopy);
+    showToast(lang === 'ml' ? '📋 സമ്പൂർണ്ണ ജാതക രേഖ കോപ്പി ചെയ്തു!' : '📋 Full Detailed Jathakam copied to clipboard!');
+  };
+
+  const handlePrintJathakam = () => {
+    window.print();
   };
 
   /* ========== 2. ASTROLOGICAL AI Q&A ORACLE (ജ്യോതിഷ ചോദ്യോത്തരം) STATE ========== */
@@ -391,258 +455,789 @@ export const AstrologyView: React.FC = () => {
             </div>
           </div>
 
-          {/* Chart View Mode Switcher */}
-          <div className="flex items-center justify-between p-3 rounded-2xl bg-slate-900/90 border border-slate-800">
-            <div className="flex items-center gap-2">
-              <Grid3X3 className="w-4 h-4 text-indigo-400" />
-              <span className="font-bold text-xs text-slate-200">
-                {lang === 'ml' ? 'ചാർട്ട് രൂപം തിരഞ്ഞെടുക്കുക:' : 'Select Kundali Chart View:'}
-              </span>
-            </div>
-            
-            <div className="flex items-center p-1 rounded-xl bg-slate-950 border border-slate-800 text-xs">
+          {/* Sub-View Navigation Switcher */}
+          <div className="flex items-center justify-between p-2 rounded-2xl bg-slate-900 border border-slate-800 overflow-x-auto gap-2">
+            <div className="flex items-center gap-1 min-w-max">
               <button
-                onClick={() => setKundaliChartMode('keralaGrid')}
-                className={`px-3 py-1 rounded-lg font-bold transition-all ${
-                  kundaliChartMode === 'keralaGrid' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'
+                onClick={() => setJathakamSubView('wordsReport')}
+                className={`px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2 ${
+                  jathakamSubView === 'wordsReport'
+                    ? 'bg-gradient-to-r from-amber-500 via-purple-600 to-indigo-600 text-white shadow-md shadow-indigo-500/25 scale-[1.02]'
+                    : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
                 }`}
               >
-                {lang === 'ml' ? 'കട്ട ചാർട്ട് (രാശി)' : 'Kerala 12-Box (D1)'}
+                <BookOpen className="w-4 h-4" />
+                <span>{lang === 'ml' ? '📜 സമ്പൂർണ്ണ ജാതകം വാക്കുകളിൽ' : '📜 Detailed Jathakam in Words'}</span>
               </button>
+
               <button
-                onClick={() => setKundaliChartMode('navamsha')}
-                className={`px-3 py-1 rounded-lg font-bold transition-all ${
-                  kundaliChartMode === 'navamsha' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'
+                onClick={() => setJathakamSubView('chartsAndTables')}
+                className={`px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2 ${
+                  jathakamSubView === 'chartsAndTables'
+                    ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-md scale-[1.02]'
+                    : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
                 }`}
               >
-                {lang === 'ml' ? 'നവാംശകം (D9)' : 'Navamsha (D9)'}
+                <Grid3X3 className="w-4 h-4" />
+                <span>{lang === 'ml' ? '📐 കട്ട ചാർട്ട് & ഗ്രഹനില' : '📐 Kerala Grid & Longitudes'}</span>
               </button>
+
               <button
-                onClick={() => setKundaliChartMode('bhavaList')}
-                className={`px-3 py-1 rounded-lg font-bold transition-all ${
-                  kundaliChartMode === 'bhavaList' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'
+                onClick={() => setJathakamSubView('dashaDetails')}
+                className={`px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2 ${
+                  jathakamSubView === 'dashaDetails'
+                    ? 'bg-gradient-to-r from-purple-600 to-amber-500 text-white shadow-md scale-[1.02]'
+                    : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
                 }`}
               >
-                {lang === 'ml' ? 'ഗ്രഹ നില' : 'Planetary Table'}
+                <Clock className="w-4 h-4" />
+                <span>{lang === 'ml' ? '⏳ വിംശോത്തരി ദശാപഹാരം' : '⏳ Vimshottari Timeline'}</span>
               </button>
             </div>
           </div>
 
-          {/* South Indian 12-Box Traditional Kerala Rashi Chakra Grid (കട്ട ചാർട്ട്) */}
-          {(kundaliChartMode === 'keralaGrid' || kundaliChartMode === 'navamsha') && (
-            <div className="p-4 sm:p-6 rounded-3xl card-3d space-y-4">
-              <div className="text-center space-y-1">
-                <h4 className="font-extrabold text-sm sm:text-base text-white">
-                  {kundaliChartMode === 'keralaGrid'
-                    ? (lang === 'ml' ? 'പരമ്പരാഗത കേരള രാശി ചക്രം (കട്ട ചാർട്ട്)' : 'Traditional South Indian 12-Box Rashi Chakra (D1)')
-                    : (lang === 'ml' ? 'സൂക്ഷ്മ നവാംശക ചക്രം (D9 Navamsha Chart)' : 'Vedic Navamsha Chakra (D9)')}
-                </h4>
-                <p className="text-xs text-slate-400">
-                  {lang === 'ml' ? 'ലഗ്നവും 10 ഗ്രഹങ്ങളുടെ നിലയും കൃത്യമായ ഡിഗ്രി സഹിതം' : 'Planetary positions with exact sidereal longitudes and retrogrades'}
+          {/* ==================== SUB-VIEW 1: DETAILED JATHAKAM IN WORDS (വാക്കുകളിലുള്ള സമ്പൂർണ്ണ ജാതകം) ==================== */}
+          {jathakamSubView === 'wordsReport' && (
+            <div className="space-y-6 animate-in fade-in">
+              
+              {/* Document Actions Bar (Voice TTS, Copy, Print) */}
+              <div className="p-4 rounded-3xl bg-slate-900/90 border border-slate-800 flex flex-wrap items-center justify-between gap-3 shadow-lg">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-2xl bg-gradient-to-br from-amber-500 to-indigo-600 flex items-center justify-center text-white shadow-md">
+                    <FileText className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h4 className="font-extrabold text-xs sm:text-sm text-white">
+                      {lang === 'ml' ? 'സമ്പൂർണ്ണ വേദ ജാതക ഫലവിവരണം' : 'Comprehensive Vedic Horoscope Reading in Words'}
+                    </h4>
+                    <p className="text-[10px] text-slate-400 font-mono">
+                      {detailedJathakamInWords.birthName} • {detailedJathakamInWords.nakshatraMalayalam} • {detailedJathakamInWords.lagnaMalayalam} ലഗ്നം
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  {/* Voice Narration Button */}
+                  <button
+                    onClick={() => handleToggleVoiceNarration(
+                      lang === 'ml' 
+                        ? `${detailedJathakamInWords.executiveSummaryMalayalam}. ${detailedJathakamInWords.personalityReading.physiqueDemeanorMalayalam}. ${detailedJathakamInWords.dashaTimelineReading.currentDashaAnalysisMalayalam}` 
+                        : `${detailedJathakamInWords.executiveSummaryEnglish}. ${detailedJathakamInWords.personalityReading.physiqueDemeanorEnglish}. ${detailedJathakamInWords.dashaTimelineReading.currentDashaAnalysisEnglish}`
+                    )}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 active:scale-95 ${
+                      isSpeaking
+                        ? 'bg-rose-600 text-white shadow-lg shadow-rose-600/30 animate-pulse'
+                        : 'bg-slate-800 text-slate-200 hover:text-white hover:bg-slate-700'
+                    }`}
+                  >
+                    {isSpeaking ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4 text-amber-400" />}
+                    <span>{isSpeaking ? (lang === 'ml' ? 'നിർത്തുക' : 'Stop') : (lang === 'ml' ? 'ശ്രവിക്കുക (Voice)' : 'Listen (TTS)')}</span>
+                  </button>
+
+                  {/* Copy Full Text */}
+                  <button
+                    onClick={handleCopyFullJathakam}
+                    className="px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-800 text-slate-200 hover:text-white hover:bg-slate-700 transition-all flex items-center gap-1.5 active:scale-95"
+                    title="Copy full text reading"
+                  >
+                    <Copy className="w-3.5 h-3.5 text-indigo-400" />
+                    <span>{lang === 'ml' ? 'കോപ്പി' : 'Copy'}</span>
+                  </button>
+
+                  {/* Print / Save PDF */}
+                  <button
+                    onClick={handlePrintJathakam}
+                    className="px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-800 text-slate-200 hover:text-white hover:bg-slate-700 transition-all flex items-center gap-1.5 active:scale-95"
+                    title="Print or Save as PDF"
+                  >
+                    <Printer className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>{lang === 'ml' ? 'പ്രിന്റ് / PDF' : 'Print / PDF'}</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Executive Summary Prose Box */}
+              <div className="p-5 sm:p-6 rounded-3xl bg-gradient-to-br from-indigo-950/70 via-slate-900 to-purple-950/70 border border-indigo-500/40 space-y-3 shadow-xl">
+                <div className="flex items-center gap-2 pb-2 border-b border-indigo-500/20">
+                  <Crown className="w-5 h-5 text-amber-400" />
+                  <h4 className="font-extrabold text-sm sm:text-base text-amber-300">
+                    {lang === 'ml' ? 'സമ്പൂർണ്ണ പൊതു ജാതക അവലോകനം (Executive Summary)' : 'Astrological Executive Summary & Cosmic Blueprint'}
+                  </h4>
+                </div>
+                <p className="text-xs sm:text-sm text-slate-200 leading-relaxed font-sans">
+                  {lang === 'ml' 
+                    ? detailedJathakamInWords.executiveSummaryMalayalam 
+                    : detailedJathakamInWords.executiveSummaryEnglish}
                 </p>
               </div>
 
-              {/* 4x4 Grid Layout (South Indian Kerala Astrology Box Structure) */}
-              <div className="max-w-xl mx-auto grid grid-cols-4 gap-2 bg-slate-950 p-3 rounded-2xl border border-indigo-500/40 shadow-2xl">
-                {(() => {
-                  const activeGrid = kundaliChartMode === 'keralaGrid' ? keralaChakra.grid : keralaChakra.navamshaGrid;
-                  const gridCellIndexMap = [
-                    0, 1, 2, 3,
-                    11, -1, -2, 4,
-                    10, -3, -4, 5,
-                    9, 8, 7, 6
-                  ];
-
-                  return gridCellIndexMap.map((boxIdx, cellIdx) => {
-                    if (boxIdx < 0) {
-                      if (boxIdx === -1) {
-                        return (
-                          <div key={cellIdx} className="col-span-2 row-span-2 bg-slate-900/90 border border-slate-800 rounded-xl p-4 flex flex-col items-center justify-center text-center space-y-1 shadow-inner">
-                            <span className="text-2xl animate-spin-slow">🌐</span>
-                            <h5 className="font-extrabold text-xs text-amber-300">
-                              {birthName || 'ജാതകം'}
-                            </h5>
-                            <p className="text-[10px] text-indigo-300 font-mono">{birthDate} • {birthTime}</p>
-                            <span className="text-[9px] text-slate-400 font-semibold">{birthPlace}</span>
-                          </div>
-                        );
-                      }
-                      return null;
-                    }
-
-                    const box = activeGrid[boxIdx];
-                    return (
-                      <div
-                        key={cellIdx}
-                        className={`min-h-[85px] sm:min-h-[100px] p-2 rounded-xl border flex flex-col justify-between transition-all ${
-                          box.isLagna
-                            ? 'bg-indigo-950/80 border-indigo-400 text-white shadow-[0_0_15px_rgba(99,102,241,0.4)]'
-                            : box.planets.length > 0
-                            ? 'bg-slate-900/90 border-slate-700 text-slate-200'
-                            : 'bg-slate-950/50 border-slate-800/80 text-slate-500'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between border-b border-white/5 pb-1">
-                          <span className="text-[11px] font-black text-amber-400">{box.nameMalayalam}</span>
-                          <span className="text-[9px] text-slate-400 font-mono">{box.nameEnglish.slice(0, 3)}</span>
-                        </div>
-
-                        <div className="my-auto space-y-0.5 py-1">
-                          {box.planets.map((p, pIdx) => (
-                            <div key={pIdx} className="text-[10px] sm:text-[11px] font-bold text-white leading-tight">
-                              {p}
-                            </div>
-                          ))}
-                        </div>
-
-                        {box.isLagna && (
-                          <span className="text-[8px] font-extrabold px-1 py-0.2 rounded bg-indigo-500 text-white uppercase text-center self-start">
-                            ലഗ്നം
-                          </span>
-                        )}
-                      </div>
-                    );
-                  });
-                })()}
-              </div>
-            </div>
-          )}
-
-          {/* Planetary Longitudes & Bhava Table */}
-          {kundaliChartMode === 'bhavaList' && (
-            <div className="p-5 rounded-3xl card-3d space-y-4">
-              <h4 className="font-extrabold text-sm text-white">
-                {lang === 'ml' ? 'സൂക്ഷ്മ ഗ്രഹ നില പട്ടിക (Sidereal Planetary Degrees)' : 'Sidereal Planetary Longitudes'}
-              </h4>
-              <div className="overflow-x-auto">
-                <table className="w-full text-xs text-left text-slate-300">
-                  <thead className="text-[10px] text-slate-400 uppercase bg-slate-950/80 border-b border-slate-800">
-                    <tr>
-                      <th className="py-2.5 px-3">ഗ്രഹം (Planet)</th>
-                      <th className="py-2.5 px-3">രാശി (Rashi)</th>
-                      <th className="py-2.5 px-3">ഡിഗ്രി (Longitude)</th>
-                      <th className="py-2.5 px-3">നക്ഷത്രം & പാദം (Star & Pada)</th>
-                      <th className="py-2.5 px-3">നവാംശകം (Navamsha)</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-800">
-                    <tr className="bg-indigo-950/30 text-indigo-300 font-bold">
-                      <td className="py-2.5 px-3">ലഗ്നം (Ascendant)</td>
-                      <td className="py-2.5 px-3">{keralaChakra.chartData.lagna.rashiNameMalayalam} ({keralaChakra.chartData.lagna.rashiNameEnglish})</td>
-                      <td className="py-2.5 px-3 font-mono">{keralaChakra.chartData.lagna.formattedDegree}</td>
-                      <td className="py-2.5 px-3">{keralaChakra.chartData.lagna.nakshatraNameMalayalam} (പാദം {keralaChakra.chartData.lagna.pada})</td>
-                      <td className="py-2.5 px-3">{keralaChakra.chartData.lagna.navamshaRashiIndex}</td>
-                    </tr>
-                    {keralaChakra.chartData.planets.map((planet) => (
-                      <tr key={planet.id} className="hover:bg-slate-800/40">
-                        <td className="py-2.5 px-3 font-bold text-white flex items-center gap-1.5">
-                          <span>{planet.symbol}</span>
-                          <span>{planet.nameMalayalam} ({planet.nameEnglish})</span>
-                          {planet.isRetrograde && (
-                            <span className="text-[9px] font-extrabold px-1 rounded bg-rose-500/20 text-rose-300 border border-rose-500/30">വക്രം (R)</span>
-                          )}
-                        </td>
-                        <td className="py-2.5 px-3">{planet.rashiNameMalayalam} ({planet.rashiNameEnglish})</td>
-                        <td className="py-2.5 px-3 font-mono">{planet.formattedDegree}</td>
-                        <td className="py-2.5 px-3">{planet.nakshatraNameMalayalam} (പാദം {planet.pada})</td>
-                        <td className="py-2.5 px-3">{planet.navamshaRashiIndex}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-
-          {/* Vimshottari Dasha Calendar & Life Path Analysis */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-            
-            {/* Vimshottari Dasha Card */}
-            <div className="p-5 sm:p-6 rounded-3xl card-3d space-y-4">
-              <div className="flex items-center justify-between pb-2 border-b border-slate-800">
-                <div className="flex items-center gap-2">
-                  <Clock className="w-5 h-5 text-amber-400" />
-                  <h4 className="font-extrabold text-sm sm:text-base text-white">
-                    {lang === 'ml' ? 'വിംശോത്തരി ദശാകാലങ്ങൾ' : 'Vimshottari Dasha Timeline'}
-                  </h4>
-                </div>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300">
-                  {keralaChakra.dashaBalanceMalayalam}
-                </span>
-              </div>
-
-              <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-3">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-slate-400 font-bold">{lang === 'ml' ? 'നിലവിലെ മഹാദശ:' : 'Current Mahadasha:'}</span>
-                  <span className="text-amber-400 font-black text-sm">{keralaChakra.currentDasha} ദശ</span>
-                </div>
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-slate-400 font-bold">{lang === 'ml' ? 'അപഹാരം (Bhukti):' : 'Current Antardasha:'}</span>
-                  <span className="text-indigo-300 font-bold">{keralaChakra.currentBhukti} അപഹാരം</span>
-                </div>
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-slate-400 font-bold">{lang === 'ml' ? 'അടുത്ത മഹാദശ:' : 'Next Mahadasha:'}</span>
-                  <span className="text-emerald-300 font-bold">{keralaChakra.nextDasha} ദശ</span>
-                </div>
-
-                <div className="space-y-1 pt-1">
-                  <div className="flex justify-between text-[10px] text-slate-400">
-                    <span>{lang === 'ml' ? 'ദശാ പുരോഗതി' : 'Dasha Progress'}</span>
-                    <span>{keralaChakra.dashaProgressPercentage}%</span>
+              {/* CHAPTER 1: Cosmic Identity, Personality & Mindset in Words */}
+              <div className="p-5 sm:p-6 rounded-3xl card-3d space-y-4">
+                <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+                  <div className="flex items-center gap-2">
+                    <Star className="w-5 h-5 text-amber-400" />
+                    <h4 className="font-extrabold text-sm sm:text-base text-white">
+                      {lang === 'ml' 
+                        ? detailedJathakamInWords.personalityReading.titleMalayalam 
+                        : detailedJathakamInWords.personalityReading.titleEnglish}
+                    </h4>
                   </div>
-                  <div className="w-full h-2 rounded-full bg-slate-800 overflow-hidden">
-                    <div 
-                      className="h-full bg-gradient-to-r from-amber-500 via-purple-500 to-indigo-500 rounded-full" 
-                      style={{ width: `${keralaChakra.dashaProgressPercentage}%` }}
-                    />
-                  </div>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300">
+                    {detailedJathakamInWords.nakshatraEnglish}
+                  </span>
                 </div>
-              </div>
 
-              {/* Doshas & Yogas Summary */}
-              <div className="grid grid-cols-2 gap-2 text-xs">
-                <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-1">
-                  <span className="text-[10px] text-slate-400 uppercase font-bold">{lang === 'ml' ? 'ചൊവ്വാദോഷം' : 'Kuja Dosha'}</span>
-                  <p className="font-bold text-white">
-                    {keralaChakra.doshaSummary.kujaDosha ? 'ഉണ്ട് (ചൊവ്വാദോഷം)' : 'ദോഷമില്ല (ഉത്തമം)'}
-                  </p>
-                </div>
-                <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-1">
-                  <span className="text-[10px] text-slate-400 uppercase font-bold">{lang === 'ml' ? 'പാപസാമ്യം' : 'Papasamya Score'}</span>
-                  <p className="font-bold text-emerald-400">{keralaChakra.doshaSummary.papasamyaScore} Points</p>
-                </div>
-              </div>
-            </div>
-
-            {/* 12 Bhava Life Analysis */}
-            <div className="p-5 sm:p-6 rounded-3xl card-3d space-y-4">
-              <div className="flex items-center gap-2 pb-2 border-b border-slate-800">
-                <Activity className="w-5 h-5 text-indigo-400" />
-                <h4 className="font-extrabold text-sm sm:text-base text-white">
-                  {lang === 'ml' ? 'ജീവിത ഭാവഫല നിരൂപണം' : '12 Bhava Life Path Analysis'}
-                </h4>
-              </div>
-
-              <div className="space-y-2.5 max-h-[300px] overflow-y-auto pr-1">
-                {kundaliReport.houses.slice(0, 6).map((house) => (
-                  <div key={house.houseNumber} className="p-3 rounded-2xl bg-slate-950/80 border border-slate-800/80 space-y-1">
-                    <div className="flex items-center justify-between">
-                      <span className="font-black text-xs text-amber-400">
-                        {house.houseNumber}-ാം ഭാവം: {house.significance}
-                      </span>
-                      <span className="text-[10px] text-slate-400 font-mono">{house.sign}</span>
-                    </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                  {/* Physical Aura */}
+                  <div className="p-4 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-1.5">
+                    <h5 className="font-extrabold text-xs text-amber-400 flex items-center gap-1.5">
+                      <Sparkles className="w-4 h-4 text-amber-400" />
+                      <span>{lang === 'ml' ? 'ശാരീരിക തേജസ്സും ഭാവവും' : 'Physical Aura & Demeanor'}</span>
+                    </h5>
                     <p className="text-xs text-slate-300 leading-relaxed">
-                      {house.planets.length > 0 
-                        ? (lang === 'ml' ? `സ്ഥിതി ചെയ്യുന്ന ഗ്രഹങ്ങൾ: ${house.planets.join(', ')}` : `Occupying planets: ${house.planets.join(', ')}`)
-                        : (lang === 'ml' ? 'ശുഭ ഭാവ സ്ഥിതി.' : 'Benefic house disposition.')}
+                      {lang === 'ml' 
+                        ? detailedJathakamInWords.personalityReading.physiqueDemeanorMalayalam 
+                        : detailedJathakamInWords.personalityReading.physiqueDemeanorEnglish}
                     </p>
                   </div>
-                ))}
+
+                  {/* Intellect & Cognitive Mindset */}
+                  <div className="p-4 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-1.5">
+                    <h5 className="font-extrabold text-xs text-purple-400 flex items-center gap-1.5">
+                      <Compass className="w-4 h-4 text-purple-400" />
+                      <span>{lang === 'ml' ? 'ബുദ്ധിയും മനോഭാവവും' : 'Intellect & Cognitive Mindset'}</span>
+                    </h5>
+                    <p className="text-xs text-slate-300 leading-relaxed">
+                      {lang === 'ml' 
+                        ? detailedJathakamInWords.personalityReading.intellectMindsetMalayalam 
+                        : detailedJathakamInWords.personalityReading.intellectMindsetEnglish}
+                    </p>
+                  </div>
+
+                  {/* Leadership & Core Strengths */}
+                  <div className="p-4 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-1.5">
+                    <h5 className="font-extrabold text-xs text-emerald-400 flex items-center gap-1.5">
+                      <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                      <span>{lang === 'ml' ? 'നേതൃത്വ ഗുണങ്ങളും കരുത്തും' : 'Leadership & Core Strengths'}</span>
+                    </h5>
+                    <p className="text-xs text-slate-300 leading-relaxed">
+                      {lang === 'ml' 
+                        ? detailedJathakamInWords.personalityReading.leadershipStrengthsMalayalam 
+                        : detailedJathakamInWords.personalityReading.leadershipStrengthsEnglish}
+                    </p>
+                  </div>
+
+                  {/* Social Nature & Relationships */}
+                  <div className="p-4 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-1.5">
+                    <h5 className="font-extrabold text-xs text-rose-400 flex items-center gap-1.5">
+                      <Heart className="w-4 h-4 text-rose-400" />
+                      <span>{lang === 'ml' ? 'സാമൂഹിക പെരുമാറ്റം' : 'Social Nature & Relationships'}</span>
+                    </h5>
+                    <p className="text-xs text-slate-300 leading-relaxed">
+                      {lang === 'ml' 
+                        ? detailedJathakamInWords.personalityReading.socialNatureMalayalam 
+                        : detailedJathakamInWords.personalityReading.socialNatureEnglish}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* CHAPTER 2: Complete 12 Bhava Life Reading in Words */}
+              <div className="p-5 sm:p-6 rounded-3xl card-3d space-y-4">
+                <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-slate-800">
+                  <div className="flex items-center gap-2">
+                    <Layers className="w-5 h-5 text-indigo-400" />
+                    <div>
+                      <h4 className="font-extrabold text-sm sm:text-base text-white">
+                        {lang === 'ml' ? 'അധ്യായം 2: സമ്പൂർണ്ണ 12 ഭാവ ഫലങ്ങൾ വാക്കുകളിൽ' : 'Chapter 2: Complete 12 Bhava Houses Reading in Words'}
+                      </h4>
+                      <p className="text-[11px] text-slate-400">
+                        {lang === 'ml' ? 'ലഗ്നം മുതൽ മോക്ഷസ്ഥാനം വരെയുള്ള 12 ഭാവങ്ങളുടെ സമഗ്ര ജീവിത ഫലവിവരണം' : 'In-depth prose reading for every sphere of life from 1st to 12th house'}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Bhava Filters */}
+                  <div className="flex items-center p-1 rounded-xl bg-slate-950 border border-slate-800 text-[11px]">
+                    <button
+                      onClick={() => setBhavaFilter('all')}
+                      className={`px-2.5 py-1 rounded-lg font-bold transition-all ${
+                        bhavaFilter === 'all' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      {lang === 'ml' ? '12 ഭാവങ്ങളും (All)' : 'All 12'}
+                    </button>
+                    <button
+                      onClick={() => setBhavaFilter('kendra')}
+                      className={`px-2.5 py-1 rounded-lg font-bold transition-all ${
+                        bhavaFilter === 'kendra' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      {lang === 'ml' ? 'കേന്ദ്രങ്ങൾ (1,4,7,10)' : 'Kendra'}
+                    </button>
+                    <button
+                      onClick={() => setBhavaFilter('trikona')}
+                      className={`px-2.5 py-1 rounded-lg font-bold transition-all ${
+                        bhavaFilter === 'trikona' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      {lang === 'ml' ? 'ത്രികോണങ്ങൾ (1,5,9)' : 'Trikona'}
+                    </button>
+                    <button
+                      onClick={() => setBhavaFilter('wealth')}
+                      className={`px-2.5 py-1 rounded-lg font-bold transition-all ${
+                        bhavaFilter === 'wealth' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      {lang === 'ml' ? 'ധന-ലാഭം (2,11)' : 'Wealth (2,11)'}
+                    </button>
+                  </div>
+                </div>
+
+                {/* 12 Bhava Cards Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {detailedJathakamInWords.bhavasReading
+                    .filter((bhava) => {
+                      if (bhavaFilter === 'kendra') return [1, 4, 7, 10].includes(bhava.houseNumber);
+                      if (bhavaFilter === 'trikona') return [1, 5, 9].includes(bhava.houseNumber);
+                      if (bhavaFilter === 'wealth') return [2, 11].includes(bhava.houseNumber);
+                      return true;
+                    })
+                    .map((bhava) => (
+                      <div
+                        key={bhava.houseNumber}
+                        className="p-4 sm:p-5 rounded-2xl bg-slate-950/90 border border-slate-800/90 hover:border-indigo-500/50 transition-all space-y-3 shadow-md"
+                      >
+                        <div className="flex items-start justify-between gap-2 border-b border-slate-800/60 pb-2">
+                          <div className="space-y-0.5">
+                            <div className="flex items-center gap-2">
+                              <span className="px-2 py-0.5 rounded-md bg-indigo-500/20 text-indigo-300 font-mono text-[10px] font-black border border-indigo-500/30">
+                                #{bhava.houseNumber}
+                              </span>
+                              <h5 className="font-extrabold text-xs sm:text-sm text-amber-300">
+                                {lang === 'ml' ? bhava.houseNameMalayalam : bhava.houseNameEnglish}
+                              </h5>
+                            </div>
+                            <p className="text-[11px] text-slate-400">
+                              {lang === 'ml' ? bhava.significanceMalayalam : bhava.significanceEnglish}
+                            </p>
+                          </div>
+
+                          <div className="text-right">
+                            <span className="text-[10px] font-extrabold text-indigo-400 block">
+                              {lang === 'ml' ? `${bhava.rashiMalayalam} രാശി` : bhava.rashiEnglish}
+                            </span>
+                            <span className="text-[9px] text-slate-500 font-medium block">
+                              {lang === 'ml' ? `അധിപൻ: ${bhava.lordMalayalam}` : `Lord: ${bhava.lordEnglish}`}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Occupying Planets Badge */}
+                        {bhava.planetsPresentMalayalam.length > 0 && (
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="text-[10px] text-slate-400 font-bold">{lang === 'ml' ? 'സ്ഥിതി ഗ്രഹങ്ങൾ:' : 'Planets:'}</span>
+                            {bhava.planetsPresentMalayalam.map((p, idx) => (
+                              <span key={idx} className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                                {p}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Detailed Prose Description in Words */}
+                        <p className="text-xs text-slate-300 leading-relaxed font-sans">
+                          {lang === 'ml' ? bhava.detailedProseMalayalam : bhava.detailedProseEnglish}
+                        </p>
+
+                        {/* Key Themes & Score */}
+                        <div className="flex items-center justify-between pt-2 border-t border-slate-900 text-[10px]">
+                          <div className="flex items-center gap-1 flex-wrap">
+                            {(lang === 'ml' ? bhava.keyThemesMalayalam : bhava.keyThemesEnglish).map((theme, tIdx) => (
+                              <span key={tIdx} className="px-2 py-0.5 rounded bg-slate-900 text-slate-400 border border-slate-800">
+                                • {theme}
+                              </span>
+                            ))}
+                          </div>
+
+                          <span className="font-extrabold text-emerald-400 shrink-0 ml-2">
+                            {bhava.verdictScore}% {lang === 'ml' ? 'ബലം' : 'Potency'}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              </div>
+
+              {/* CHAPTER 3: Special Planetary Yogas in Words */}
+              <div className="p-5 sm:p-6 rounded-3xl card-3d space-y-4">
+                <div className="flex items-center gap-2 pb-2 border-b border-slate-800">
+                  <Award className="w-5 h-5 text-amber-400" />
+                  <h4 className="font-extrabold text-sm sm:text-base text-white">
+                    {lang === 'ml' 
+                      ? detailedJathakamInWords.yogasReading.titleMalayalam 
+                      : detailedJathakamInWords.yogasReading.titleEnglish}
+                  </h4>
+                </div>
+
+                <div className="space-y-3">
+                  {detailedJathakamInWords.yogasReading.yogasList.map((yoga, yIdx) => (
+                    <div key={yIdx} className="p-4 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="font-black text-xs sm:text-sm text-amber-400 flex items-center gap-1.5">
+                          <Crown className="w-4 h-4 text-amber-400" />
+                          <span>{lang === 'ml' ? yoga.nameMalayalam : yoga.nameEnglish}</span>
+                        </span>
+                        <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                          {yoga.strengthPercentage}% {lang === 'ml' ? 'യോഗബലം' : 'Strength'}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-indigo-300 font-mono">
+                        {lang === 'ml' ? yoga.formationMalayalam : yoga.formationEnglish}
+                      </p>
+                      <p className="text-xs text-slate-300 leading-relaxed">
+                        {lang === 'ml' ? yoga.lifeImpactMalayalam : yoga.lifeImpactEnglish}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* CHAPTER 4: Dosha Analysis & Authentic Kerala Temple Remedies in Words */}
+              <div className="p-5 sm:p-6 rounded-3xl card-3d space-y-4">
+                <div className="flex items-center gap-2 pb-2 border-b border-slate-800">
+                  <ShieldCheck className="w-5 h-5 text-emerald-400" />
+                  <h4 className="font-extrabold text-sm sm:text-base text-white">
+                    {lang === 'ml' 
+                      ? detailedJathakamInWords.doshasAndRemediesReading.titleMalayalam 
+                      : detailedJathakamInWords.doshasAndRemediesReading.titleEnglish}
+                  </h4>
+                </div>
+
+                {/* Dosha Breakdown Grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                  <div className="p-3.5 rounded-2xl bg-slate-950 border border-slate-800 space-y-1">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase">{lang === 'ml' ? 'ചൊവ്വാദോഷ നിരൂപണം' : 'Kuja Dosha Analysis'}</span>
+                    <p className="text-slate-200">
+                      {lang === 'ml' 
+                        ? detailedJathakamInWords.doshasAndRemediesReading.kujaDoshaAnalysisMalayalam 
+                        : detailedJathakamInWords.doshasAndRemediesReading.kujaDoshaAnalysisEnglish}
+                    </p>
+                  </div>
+
+                  <div className="p-3.5 rounded-2xl bg-slate-950 border border-slate-800 space-y-1">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase">{lang === 'ml' ? 'ശനി പ്രഭാവം (ഏഴരശ്ശനി/കണ്ടകശ്ശനി)' : 'Saturn Sade Sati Analysis'}</span>
+                    <p className="text-slate-200">
+                      {lang === 'ml' 
+                        ? detailedJathakamInWords.doshasAndRemediesReading.saniSadeSatiAnalysisMalayalam 
+                        : detailedJathakamInWords.doshasAndRemediesReading.saniSadeSatiAnalysisEnglish}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Kerala Temple Pilgrimages */}
+                <div className="space-y-2 pt-1">
+                  <h5 className="font-extrabold text-xs text-amber-400 flex items-center gap-1.5">
+                    <Landmark className="w-4 h-4 text-amber-400" />
+                    <span>{lang === 'ml' ? 'നിർദ്ദേശിക്കുന്ന പ്രമുഖ കേരള ക്ഷേത്ര പരിഹാരങ്ങൾ:' : 'Prescribed Traditional Kerala Temple Offerings:'}</span>
+                  </h5>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    {(lang === 'ml' 
+                      ? detailedJathakamInWords.doshasAndRemediesReading.templePilgrimagesMalayalam 
+                      : detailedJathakamInWords.doshasAndRemediesReading.templePilgrimagesEnglish
+                    ).map((templeItem, tIdx) => (
+                      <div key={tIdx} className="p-3 rounded-xl bg-slate-950 border border-slate-800/90 space-y-1">
+                        <h6 className="font-extrabold text-xs text-white">{templeItem.temple}</h6>
+                        <p className="text-[11px] text-amber-300 font-bold">{templeItem.pooja}</p>
+                        <p className="text-[10px] text-slate-400">{templeItem.benefit}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* CHAPTER 5: Vimshottari Mahadasha & Antardasha In-Depth Reading */}
+              <div className="p-5 sm:p-6 rounded-3xl card-3d space-y-4">
+                <div className="flex items-center gap-2 pb-2 border-b border-slate-800">
+                  <Hourglass className="w-5 h-5 text-purple-400" />
+                  <h4 className="font-extrabold text-sm sm:text-base text-white">
+                    {lang === 'ml' 
+                      ? detailedJathakamInWords.dashaTimelineReading.titleMalayalam 
+                      : detailedJathakamInWords.dashaTimelineReading.titleEnglish}
+                  </h4>
+                </div>
+
+                <div className="p-4 sm:p-5 rounded-2xl bg-slate-950 border border-slate-800 space-y-3">
+                  <div className="space-y-1">
+                    <span className="text-[10px] font-bold text-amber-400 uppercase">
+                      {lang === 'ml' ? 'നിലവിലെ മഹാദശ ഫലം:' : 'Current Mahadasha Overview:'}
+                    </span>
+                    <p className="text-xs text-slate-200 leading-relaxed font-sans">
+                      {lang === 'ml' 
+                        ? detailedJathakamInWords.dashaTimelineReading.currentDashaAnalysisMalayalam 
+                        : detailedJathakamInWords.dashaTimelineReading.currentDashaAnalysisEnglish}
+                    </p>
+                  </div>
+
+                  <div className="space-y-1 pt-2 border-t border-slate-900">
+                    <span className="text-[10px] font-bold text-indigo-400 uppercase">
+                      {lang === 'ml' ? 'നിലവിലെ അപഹാരം (Bhukti) & പുരോഗതി:' : 'Active Antardasha & Progression:'}
+                    </span>
+                    <p className="text-xs text-slate-200 leading-relaxed font-sans">
+                      {lang === 'ml' 
+                        ? detailedJathakamInWords.dashaTimelineReading.currentBhuktiAnalysisMalayalam 
+                        : detailedJathakamInWords.dashaTimelineReading.currentBhuktiAnalysisEnglish}
+                    </p>
+                  </div>
+
+                  <div className="space-y-1 pt-2 border-t border-slate-900">
+                    <span className="text-[10px] font-bold text-emerald-400 uppercase">
+                      {lang === 'ml' ? 'ദശാ നിർദ്ദേശം & ദൈവീക കൃപ:' : 'Dasha Directives & Divine Grace:'}
+                    </span>
+                    <p className="text-xs text-slate-300 leading-relaxed font-sans">
+                      {lang === 'ml' 
+                        ? detailedJathakamInWords.dashaTimelineReading.dashaGuidanceMalayalam 
+                        : detailedJathakamInWords.dashaTimelineReading.dashaGuidanceEnglish}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* CHAPTER 6: Strategic Guidance, Lucky Gemstones & Life Mantras */}
+              <div className="p-5 sm:p-6 rounded-3xl card-3d space-y-4">
+                <div className="flex items-center gap-2 pb-2 border-b border-slate-800">
+                  <Sparkles className="w-5 h-5 text-amber-400" />
+                  <h4 className="font-extrabold text-sm sm:text-base text-white">
+                    {lang === 'ml' 
+                      ? detailedJathakamInWords.strategicGuidanceReading.titleMalayalam 
+                      : detailedJathakamInWords.strategicGuidanceReading.titleEnglish}
+                  </h4>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                  {/* Recommended Gemstone */}
+                  <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-1.5">
+                    <h5 className="font-extrabold text-xs text-amber-400">
+                      {lang === 'ml' ? '💎 അനുകൂല രത്നം (Lucky Gemstone)' : '💎 Recommended Gemstone'}
+                    </h5>
+                    <p className="text-xs text-slate-200 font-medium">
+                      {lang === 'ml' 
+                        ? detailedJathakamInWords.strategicGuidanceReading.gemstoneGuidanceMalayalam 
+                        : detailedJathakamInWords.strategicGuidanceReading.gemstoneGuidanceEnglish}
+                    </p>
+                  </div>
+
+                  {/* Master Life Mantra */}
+                  <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-1.5">
+                    <h5 className="font-extrabold text-xs text-purple-400">
+                      {lang === 'ml' ? '🕉️ നിത്യ മന്ത്രം & ഇഷ്ടദേവത' : '🕉️ Master Life Mantra'}
+                    </h5>
+                    <p className="text-xs text-slate-200 font-medium">
+                      {lang === 'ml' 
+                        ? detailedJathakamInWords.strategicGuidanceReading.favorableDeityAndMantraMalayalam 
+                        : detailedJathakamInWords.strategicGuidanceReading.favorableDeityAndMantraEnglish}
+                    </p>
+                  </div>
+
+                  {/* Lucky Elements (Color, Number, Day, Direction) */}
+                  <div className="sm:col-span-2 p-4 rounded-2xl bg-slate-950 border border-slate-800 grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
+                    <div className="p-2 rounded-xl bg-slate-900/60 border border-slate-800">
+                      <span className="text-[10px] text-slate-400 block uppercase font-bold">{lang === 'ml' ? 'ഭാഗ്യ നിറം' : 'Lucky Color'}</span>
+                      <span className="text-xs font-black text-amber-300 truncate block mt-0.5">
+                        {lang === 'ml' 
+                          ? detailedJathakamInWords.strategicGuidanceReading.luckyElements.colorMalayalam.split(' ')[0] 
+                          : detailedJathakamInWords.strategicGuidanceReading.luckyElements.colorEnglish}
+                      </span>
+                    </div>
+
+                    <div className="p-2 rounded-xl bg-slate-900/60 border border-slate-800">
+                      <span className="text-[10px] text-slate-400 block uppercase font-bold">{lang === 'ml' ? 'ഭാഗ്യ നമ്പർ' : 'Lucky Number'}</span>
+                      <span className="text-xs font-black text-indigo-300 block mt-0.5">
+                        {detailedJathakamInWords.strategicGuidanceReading.luckyElements.number}
+                      </span>
+                    </div>
+
+                    <div className="p-2 rounded-xl bg-slate-900/60 border border-slate-800">
+                      <span className="text-[10px] text-slate-400 block uppercase font-bold">{lang === 'ml' ? 'ഭാഗ്യ ദിനം' : 'Lucky Day'}</span>
+                      <span className="text-xs font-black text-emerald-300 truncate block mt-0.5">
+                        {lang === 'ml' 
+                          ? detailedJathakamInWords.strategicGuidanceReading.luckyElements.dayMalayalam 
+                          : detailedJathakamInWords.strategicGuidanceReading.luckyElements.dayEnglish}
+                      </span>
+                    </div>
+
+                    <div className="p-2 rounded-xl bg-slate-900/60 border border-slate-800">
+                      <span className="text-[10px] text-slate-400 block uppercase font-bold">{lang === 'ml' ? 'ഭാഗ്യ ദിശ' : 'Lucky Direction'}</span>
+                      <span className="text-xs font-black text-rose-300 truncate block mt-0.5">
+                        {lang === 'ml' 
+                          ? detailedJathakamInWords.strategicGuidanceReading.luckyElements.directionMalayalam.split(' ')[0] 
+                          : detailedJathakamInWords.strategicGuidanceReading.luckyElements.directionEnglish}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          )}
+
+          {/* ==================== SUB-VIEW 2: KERALA 12-BOX GRID & TABLES (കട്ട ചാർട്ട് & ഗ്രഹനില) ==================== */}
+          {jathakamSubView === 'chartsAndTables' && (
+            <div className="space-y-6 animate-in fade-in">
+              {/* Chart View Mode Switcher */}
+              <div className="flex items-center justify-between p-3 rounded-2xl bg-slate-900/90 border border-slate-800">
+                <div className="flex items-center gap-2">
+                  <Grid3X3 className="w-4 h-4 text-indigo-400" />
+                  <span className="font-bold text-xs text-slate-200">
+                    {lang === 'ml' ? 'ചാർട്ട് രൂപം തിരഞ്ഞെടുക്കുക:' : 'Select Kundali Chart View:'}
+                  </span>
+                </div>
+                
+                <div className="flex items-center p-1 rounded-xl bg-slate-950 border border-slate-800 text-xs">
+                  <button
+                    onClick={() => setKundaliChartMode('keralaGrid')}
+                    className={`px-3 py-1 rounded-lg font-bold transition-all ${
+                      kundaliChartMode === 'keralaGrid' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    {lang === 'ml' ? 'കട്ട ചാർട്ട് (രാശി)' : 'Kerala 12-Box (D1)'}
+                  </button>
+                  <button
+                    onClick={() => setKundaliChartMode('navamsha')}
+                    className={`px-3 py-1 rounded-lg font-bold transition-all ${
+                      kundaliChartMode === 'navamsha' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    {lang === 'ml' ? 'നവാംശകം (D9)' : 'Navamsha (D9)'}
+                  </button>
+                  <button
+                    onClick={() => setKundaliChartMode('bhavaList')}
+                    className={`px-3 py-1 rounded-lg font-bold transition-all ${
+                      kundaliChartMode === 'bhavaList' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    {lang === 'ml' ? 'ഗ്രഹ നില' : 'Planetary Table'}
+                  </button>
+                </div>
+              </div>
+
+              {/* South Indian 12-Box Traditional Kerala Rashi Chakra Grid (കട്ട ചാർട്ട്) */}
+              {(kundaliChartMode === 'keralaGrid' || kundaliChartMode === 'navamsha') && (
+                <div className="p-4 sm:p-6 rounded-3xl card-3d space-y-4">
+                  <div className="text-center space-y-1">
+                    <h4 className="font-extrabold text-sm sm:text-base text-white">
+                      {kundaliChartMode === 'keralaGrid'
+                        ? (lang === 'ml' ? 'പരമ്പരാഗത കേരള രാശി ചക്രം (കട്ട ചാർട്ട്)' : 'Traditional South Indian 12-Box Rashi Chakra (D1)')
+                        : (lang === 'ml' ? 'സൂക്ഷ്മ നവാംശക ചക്രം (D9 Navamsha Chart)' : 'Vedic Navamsha Chakra (D9)')}
+                    </h4>
+                    <p className="text-xs text-slate-400">
+                      {lang === 'ml' ? 'ലഗ്നവും 10 ഗ്രഹങ്ങളുടെ നിലയും കൃത്യമായ ഡിഗ്രി സഹിതം' : 'Planetary positions with exact sidereal longitudes and retrogrades'}
+                    </p>
+                  </div>
+
+                  {/* 4x4 Grid Layout (South Indian Kerala Astrology Box Structure) */}
+                  <div className="max-w-xl mx-auto grid grid-cols-4 gap-2 bg-slate-950 p-3 rounded-2xl border border-indigo-500/40 shadow-2xl">
+                    {(() => {
+                      const activeGrid = kundaliChartMode === 'keralaGrid' ? keralaChakra.grid : keralaChakra.navamshaGrid;
+                      const gridCellIndexMap = [
+                        0, 1, 2, 3,
+                        11, -1, -2, 4,
+                        10, -3, -4, 5,
+                        9, 8, 7, 6
+                      ];
+
+                      return gridCellIndexMap.map((boxIdx, cellIdx) => {
+                        if (boxIdx < 0) {
+                          if (boxIdx === -1) {
+                            return (
+                              <div key={cellIdx} className="col-span-2 row-span-2 bg-slate-900/90 border border-slate-800 rounded-xl p-4 flex flex-col items-center justify-center text-center space-y-1 shadow-inner">
+                                <span className="text-2xl animate-spin-slow">🌐</span>
+                                <h5 className="font-extrabold text-xs text-amber-300">
+                                  {birthName || 'ജാതകം'}
+                                </h5>
+                                <p className="text-[10px] text-indigo-300 font-mono">{birthDate} • {birthTime}</p>
+                                <span className="text-[9px] text-slate-400 font-semibold">{birthPlace}</span>
+                              </div>
+                            );
+                          }
+                          return null;
+                        }
+
+                        const box = activeGrid[boxIdx];
+                        return (
+                          <div
+                            key={cellIdx}
+                            className={`min-h-[85px] sm:min-h-[100px] p-2 rounded-xl border flex flex-col justify-between transition-all ${
+                              box.isLagna
+                                ? 'bg-indigo-950/80 border-indigo-400 text-white shadow-[0_0_15px_rgba(99,102,241,0.4)]'
+                                : box.planets.length > 0
+                                ? 'bg-slate-900/90 border-slate-700 text-slate-200'
+                                : 'bg-slate-950/50 border-slate-800/80 text-slate-500'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between border-b border-white/5 pb-1">
+                              <span className="text-[11px] font-black text-amber-400">{box.nameMalayalam}</span>
+                              <span className="text-[9px] text-slate-400 font-mono">{box.nameEnglish.slice(0, 3)}</span>
+                            </div>
+
+                            <div className="my-auto space-y-0.5 py-1">
+                              {box.planets.map((p, pIdx) => (
+                                <div key={pIdx} className="text-[10px] sm:text-[11px] font-bold text-white leading-tight">
+                                  {p}
+                                </div>
+                              ))}
+                            </div>
+
+                            {box.isLagna && (
+                              <span className="text-[8px] font-extrabold px-1 py-0.2 rounded bg-indigo-500 text-white uppercase text-center self-start">
+                                ലഗ്നം
+                              </span>
+                            )}
+                          </div>
+                        );
+                      });
+                    })()}
+                  </div>
+                </div>
+              )}
+
+              {/* Planetary Longitudes & Bhava Table */}
+              {kundaliChartMode === 'bhavaList' && (
+                <div className="p-5 rounded-3xl card-3d space-y-4">
+                  <h4 className="font-extrabold text-sm text-white">
+                    {lang === 'ml' ? 'സൂക്ഷ്മ ഗ്രഹ നില പട്ടിക (Sidereal Planetary Degrees)' : 'Sidereal Planetary Longitudes'}
+                  </h4>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs text-left text-slate-300">
+                      <thead className="text-[10px] text-slate-400 uppercase bg-slate-950/80 border-b border-slate-800">
+                        <tr>
+                          <th className="py-2.5 px-3">ഗ്രഹം (Planet)</th>
+                          <th className="py-2.5 px-3">രാശി (Rashi)</th>
+                          <th className="py-2.5 px-3">ഡിഗ്രി (Longitude)</th>
+                          <th className="py-2.5 px-3">നക്ഷത്രം & പാദം (Star & Pada)</th>
+                          <th className="py-2.5 px-3">നവാംശകം (Navamsha)</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-800">
+                        <tr className="bg-indigo-950/30 text-indigo-300 font-bold">
+                          <td className="py-2.5 px-3">ലഗ്നം (Ascendant)</td>
+                          <td className="py-2.5 px-3">{keralaChakra.chartData.lagna.rashiNameMalayalam} ({keralaChakra.chartData.lagna.rashiNameEnglish})</td>
+                          <td className="py-2.5 px-3 font-mono">{keralaChakra.chartData.lagna.formattedDegree}</td>
+                          <td className="py-2.5 px-3">{keralaChakra.chartData.lagna.nakshatraNameMalayalam} (പാദം {keralaChakra.chartData.lagna.pada})</td>
+                          <td className="py-2.5 px-3">{keralaChakra.chartData.lagna.navamshaRashiIndex}</td>
+                        </tr>
+                        {keralaChakra.chartData.planets.map((planet) => (
+                          <tr key={planet.id} className="hover:bg-slate-800/40">
+                            <td className="py-2.5 px-3 font-bold text-white flex items-center gap-1.5">
+                              <span>{planet.symbol}</span>
+                              <span>{planet.nameMalayalam} ({planet.nameEnglish})</span>
+                              {planet.isRetrograde && (
+                                <span className="text-[9px] font-extrabold px-1 rounded bg-rose-500/20 text-rose-300 border border-rose-500/30">വക്രം (R)</span>
+                              )}
+                            </td>
+                            <td className="py-2.5 px-3">{planet.rashiNameMalayalam} ({planet.rashiNameEnglish})</td>
+                            <td className="py-2.5 px-3 font-mono">{planet.formattedDegree}</td>
+                            <td className="py-2.5 px-3">{planet.nakshatraNameMalayalam} (പാദം {planet.pada})</td>
+                            <td className="py-2.5 px-3">{planet.navamshaRashiIndex}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ==================== SUB-VIEW 3: VIMSHOTTARI DASHA & LIFE PATH (ദശാപഹാരങ്ങൾ) ==================== */}
+          {jathakamSubView === 'dashaDetails' && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 animate-in fade-in">
+              {/* Vimshottari Dasha Card */}
+              <div className="p-5 sm:p-6 rounded-3xl card-3d space-y-4">
+                <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+                  <div className="flex items-center gap-2">
+                    <Clock className="w-5 h-5 text-amber-400" />
+                    <h4 className="font-extrabold text-sm sm:text-base text-white">
+                      {lang === 'ml' ? 'വിംശോത്തരി ദശാകാലങ്ങൾ' : 'Vimshottari Dasha Timeline'}
+                    </h4>
+                  </div>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300">
+                    {keralaChakra.dashaBalanceMalayalam}
+                  </span>
+                </div>
+
+                <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-3">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-slate-400 font-bold">{lang === 'ml' ? 'നിലവിലെ മഹാദശ:' : 'Current Mahadasha:'}</span>
+                    <span className="text-amber-400 font-black text-sm">{keralaChakra.currentDasha} ദശ</span>
+                  </div>
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-slate-400 font-bold">{lang === 'ml' ? 'അപഹാരം (Bhukti):' : 'Current Antardasha:'}</span>
+                    <span className="text-indigo-300 font-bold">{keralaChakra.currentBhukti} അപഹാരം</span>
+                  </div>
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-slate-400 font-bold">{lang === 'ml' ? 'അടുത്ത മഹാദശ:' : 'Next Mahadasha:'}</span>
+                    <span className="text-emerald-300 font-bold">{keralaChakra.nextDasha} ദശ</span>
+                  </div>
+
+                  <div className="space-y-1 pt-1">
+                    <div className="flex justify-between text-[10px] text-slate-400">
+                      <span>{lang === 'ml' ? 'ദശാ പുരോഗതി' : 'Dasha Progress'}</span>
+                      <span>{keralaChakra.dashaProgressPercentage}%</span>
+                    </div>
+                    <div className="w-full h-2 rounded-full bg-slate-800 overflow-hidden">
+                      <div 
+                        className="h-full bg-gradient-to-r from-amber-500 via-purple-500 to-indigo-500 rounded-full" 
+                        style={{ width: `${keralaChakra.dashaProgressPercentage}%` }}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Doshas & Yogas Summary */}
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-1">
+                    <span className="text-[10px] text-slate-400 uppercase font-bold">{lang === 'ml' ? 'ചൊവ്വാദോഷം' : 'Kuja Dosha'}</span>
+                    <p className="font-bold text-white">
+                      {keralaChakra.doshaSummary.kujaDosha ? 'ഉണ്ട് (ചൊവ്വാദോഷം)' : 'ദോഷമില്ല (ഉത്തമം)'}
+                    </p>
+                  </div>
+                  <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-1">
+                    <span className="text-[10px] text-slate-400 uppercase font-bold">{lang === 'ml' ? 'പാപസാമ്യം' : 'Papasamya Score'}</span>
+                    <p className="font-bold text-emerald-400">{keralaChakra.doshaSummary.papasamyaScore} Points</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* 12 Bhava Life Analysis */}
+              <div className="p-5 sm:p-6 rounded-3xl card-3d space-y-4">
+                <div className="flex items-center gap-2 pb-2 border-b border-slate-800">
+                  <Activity className="w-5 h-5 text-indigo-400" />
+                  <h4 className="font-extrabold text-sm sm:text-base text-white">
+                    {lang === 'ml' ? 'ജീവിത ഭാവഫല സംഗ്രഹം' : '12 Bhava Life Path Summary'}
+                  </h4>
+                </div>
+
+                <div className="space-y-2.5 max-h-[300px] overflow-y-auto pr-1">
+                  {kundaliReport.houses.slice(0, 6).map((house) => (
+                    <div key={house.houseNumber} className="p-3 rounded-2xl bg-slate-950/80 border border-slate-800/80 space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="font-black text-xs text-amber-400">
+                          {house.houseNumber}-ാം ഭാവം: {house.significance}
+                        </span>
+                        <span className="text-[10px] text-slate-400 font-mono">{house.sign}</span>
+                      </div>
+                      <p className="text-xs text-slate-300 leading-relaxed">
+                        {house.planets.length > 0 
+                          ? (lang === 'ml' ? `സ്ഥിതി ചെയ്യുന്ന ഗ്രഹങ്ങൾ: ${house.planets.join(', ')}` : `Occupying planets: ${house.planets.join(', ')}`)
+                          : (lang === 'ml' ? 'ശുഭ ഭാവ സ്ഥിതി.' : 'Benefic house disposition.')}
+                      </p>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
-
-          </div>
+          )}
 
         </div>
       )}

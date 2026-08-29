@@ -450,6 +450,7 @@ export interface ChatConversation {
   isMuted?: boolean;
   isFavorite?: boolean;
   isLocked?: boolean;
+  isPrivate?: boolean;
   customWallpaper?: string;
   pinnedMessages?: PinnedMessageItem[];
   members?: GroupMemberItem[];
@@ -464,7 +465,7 @@ export interface FriendRequest {
   id: string;
   fromUserId: string;
   fromUserName: string;
-  fromUserAvatar: string;
+  fromUserAvatar?: string;
   fromUserRole?: string;
   toUserId: string;
   toUserName: string;

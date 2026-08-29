@@ -140,9 +140,10 @@ interface SuperAppContextType {
   activeChatId: string;
   setActiveChatId: (id: string) => void;
   sendChatMessage: (chatId: string, text: string, options?: { expiresDuration?: number | null; mediaUrl?: string; mediaType?: 'image' | 'video' | 'audio' | 'video_note' | 'sticker' | 'gif' | 'file'; poll?: any; isForwarded?: boolean }) => Promise<void>;
-  startNewChatWith: (name: string, avatar: string, role: string, initialMessage?: string) => string;
+  startNewChatWith: (name: string, avatar: string, role: string, initialMessage?: string, autoFriend?: boolean) => string;
   createGroup: (groupData: { name: string; description: string; members: string[]; avatar: string }) => string;
   createChannel: (channelData: { name: string; handle: string; description: string; avatar: string; isPrivate: boolean; initialPost?: string }) => string;
+  sendBroadcast: (recipientChatIds: string[], text: string) => Promise<void>;
   toggleFriendStatus: (chatId: string) => void;
   toggleBlockStatus: (chatId: string) => void;
   friendRequests: FriendRequest[];

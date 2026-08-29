@@ -3,7 +3,8 @@ import {
   generatePersonalizedJathakamForecast, 
   askPersonalizedAstroOracle,
   generateKeralaRashiChakra,
-  calculate10Porutham
+  calculate10Porutham,
+  generateDetailedJathakamInWords
 } from '../services/keralaAstroEngine';
 
 describe('Personalized Birth-Time Jathakam & Astro Oracle Engine', () => {
@@ -106,5 +107,59 @@ describe('Personalized Birth-Time Jathakam & Astro Oracle Engine', () => {
     expect(chakra.navamshaGrid.length).toBe(12);
     const lagnaBox = chakra.grid.find((b) => b.isLagna);
     expect(lagnaBox).toBeDefined();
+  });
+
+  it('generates exhaustive Detailed Jathakam in Words across all 6 chapters & 12 bhavas', () => {
+    const detailedWords = generateDetailedJathakamInWords(
+      testBirth.date,
+      testBirth.time,
+      testBirth.place,
+      testBirth.name
+    );
+
+    expect(detailedWords.birthName).toBe(testBirth.name);
+    expect(detailedWords.lagnaMalayalam).toBeDefined();
+    expect(detailedWords.moonRashiMalayalam).toBeDefined();
+    expect(detailedWords.nakshatraMalayalam).toBeDefined();
+
+    // Executive Summary in Words
+    expect(detailedWords.executiveSummaryMalayalam.length).toBeGreaterThan(100);
+    expect(detailedWords.executiveSummaryEnglish.length).toBeGreaterThan(100);
+
+    // Chapter 1: Personality & Demeanor
+    expect(detailedWords.personalityReading.physiqueDemeanorMalayalam).toBeDefined();
+    expect(detailedWords.personalityReading.intellectMindsetMalayalam).toBeDefined();
+    expect(detailedWords.personalityReading.leadershipStrengthsMalayalam).toBeDefined();
+    expect(detailedWords.personalityReading.socialNatureMalayalam).toBeDefined();
+
+    // Chapter 2: All 12 Bhavas detailed reading in words
+    expect(detailedWords.bhavasReading.length).toBe(12);
+    detailedWords.bhavasReading.forEach((bhava, index) => {
+      expect(bhava.houseNumber).toBe(index + 1);
+      expect(bhava.detailedProseMalayalam.length).toBeGreaterThan(50);
+      expect(bhava.detailedProseEnglish.length).toBeGreaterThan(50);
+      expect(bhava.verdictScore).toBeGreaterThanOrEqual(70);
+    });
+
+    // Chapter 3: Special Yogas
+    expect(detailedWords.yogasReading.yogasList.length).toBeGreaterThanOrEqual(2);
+    expect(detailedWords.yogasReading.yogasList[0].lifeImpactMalayalam).toBeDefined();
+
+    // Chapter 4: Doshas & Kerala Temple Remedies
+    expect(detailedWords.doshasAndRemediesReading.kujaDoshaAnalysisMalayalam).toBeDefined();
+    expect(detailedWords.doshasAndRemediesReading.templePilgrimagesMalayalam.length).toBeGreaterThanOrEqual(3);
+
+    // Chapter 5: Dasha Analysis
+    expect(detailedWords.dashaTimelineReading.currentDashaAnalysisMalayalam).toBeDefined();
+    expect(detailedWords.dashaTimelineReading.currentBhuktiAnalysisMalayalam).toBeDefined();
+
+    // Chapter 6: Strategic Guidance & Gemstones
+    expect(detailedWords.strategicGuidanceReading.gemstoneGuidanceMalayalam).toBeDefined();
+    expect(detailedWords.strategicGuidanceReading.idealCareerSectorsMalayalam.length).toBeGreaterThanOrEqual(3);
+    expect(detailedWords.strategicGuidanceReading.luckyElements.number).toBeDefined();
+
+    // Full text document
+    expect(detailedWords.fullTextDocumentMalayalam).toContain('സമ്പൂർണ്ണ കേരള ജാതക ഫലവിവരണം');
+    expect(detailedWords.fullTextDocumentEnglish).toContain('COMPLETE VEDIC JATHAKAM READING IN WORDS');
   });
 });
