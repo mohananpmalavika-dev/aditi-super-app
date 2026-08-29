@@ -2,26 +2,47 @@
  * Job Deduplication & Fingerprint Engine
  * Detects identical vacancies across multiple sources (e.g. Company Website + NCS + Jooble + Adzuna)
  * and collapses them into 1 unified record with multi-source attribution and official URL prioritization.
+ * 
+ * Safeguarded against over-deduplication: Preserves distinct roles across locations, seniority, and salaries.
  */
 
 import { JobVacancy, JobSourceAttribution } from '../../types/superApp';
 
-export function generateJobFingerprint(company: string, title: string, locationOrCity: string): string {
-  const cleanCompany = company
+/**
+ * Generates a high-precision multi-signal fingerprint.
+ * Preserves distinct seniority levels (Senior vs Junior vs Lead) and distinct locations (Kochi vs Bengaluru).
+ */
+export function generateJobFingerprint(
+  company: string, 
+  title: string, 
+  locationOrCity: string,
+  externalJobId?: string,
+  salaryMin?: number
+): string {
+  // Normalize company without removing distinguishing suffixes unless standard
+  const cleanCompany = (company || '')
     .toLowerCase()
-    .replace(/\b(pvt|ltd|limited|private|llp|inc|corporation|corp|technologies|services)\b/gi, '')
-    .replace(/[^a-z0-9]/g, '');
+    .replace(/\b(pvt\.?|ltd\.?|limited|private|llp|inc\.?)\b/gi, '')
+    .replace(/[^a-z0-9]/g, '')
+    .trim();
 
-  const cleanTitle = title
+  // Normalize title while explicitly PRESERVING seniority qualifiers (Senior, Junior, Lead, Trainee, Architect, Specialist)
+  const cleanTitle = (title || '')
     .toLowerCase()
-    .replace(/\b(senior|junior|lead|expert|specialist|officer|associate|engineer|developer)\b/gi, '')
-    .replace(/[^a-z0-9]/g, '');
+    .replace(/\s+/g, ' ')
+    .replace(/[^a-z0-9]/g, '')
+    .trim();
 
-  const cleanCity = locationOrCity
+  // Clean location / city
+  const cleanCity = (locationOrCity || 'india')
     .toLowerCase()
-    .replace(/[^a-z0-9]/g, '');
+    .replace(/[^a-z0-9]/g, '')
+    .trim();
 
-  return `${cleanCompany}_${cleanTitle}_${cleanCity}`;
+  // Approximate salary bracket (to prevent merging different positions with the same title)
+  const salaryBracket = salaryMin ? `_sal${Math.floor(salaryMin / 25000) * 25000}` : '';
+
+  return `${cleanCompany}_${cleanTitle}_${cleanCity}${salaryBracket}`;
 }
 
 export function deduplicateAndMergeJobs(incomingJobs: JobVacancy[]): {
@@ -32,7 +53,13 @@ export function deduplicateAndMergeJobs(incomingJobs: JobVacancy[]): {
   let mergedDuplicateCount = 0;
 
   for (const job of incomingJobs) {
-    const fingerprint = job.fingerprint || generateJobFingerprint(job.company, job.title, job.city || job.location);
+    const fingerprint = job.fingerprint || generateJobFingerprint(
+      job.company, 
+      job.title, 
+      job.city || job.location,
+      undefined,
+      job.salaryMin
+    );
 
     if (!jobMap.has(fingerprint)) {
       jobMap.set(fingerprint, {
@@ -44,7 +71,7 @@ export function deduplicateAndMergeJobs(incomingJobs: JobVacancy[]): {
       mergedDuplicateCount++;
       const existing = jobMap.get(fingerprint)!;
 
-      // Merge source attributions without duplication
+      // Merge source attributions without duplicate URLs
       const existingSourceUrls = new Set(existing.sources?.map(s => s.sourceUrl) || []);
       const newSources: JobSourceAttribution[] = [...(existing.sources || [])];
 
@@ -57,7 +84,7 @@ export function deduplicateAndMergeJobs(incomingJobs: JobVacancy[]): {
         }
       }
 
-      // Priority for canonical apply URL:
+      // Canonical URL prioritization:
       // 1. Direct Recruiter / Official Company Career
       // 2. National Career Service (NCS)
       // 3. State Exchange

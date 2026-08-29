@@ -1,5 +1,7 @@
 /**
  * Pan-India Job Search & Multi-Faceted Filter Service
+ * Provides full-text query search, Indian state/city/remote filtering, category filtering,
+ * and paginated slicing.
  */
 
 import { JobVacancy, JobCategory, JobType } from '../../types/superApp';
@@ -16,13 +18,21 @@ export interface PanIndiaJobFilterCriteria {
   sortBy?: 'latest' | 'salary_high' | 'experience' | 'relevance';
 }
 
+export interface PaginatedJobResult {
+  jobs: JobVacancy[];
+  totalMatches: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
 export function filterPanIndiaJobs(
   jobs: JobVacancy[],
   criteria: PanIndiaJobFilterCriteria
 ): JobVacancy[] {
   let filtered = [...jobs];
 
-  // 1. Text Search (title, company, skills, description)
+  // 1. Text Search (title, company, skills, description, city, state)
   if (criteria.searchQuery && criteria.searchQuery.trim().length > 0) {
     const q = criteria.searchQuery.toLowerCase().trim();
     filtered = filtered.filter(j => 
@@ -38,18 +48,21 @@ export function filterPanIndiaJobs(
 
   // 2. State Filter
   if (criteria.selectedState && criteria.selectedState !== 'All India' && criteria.selectedState !== 'All') {
+    const s = criteria.selectedState.toLowerCase();
     filtered = filtered.filter(j => 
-      j.state?.toLowerCase() === criteria.selectedState?.toLowerCase() ||
-      j.location.toLowerCase().includes(criteria.selectedState!.toLowerCase()) ||
-      (j.isRemote && criteria.selectedState === 'Remote (All India)')
+      j.state?.toLowerCase() === s ||
+      j.location.toLowerCase().includes(s) ||
+      (j.isRemote && (s.includes('remote') || criteria.selectedState === 'Remote (All India)'))
     );
   }
 
   // 3. City Filter
-  if (criteria.selectedCity && criteria.selectedCity !== 'All Cities' && criteria.selectedCity !== 'All') {
+  if (criteria.selectedCity && criteria.selectedCity !== 'All Cities' && criteria.selectedCity !== 'All' && criteria.selectedCity !== 'All India') {
+    const c = criteria.selectedCity.toLowerCase();
     filtered = filtered.filter(j => 
-      j.city?.toLowerCase() === criteria.selectedCity?.toLowerCase() ||
-      j.location.toLowerCase().includes(criteria.selectedCity!.toLowerCase())
+      j.city?.toLowerCase() === c ||
+      j.location.toLowerCase().includes(c) ||
+      (j.isRemote && c === 'remote')
     );
   }
 
@@ -86,4 +99,25 @@ export function filterPanIndiaJobs(
   }
 
   return filtered;
+}
+
+export function paginateJobs(
+  jobs: JobVacancy[],
+  page: number = 1,
+  pageSize: number = 20
+): PaginatedJobResult {
+  const safePage = Math.max(1, page);
+  const safePageSize = Math.max(1, pageSize);
+  const totalMatches = jobs.length;
+  const totalPages = Math.ceil(totalMatches / safePageSize) || 1;
+  const startIndex = (safePage - 1) * safePageSize;
+  const pageJobs = jobs.slice(startIndex, startIndex + safePageSize);
+
+  return {
+    jobs: pageJobs,
+    totalMatches,
+    page: safePage,
+    pageSize: safePageSize,
+    totalPages
+  };
 }

@@ -1,9 +1,19 @@
 /**
- * Job Source Registry Service
+ * Job Source Registry & Configuration Service
  * Manages official government sources, aggregator APIs, state portals, and corporate ATS feeds
+ * Handles sync configurations and run history logs.
  */
 
-import { JobSource } from '../../types/superApp';
+import { JobSource, JobSyncConfig, JobSyncRun } from '../../types/superApp';
+
+export const DEFAULT_JOB_SYNC_CONFIG: JobSyncConfig = {
+  pageSize: 20,
+  maxPagesPerRun: 10,
+  maxJobsPerRun: 200,
+  concurrency: 4,
+  staleAfterHours: 48,
+  expireAfterHours: 168 // 7 Days
+};
 
 export const INITIAL_JOB_SOURCES: JobSource[] = [
   {
@@ -15,10 +25,10 @@ export const INITIAL_JOB_SOURCES: JobSource[] = [
     isActive: true,
     requiresApiKey: false,
     syncIntervalMinutes: 360, // 6 Hours
-    totalImported: 4,
-    totalActive: 4,
+    totalImported: 12,
+    totalActive: 12,
     lastSyncAt: new Date().toISOString(),
-    statusMessage: 'Connected & syncing active government public sector vacancies'
+    statusMessage: 'Connected & syncing active government public sector vacancies across all Indian States'
   },
   {
     id: 'src-jooble-in',
@@ -31,10 +41,10 @@ export const INITIAL_JOB_SOURCES: JobSource[] = [
     requiresApiKey: true,
     apiKeyEnvVar: 'VITE_JOOBLE_API_KEY',
     syncIntervalMinutes: 720, // 12 Hours
-    totalImported: 3,
-    totalActive: 3,
+    totalImported: 8,
+    totalActive: 8,
     lastSyncAt: new Date().toISOString(),
-    statusMessage: 'Active API aggregator connection'
+    statusMessage: 'Active API aggregator connection with multi-metro pagination'
   },
   {
     id: 'src-adzuna-in',
@@ -47,101 +57,44 @@ export const INITIAL_JOB_SOURCES: JobSource[] = [
     requiresApiKey: true,
     apiKeyEnvVar: 'VITE_ADZUNA_API_KEY',
     syncIntervalMinutes: 720,
-    totalImported: 2,
-    totalActive: 2,
+    totalImported: 6,
+    totalActive: 6,
     lastSyncAt: new Date().toISOString(),
-    statusMessage: 'Active API partner connection'
+    statusMessage: 'Active API partner connection for classified Indian metropolitan sectors'
   },
   {
-    id: 'src-state-kerala',
-    name: 'Kerala State Employment Department (Niyukthi)',
+    id: 'src-state-portals',
+    name: 'State Employment Portals & Exchanges',
     type: 'state_portal',
     country: 'India',
-    state: 'Kerala',
     baseUrl: 'https://employmentkerala.gov.in',
     isActive: true,
     requiresApiKey: false,
     syncIntervalMinutes: 1440, // 24 Hours
-    totalImported: 1,
-    totalActive: 1,
+    totalImported: 10,
+    totalActive: 10,
     lastSyncAt: new Date().toISOString(),
-    statusMessage: 'State exchange feed online'
+    statusMessage: 'Multi-state exchange feeds active (Kerala, Karnataka, Maharashtra, TN, Telangana, Delhi, Gujarat)'
   },
   {
-    id: 'src-state-karnataka',
-    name: 'Karnataka Kaushalkar / Employment Exchange',
-    type: 'state_portal',
-    country: 'India',
-    state: 'Karnataka',
-    baseUrl: 'https://kaushalkar.karnataka.gov.in',
-    isActive: true,
-    requiresApiKey: false,
-    syncIntervalMinutes: 1440,
-    totalImported: 1,
-    totalActive: 1,
-    lastSyncAt: new Date().toISOString(),
-    statusMessage: 'State exchange feed online'
-  },
-  {
-    id: 'src-state-maharashtra',
-    name: 'Maharashtra Mahaswayam Employment Exchange',
-    type: 'state_portal',
-    country: 'India',
-    state: 'Maharashtra',
-    baseUrl: 'https://mahaswayam.gov.in',
-    isActive: true,
-    requiresApiKey: false,
-    syncIntervalMinutes: 1440,
-    totalImported: 1,
-    totalActive: 1,
-    lastSyncAt: new Date().toISOString(),
-    statusMessage: 'State exchange feed online'
-  },
-  {
-    id: 'src-corp-tcs',
-    name: 'Tata Consultancy Services (TCS iBegin)',
+    id: 'src-corporate-careers',
+    name: 'Corporate Career Portals (TCS, Infosys, Wipro, Accenture)',
     type: 'company_career',
     country: 'India',
     baseUrl: 'https://ibegin.tcs.com',
     isActive: true,
     requiresApiKey: false,
     syncIntervalMinutes: 1440,
-    totalImported: 1,
-    totalActive: 1,
+    totalImported: 8,
+    totalActive: 8,
     lastSyncAt: new Date().toISOString(),
-    statusMessage: 'Official corporate career feed active'
-  },
-  {
-    id: 'src-corp-infosys',
-    name: 'Infosys Careers Portal',
-    type: 'company_career',
-    country: 'India',
-    baseUrl: 'https://career.infosys.com',
-    isActive: true,
-    requiresApiKey: false,
-    syncIntervalMinutes: 1440,
-    totalImported: 1,
-    totalActive: 1,
-    lastSyncAt: new Date().toISOString(),
-    statusMessage: 'Official corporate career feed active'
-  },
-  {
-    id: 'src-corp-wipro',
-    name: 'Wipro Careers Portal',
-    type: 'company_career',
-    country: 'India',
-    baseUrl: 'https://careers.wipro.com',
-    isActive: true,
-    requiresApiKey: false,
-    syncIntervalMinutes: 1440,
-    totalImported: 1,
-    totalActive: 1,
-    lastSyncAt: new Date().toISOString(),
-    statusMessage: 'Official corporate career feed active'
+    statusMessage: 'Official corporate ATS feeds active for top technology and banking employers'
   }
 ];
 
 const JOB_SOURCES_STORAGE_KEY = 'aditi-job-sources';
+const JOB_SYNC_CONFIG_STORAGE_KEY = 'aditi-job-sync-config';
+const JOB_SYNC_RUNS_STORAGE_KEY = 'aditi-job-sync-runs';
 
 export function getRegisteredJobSources(): JobSource[] {
   try {
@@ -174,15 +127,58 @@ export function updateSourceSyncStats(sourceId: string, importedCount: number, a
   const now = new Date().toISOString();
   const updated = sources.map(s => {
     if (s.id === sourceId) {
+      const nextSync = new Date(Date.now() + (s.syncIntervalMinutes || 360) * 60 * 1000).toISOString();
       return {
         ...s,
-        totalImported: s.totalImported + importedCount,
+        totalImported: (s.totalImported || 0) + importedCount,
         totalActive: activeCount,
-        lastSyncAt: now
+        lastSyncAt: now,
+        nextSyncAt: nextSync
       };
     }
     return s;
   });
   saveJobSources(updated);
   return updated;
+}
+
+export function getJobSyncConfig(): JobSyncConfig {
+  try {
+    const saved = localStorage.getItem(JOB_SYNC_CONFIG_STORAGE_KEY);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      return { ...DEFAULT_JOB_SYNC_CONFIG, ...parsed };
+    }
+  } catch {}
+  return { ...DEFAULT_JOB_SYNC_CONFIG };
+}
+
+export function saveJobSyncConfig(config: Partial<JobSyncConfig>): JobSyncConfig {
+  const current = getJobSyncConfig();
+  const updated: JobSyncConfig = { ...current, ...config };
+  try {
+    localStorage.setItem(JOB_SYNC_CONFIG_STORAGE_KEY, JSON.stringify(updated));
+  } catch {}
+  return updated;
+}
+
+export function getJobSyncRuns(): JobSyncRun[] {
+  try {
+    const saved = localStorage.getItem(JOB_SYNC_RUNS_STORAGE_KEY);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed)) {
+        return parsed;
+      }
+    }
+  } catch {}
+  return [];
+}
+
+export function recordJobSyncRun(run: JobSyncRun): void {
+  try {
+    const runs = getJobSyncRuns();
+    const updated = [run, ...runs.filter(r => r.id !== run.id)].slice(0, 50); // Keep last 50 runs
+    localStorage.setItem(JOB_SYNC_RUNS_STORAGE_KEY, JSON.stringify(updated));
+  } catch {}
 }

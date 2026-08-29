@@ -764,6 +764,57 @@ export interface ImportedJob {
   fingerprint: string;
 }
 
+export interface JobSyncConfig {
+  pageSize: number;
+  maxPagesPerRun: number;
+  maxJobsPerRun: number;
+  concurrency: number;
+  staleAfterHours: number;
+  expireAfterHours: number;
+}
+
+export interface JobSyncRun {
+  id: string;
+  sourceId: string;
+  sourceName: string;
+  startedAt: string;
+  completedAt?: string;
+  status: 'running' | 'completed' | 'partial' | 'failed';
+  pagesScanned: number;
+  jobsDiscovered: number;
+  jobsInserted: number;
+  jobsUpdated: number;
+  jobsExpired: number;
+  duplicates: number;
+  errors: number;
+  durationMs?: number;
+  errorDetails?: string[];
+}
+
+export interface JobSearchParams {
+  keywords?: string;
+  state?: string;
+  city?: string;
+  district?: string;
+  category?: string;
+  page?: number;
+  pageSize?: number;
+  cursor?: string;
+  salaryMin?: number;
+  workMode?: string;
+  isRemote?: boolean;
+}
+
+export interface JobSourceResult {
+  jobs: ImportedJob[];
+  totalAvailable?: number;
+  page: number;
+  pageSize: number;
+  hasNextPage: boolean;
+  nextCursor?: string;
+  totalPages?: number;
+}
+
 export interface JobVacancy {
   id: string;
   title: string;
@@ -800,7 +851,7 @@ export interface JobVacancy {
   isVerified?: boolean;
   applicationCount?: number;
   viewCount?: number;
-  status?: 'active' | 'closed' | 'draft';
+  status?: 'active' | 'stale' | 'expired' | 'closed' | 'draft';
   isSaved?: boolean;
   postedByUserId?: string;
   createdAt?: string;
@@ -814,6 +865,8 @@ export interface JobVacancy {
   applyMode?: JobApplyMode;
   fingerprint?: string;
   lastSeenAt?: string;
+  sourcePublishedAt?: string;
+  sourceUpdatedAt?: string;
 }
 
 export interface JobSeekerProfile {

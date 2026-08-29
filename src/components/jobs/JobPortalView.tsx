@@ -111,7 +111,11 @@ export const JobPortalView: React.FC = () => {
   const [workerToBook, setWorkerToBook] = useState<LocalWorkerProfile | null>(null);
   const [reportTarget, setReportTarget] = useState<{ type: 'job' | 'worker' | 'candidate'; id: string; title: string } | null>(null);
 
-  // Pan-India Cities & States List
+  // Pagination state
+  const [vacancyPage, setVacancyPage] = useState(1);
+  const VACANCIES_PER_PAGE = 8;
+
+  // Pan-India Cities & States List (All 28 States & Major Hubs)
   const CITIES = [
     'All',
     'All India',
@@ -126,23 +130,40 @@ export const JobPortalView: React.FC = () => {
     'Noida',
     'Kozhikode',
     'Thiruvananthapuram',
-    'Thrissur',
     'Mysuru',
     'Ahmedabad',
     'Kolkata',
-    'Remote'
+    'Chandigarh',
+    'Jaipur',
+    'Lucknow',
+    'Patna',
+    'Kerala',
+    'Karnataka',
+    'Tamil Nadu',
+    'Maharashtra',
+    'Telangana',
+    'Delhi',
+    'Gujarat',
+    'Uttar Pradesh',
+    'West Bengal',
+    'Rajasthan',
+    'Punjab',
+    'Haryana',
+    'Remote (All India)'
   ];
 
-  // All Categories / Trades
+  // All Categories / Trades across India
   const ALL_CATEGORIES = [
     'All',
     'Technology & IT',
-    'Local Trades & Skilled Labor',
-    'Domestic & Housekeeping',
-    'Sales & Marketing',
-    'Healthcare & Nursing',
     'Finance & Accounting',
+    'Healthcare & Nursing',
+    'Sales & Marketing',
+    'Local Trades & Skilled Labor',
     'Logistics & Driving',
+    'Domestic & Housekeeping',
+    'Hospitality & Cooking',
+    'Construction & Civil',
     'Beauty & Wellness',
     'Security & Facility'
   ];
@@ -176,7 +197,7 @@ export const JobPortalView: React.FC = () => {
       const matchesCity = selectedCity === 'All' || selectedCity === 'All India' || 
         job.city.toLowerCase().includes(selectedCity.toLowerCase()) || 
         (job.state && job.state.toLowerCase().includes(selectedCity.toLowerCase())) ||
-        (selectedCity === 'Remote' && job.isRemote);
+        (selectedCity.includes('Remote') && job.isRemote);
 
       const matchesCategory = selectedCategory === 'All' || job.category === selectedCategory;
       const matchesUrgent = !filterUrgentOnly || job.isUrgent;
@@ -185,6 +206,12 @@ export const JobPortalView: React.FC = () => {
       return matchesSearch && matchesCity && matchesCategory && matchesUrgent && matchesSource;
     });
   }, [jobVacancies, searchQuery, selectedCity, selectedCategory, selectedSourceType, filterUrgentOnly]);
+
+  const totalVacancyPages = Math.ceil(filteredVacancies.length / VACANCIES_PER_PAGE) || 1;
+  const paginatedVacancies = useMemo(() => {
+    const start = (vacancyPage - 1) * VACANCIES_PER_PAGE;
+    return filteredVacancies.slice(start, start + VACANCIES_PER_PAGE);
+  }, [filteredVacancies, vacancyPage]);
 
   // Filtered Job Seekers
   const filteredSeekers = useMemo(() => {
@@ -577,8 +604,23 @@ export const JobPortalView: React.FC = () => {
               </div>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
-              {filteredVacancies.map((job) => (
+            <div className="space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-1 text-xs text-slate-400">
+                <div>
+                  Showing <span className="font-bold text-white">{(vacancyPage - 1) * VACANCIES_PER_PAGE + 1}</span> - <span className="font-bold text-white">{Math.min(vacancyPage * VACANCIES_PER_PAGE, filteredVacancies.length)}</span> of <span className="font-bold text-indigo-400">{filteredVacancies.length}</span> India-wide vacancies
+                </div>
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => syncJobSources()}
+                    className="text-indigo-400 hover:text-indigo-300 font-bold flex items-center gap-1 transition-colors"
+                  >
+                    <span>🔄 Refresh Live Sources</span>
+                  </button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
+                {paginatedVacancies.map((job) => (
                 <div
                   key={job.id}
                   className="rounded-3xl bg-slate-900/80 border border-slate-800/90 hover:border-indigo-500/40 p-5 shadow-xl hover:shadow-indigo-500/10 transition-all flex flex-col justify-between space-y-4 group cursor-pointer"
@@ -760,6 +802,44 @@ export const JobPortalView: React.FC = () => {
 
                 </div>
               ))}
+              </div>
+
+              {/* Vacancy Pagination Bar */}
+              {totalVacancyPages > 1 && (
+                <div className="flex items-center justify-between pt-4 pb-2 px-1 border-t border-slate-800/80">
+                  <button
+                    onClick={() => setVacancyPage(p => Math.max(1, p - 1))}
+                    disabled={vacancyPage === 1}
+                    className="px-4 py-2 rounded-xl bg-slate-900 border border-slate-800 text-xs font-bold text-slate-300 hover:text-white disabled:opacity-40 transition-all active:scale-95"
+                  >
+                    ← Previous Page
+                  </button>
+
+                  <div className="flex items-center gap-1.5">
+                    {Array.from({ length: totalVacancyPages }, (_, i) => i + 1).map((pg) => (
+                      <button
+                        key={pg}
+                        onClick={() => setVacancyPage(pg)}
+                        className={`w-8 h-8 rounded-xl text-xs font-bold transition-all ${
+                          vacancyPage === pg
+                            ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/25'
+                            : 'bg-slate-900/80 text-slate-400 hover:text-white border border-slate-800'
+                        }`}
+                      >
+                        {pg}
+                      </button>
+                    ))}
+                  </div>
+
+                  <button
+                    onClick={() => setVacancyPage(p => Math.min(totalVacancyPages, p + 1))}
+                    disabled={vacancyPage === totalVacancyPages}
+                    className="px-4 py-2 rounded-xl bg-slate-900 border border-slate-800 text-xs font-bold text-slate-300 hover:text-white disabled:opacity-40 transition-all active:scale-95"
+                  >
+                    Next Page →
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>

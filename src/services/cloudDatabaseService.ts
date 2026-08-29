@@ -1892,13 +1892,17 @@ export async function updateCloudJobSource(sourceId: string, isActive: boolean):
   return updated;
 }
 
-export async function syncAllCloudJobSources(targetSourceId?: string): Promise<{
+export async function syncAllCloudJobSources(options?: string | { targetSourceId?: string; isFullSync?: boolean }): Promise<{
   sources: JobSource[];
   vacancies: JobVacancy[];
-  stats: { totalImported: number; mergedDuplicates: number; activeCount: number };
+  stats: { totalImported: number; mergedDuplicates: number; activeCount: number; pagesScannedTotal?: number };
 }> {
+  const syncOptions = typeof options === 'string' 
+    ? { targetSourceId: options } 
+    : (options || {});
+
   const { runJobAggregationSync } = await import('./jobs/jobAggregatorService');
-  const syncResult = await runJobAggregationSync(targetSourceId);
+  const syncResult = await runJobAggregationSync(syncOptions);
 
   // Combine with existing direct user postings
   const existingVacancies = await getCloudJobVacancies();
@@ -1929,7 +1933,8 @@ export async function syncAllCloudJobSources(targetSourceId?: string): Promise<{
     stats: {
       totalImported: syncResult.totalImported,
       mergedDuplicates: syncResult.mergedDuplicates,
-      activeCount: combinedVacancies.length
+      activeCount: combinedVacancies.length,
+      pagesScannedTotal: syncResult.pagesScannedTotal
     }
   };
 }
@@ -2050,6 +2055,22 @@ export async function toggleCloudSaveJob(id: string): Promise<JobVacancy[]> {
   } catch {}
 
   return currentList;
+}
+
+export async function saveCloudJobVacancies(vacancies: JobVacancy[]): Promise<JobVacancy[]> {
+  try {
+    localStorage.setItem(JOB_VACANCIES_STORAGE_KEY, JSON.stringify(vacancies));
+  } catch {}
+
+  if (supabase && !isTestEnv) {
+    try {
+      await supabase.from('job_vacancies').upsert(vacancies);
+    } catch (err) {
+      console.warn('Supabase upsert job_vacancies error:', err);
+    }
+  }
+
+  return vacancies;
 }
 
 /* ===== Job Seekers CRUD ===== */

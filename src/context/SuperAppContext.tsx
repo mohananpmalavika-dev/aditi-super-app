@@ -181,7 +181,7 @@ interface SuperAppContextType {
   jobVacancies: JobVacancy[];
   jobSources: JobSource[];
   toggleJobSource: (id: string, isActive: boolean) => Promise<void>;
-  syncJobSources: (targetSourceId?: string) => Promise<{ totalImported: number; mergedDuplicates: number; activeCount: number }>;
+  syncJobSources: (options?: string | { targetSourceId?: string; isFullSync?: boolean }) => Promise<{ totalImported: number; mergedDuplicates: number; activeCount: number; pagesScannedTotal?: number }>;
   addJobVacancy: (newJob: Omit<JobVacancy, 'id'> | JobVacancy) => Promise<JobVacancy>;
   updateJobVacancy: (id: string, updates: Partial<JobVacancy>) => Promise<void>;
   deleteJobVacancy: (id: string) => Promise<void>;
@@ -851,9 +851,9 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     showToast(`Data source status updated.`);
   };
 
-  const syncJobSources = async (targetSourceId?: string) => {
+  const syncJobSources = async (options?: string | { targetSourceId?: string; isFullSync?: boolean }) => {
     showToast('🔄 Synchronizing Pan-India Job Data Sources...');
-    const result = await syncAllCloudJobSources(targetSourceId);
+    const result = await syncAllCloudJobSources(options);
     setJobSources(result.sources);
     setJobVacancies(result.vacancies);
     confetti({ particleCount: 80, spread: 75, origin: { y: 0.6 } });

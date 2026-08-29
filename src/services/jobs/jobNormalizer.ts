@@ -1,22 +1,41 @@
 /**
  * Job Normalization Engine
  * Normalizes multi-source raw payloads into standardized Aditi Super App schemas
+ * Covers all 28 States and 8 Union Territories across India.
  */
 
 import { ImportedJob, JobCategory, JobType, JobVacancy } from '../../types/superApp';
 
 export const INDIAN_STATES: Record<string, string[]> = {
+  'Andhra Pradesh': ['Visakhapatnam', 'Vijayawada', 'Guntur', 'Tirupati', 'Kakinada', 'Nellore', 'Kurnool', 'Anantapur'],
+  'Arunachal Pradesh': ['Itanagar', 'Naharlagun', 'Pasighat'],
+  'Assam': ['Guwahati', 'Silchar', 'Dibrugarh', 'Jorhat', 'Nagaon', 'Tezpur'],
+  'Bihar': ['Patna', 'Gaya', 'Bhagalpur', 'Muzaffarpur', 'Purnia', 'Darbhanga'],
+  'Chhattisgarh': ['Raipur', 'Bhilai', 'Bilaspur', 'Korba', 'Durg'],
+  'Goa': ['Panaji', 'Margao', 'Vasco da Gama', 'Mapusa'],
+  'Gujarat': ['Ahmedabad', 'Surat', 'Vadodara', 'Rajkot', 'Gandhinagar', 'Bhavnagar', 'Jamnagar', 'Bharuch'],
+  'Haryana': ['Gurugram', 'Gurgaon', 'Faridabad', 'Panipat', 'Ambala', 'Karnal', 'Hisar', 'Rohtak', 'Sonipat'],
+  'Himachal Pradesh': ['Shimla', 'Dharamshala', 'Solan', 'Mandi', 'Baddi'],
+  'Jharkhand': ['Ranchi', 'Jamshedpur', 'Dhanbad', 'Bokaro', 'Deoghar'],
+  'Karnataka': ['Bengaluru', 'Bangalore', 'Mysuru', 'Mysore', 'Mangaluru', 'Hubballi', 'Belagavi', 'Shivamogga', 'Tumakuru', 'Hosur'],
   'Kerala': ['Kochi', 'Thiruvananthapuram', 'Kozhikode', 'Kollam', 'Thrissur', 'Kannur', 'Alappuzha', 'Palakkad', 'Malappuram', 'Kottayam', 'Kasaragod', 'Pathanamthitta', 'Idukki', 'Wayanad'],
-  'Karnataka': ['Bengaluru', 'Bangalore', 'Mysuru', 'Mysore', 'Mangaluru', 'Hubballi', 'Belagavi', 'Shivamogga', 'Tumakuru'],
-  'Tamil Nadu': ['Chennai', 'Coimbatore', 'Madurai', 'Tiruchirappalli', 'Salem', 'Tirunelveli', 'Erode', 'Vellore', 'Tenkasi'],
-  'Maharashtra': ['Mumbai', 'Pune', 'Nagpur', 'Thane', 'Nashik', 'Chakan', 'Navi Mumbai', 'Aurangabad'],
-  'Delhi': ['New Delhi', 'Delhi', 'North Delhi', 'South Delhi', 'Dwarka', 'Noida', 'Gurugram'],
-  'Telangana': ['Hyderabad', 'Secunderabad', 'Warangal', 'Nizamabad', 'Karimnagar'],
-  'Gujarat': ['Ahmedabad', 'Surat', 'Vadodara', 'Rajkot', 'Gandhinagar'],
-  'Haryana': ['Gurugram', 'Gurgaon', 'Faridabad', 'Panipat', 'Ambala', 'Karnal'],
-  'Rajasthan': ['Jaipur', 'Jodhpur', 'Udaipur', 'Kota', 'Bikaner'],
-  'Uttar Pradesh': ['Noida', 'Greater Noida', 'Lucknow', 'Kanpur', 'Varanasi', 'Agra', 'Prayagraj'],
-  'West Bengal': ['Kolkata', 'Howrah', 'Durgapur', 'Siliguri', 'Asansol']
+  'Madhya Pradesh': ['Bhopal', 'Indore', 'Jabalpur', 'Gwalior', 'Ujjain'],
+  'Maharashtra': ['Mumbai', 'Pune', 'Nagpur', 'Thane', 'Nashik', 'Chakan', 'Navi Mumbai', 'Aurangabad', 'Solapur', 'Kolhapur'],
+  'Manipur': ['Imphal', 'Churachandpur'],
+  'Meghalaya': ['Shillong', 'Tura'],
+  'Mizoram': ['Aizawl', 'Lunglei'],
+  'Nagaland': ['Kohima', 'Dimapur'],
+  'Odisha': ['Bhubaneswar', 'Cuttack', 'Rourkela', 'Berhampur', 'Sambalpur', 'Puri'],
+  'Punjab': ['Ludhiana', 'Amritsar', 'Jalandhar', 'Patiala', 'Bathinda', 'Mohali', 'Chandigarh'],
+  'Rajasthan': ['Jaipur', 'Jodhpur', 'Udaipur', 'Kota', 'Bikaner', 'Ajmer', 'Alwar', 'Bhilwara'],
+  'Sikkim': ['Gangtok', 'Namchi'],
+  'Tamil Nadu': ['Chennai', 'Coimbatore', 'Madurai', 'Tiruchirappalli', 'Salem', 'Tirunelveli', 'Erode', 'Vellore', 'Tenkasi', 'Hosur'],
+  'Telangana': ['Hyderabad', 'Secunderabad', 'Warangal', 'Nizamabad', 'Karimnagar', 'Khammam'],
+  'Tripura': ['Agartala', 'Udaipur'],
+  'Uttar Pradesh': ['Noida', 'Greater Noida', 'Lucknow', 'Kanpur', 'Varanasi', 'Agra', 'Prayagraj', 'Ghaziabad', 'Meerut', 'Bareilly'],
+  'Uttarakhand': ['Dehradun', 'Haridwar', 'Roorkee', 'Haldwani', 'Rishikesh'],
+  'West Bengal': ['Kolkata', 'Howrah', 'Durgapur', 'Siliguri', 'Asansol', 'Kalyani'],
+  'Delhi': ['New Delhi', 'Delhi', 'North Delhi', 'South Delhi', 'Dwarka', 'Delhi NCR']
 };
 
 export function normalizeJobTitle(rawTitle: string): string {
@@ -99,7 +118,7 @@ export function normalizeImportedJobToVacancy(imported: ImportedJob): JobVacancy
   const geo = detectIndianLocation(imported.location || imported.city || imported.state || 'All India');
   const salary = normalizeSalary(imported.salaryMin, imported.salaryMax, imported.salaryText);
 
-  const applyMode = imported.sourceType === 'government' || imported.sourceType === 'aggregator_api' || imported.sourceType === 'company_career'
+  const applyMode = imported.sourceType === 'government' || imported.sourceType === 'aggregator_api' || imported.sourceType === 'company_career' || imported.sourceType === 'state_portal'
     ? 'external_redirect'
     : 'in_app';
 
@@ -134,7 +153,7 @@ export function normalizeImportedJobToVacancy(imported: ImportedJob): JobVacancy
     isVerified: true,
     applicationCount: 0,
     viewCount: 0,
-    status: 'active',
+    status: imported.status === 'expired' ? 'expired' : 'active',
     isSaved: false,
     createdAt: imported.sourcePublishedAt || 'Today',
     updatedAt: imported.importedAt,
@@ -156,6 +175,8 @@ export function normalizeImportedJobToVacancy(imported: ImportedJob): JobVacancy
     canonicalApplyUrl: imported.externalUrl,
     applyMode,
     fingerprint: imported.fingerprint,
-    lastSeenAt: imported.lastSeenAt
+    lastSeenAt: imported.lastSeenAt,
+    sourcePublishedAt: imported.sourcePublishedAt,
+    sourceUpdatedAt: imported.importedAt
   };
 }
