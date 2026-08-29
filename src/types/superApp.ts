@@ -10,7 +10,6 @@ export type MiniAppId =
   | 'chat'
   | 'productivity'
   | 'utilities'
-  | 'legal'
   | 'settings';
 
 export interface UserProfile {

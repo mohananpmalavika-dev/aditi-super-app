@@ -13,7 +13,6 @@ import {
   CheckSquare, 
   Wrench, 
   Settings,
-  Scale,
   Search
 } from 'lucide-react';
 import { MiniAppId } from '../../types/superApp';
@@ -119,15 +118,6 @@ const MINI_APPS: MiniAppMeta[] = [
     icon: <CheckSquare className="w-5 h-5 sm:w-6 sm:h-6" />,
     description: 'Kanban Board, Calendar Schedule & Habit Streak Tracker',
     color: 'from-indigo-600 to-blue-700'
-  },
-  {
-    id: 'legal',
-    name: 'Legal & Court Portal',
-    category: 'daily',
-    icon: <Scale className="w-5 h-5 sm:w-6 sm:h-6" />,
-    description: 'FIR Lookup, Court Case Docket, Media Defamation Notices & Quashing Blueprint',
-    badge: 'Legal AI',
-    color: 'from-amber-600 to-orange-700'
   },
   {
     id: 'settings',

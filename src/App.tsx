@@ -21,7 +21,6 @@ import { LiveChatMessenger } from './components/chat/LiveChatMessenger';
 import { TasksAndCalendar } from './components/productivity/TasksAndCalendar';
 import { UtilitiesView } from './components/utilities/UtilitiesView';
 import { SettingsView } from './components/settings/SettingsView';
-import { LegalPortalView } from './components/legal/LegalPortalView';
 import { DeviceLockScreen } from './components/auth/DeviceLockScreen';
 
 const SuperAppContent: React.FC = () => {
@@ -74,8 +73,6 @@ const SuperAppContent: React.FC = () => {
         return <TasksAndCalendar />;
       case 'utilities':
         return <UtilitiesView />;
-      case 'legal':
-        return <LegalPortalView />;
       case 'settings':
         return <SettingsView />;
       case 'brain':
