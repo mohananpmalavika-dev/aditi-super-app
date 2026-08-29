@@ -56,13 +56,10 @@ describe('Job Portal & Local Worker Marketplace Module', () => {
   });
 
   describe('1. Job Vacancies (Recruiter Openings)', () => {
-    it('returns default initial vacancies including verified Infopark Kochi openings', async () => {
+    it('initializes with a clean database state and fetches vacancies dynamically', async () => {
       const vacancies = await getCloudJobVacancies();
-      expect(vacancies.length).toBeGreaterThanOrEqual(10);
-      expect(vacancies.some(j => j.location.includes('Infopark') && j.city === 'Kochi')).toBe(true);
-      expect(vacancies.some(j => j.company.includes('Thinkpalm') || j.company.includes('Experion'))).toBe(true);
-      expect(vacancies.some(j => j.company.includes('Tecforz') || j.company.includes('AlignMinds'))).toBe(true);
-      expect(vacancies.some(j => j.category === 'Technology & IT')).toBe(true);
+      expect(Array.isArray(vacancies)).toBe(true);
+      expect(vacancies.length).toBe(0);
     });
 
     it('allows a recruiter to post a new job vacancy', async () => {
@@ -99,8 +96,22 @@ describe('Job Portal & Local Worker Marketplace Module', () => {
     });
 
     it('updates existing job vacancy', async () => {
-      const vacancies = await getCloudJobVacancies();
-      const targetId = vacancies[0].id;
+      const createdList = await createCloudJobVacancy({
+        title: 'Temporary Test Job',
+        company: 'Test Org',
+        category: 'Technology & IT',
+        jobType: 'Full-time',
+        location: 'Test Location',
+        city: 'Kochi',
+        salaryFormatted: '₹40,000 / mo',
+        experienceRequired: '1 Year',
+        qualificationRequired: 'B.Tech',
+        description: 'Test Description',
+        skills: ['TypeScript'],
+        contactName: 'Test HR',
+        openingsCount: 2
+      });
+      const targetId = createdList[0].id;
 
       const updated = await updateCloudJobVacancy(targetId, {
         salaryFormatted: '₹60,000 - ₹90,000 / mo',
@@ -112,8 +123,22 @@ describe('Job Portal & Local Worker Marketplace Module', () => {
     });
 
     it('toggles saved bookmark state and deletes a job vacancy', async () => {
-      const vacancies = await getCloudJobVacancies();
-      const targetId = vacancies[0].id;
+      const createdList = await createCloudJobVacancy({
+        title: 'Bookmark Test Job',
+        company: 'Test Org',
+        category: 'Technology & IT',
+        jobType: 'Full-time',
+        location: 'Test Location',
+        city: 'Kochi',
+        salaryFormatted: '₹50,000 / mo',
+        experienceRequired: '2 Years',
+        qualificationRequired: 'B.Tech',
+        description: 'Test Description',
+        skills: ['React'],
+        contactName: 'Test HR',
+        openingsCount: 1
+      });
+      const targetId = createdList[0].id;
 
       // Toggle Bookmark
       const savedList = await toggleCloudSaveJob(targetId);
