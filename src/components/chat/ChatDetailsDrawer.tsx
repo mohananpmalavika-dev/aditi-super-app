@@ -14,7 +14,9 @@ import {
   UserCheck,
   UserPlus,
   UserMinus,
-  ShieldCheck
+  ShieldCheck,
+  Trash2,
+  AlertTriangle
 } from 'lucide-react';
 import { ChatConversation } from '../../types/superApp';
 import { getSafeAvatarUrl, handleAvatarError } from '../../utils/avatarUtils';
@@ -28,6 +30,8 @@ interface ChatDetailsDrawerProps {
   onOpenEmail: () => void;
   onStartCall: (video: boolean) => void;
   onToggleFriend?: () => void;
+  onClearHistory?: () => void;
+  onDeleteConversation?: () => void;
 }
 
 export const ChatDetailsDrawer: React.FC<ChatDetailsDrawerProps> = ({
@@ -38,7 +42,9 @@ export const ChatDetailsDrawer: React.FC<ChatDetailsDrawerProps> = ({
   onReportUser,
   onOpenEmail,
   onStartCall,
-  onToggleFriend
+  onToggleFriend,
+  onClearHistory,
+  onDeleteConversation
 }) => {
   if (!isOpen) return null;
 
@@ -207,6 +213,35 @@ export const ChatDetailsDrawer: React.FC<ChatDetailsDrawerProps> = ({
               <p className="text-[11px] text-slate-400 leading-relaxed">
                 Messages and calls are secured with WebRTC direct peer-to-peer tunnels and server-enforced disappearing timers.
               </p>
+            </div>
+
+            {/* Chat History & Conversation Management */}
+            <div className="p-3.5 rounded-2xl bg-rose-950/20 border border-rose-500/20 space-y-2.5">
+              <span className="text-[11px] font-black text-rose-400 uppercase tracking-wider block">
+                Chat & History Management
+              </span>
+
+              {onClearHistory && (
+                <button
+                  type="button"
+                  onClick={onClearHistory}
+                  className="w-full p-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-left text-xs font-bold text-slate-200 hover:text-white flex items-center gap-2 transition-colors"
+                >
+                  <Trash2 className="w-4 h-4 text-amber-400" />
+                  <span>Clear Chat Message History</span>
+                </button>
+              )}
+
+              {onDeleteConversation && (
+                <button
+                  type="button"
+                  onClick={onDeleteConversation}
+                  className="w-full p-2.5 rounded-xl bg-rose-950/40 hover:bg-rose-900/60 border border-rose-500/40 text-left text-xs font-bold text-rose-300 hover:text-white flex items-center gap-2 transition-colors"
+                >
+                  <AlertTriangle className="w-4 h-4 text-rose-400" />
+                  <span>Delete Entire Conversation</span>
+                </button>
+              )}
             </div>
 
             {/* Security, Block & Unblock Controls */}

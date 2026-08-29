@@ -1961,18 +1961,21 @@ export async function getCloudJobVacancies(): Promise<JobVacancy[]> {
     }
   } catch {}
 
-  // Auto-sync initial Pan-India aggregator feeds (NCS, State Portals, Jooble, Adzuna, Corporate ATS)
-  try {
-    const { runJobAggregationSync } = await import('./jobs/jobAggregatorService');
-    const syncRes = await runJobAggregationSync();
-    if (syncRes.unifiedJobs && syncRes.unifiedJobs.length > 0) {
-      try { localStorage.setItem(JOB_VACANCIES_STORAGE_KEY, JSON.stringify(syncRes.unifiedJobs)); } catch {}
-      if (supabase && !isTestEnv) {
-        try { await supabase.from('job_vacancies').upsert(syncRes.unifiedJobs); } catch {}
+  // Auto-sync initial Pan-India aggregator feeds in browser runtime (NCS, State Portals, Jooble, Adzuna, Corporate ATS)
+  const isTest = typeof window === 'undefined' || (typeof (globalThis as any).process !== 'undefined' && (globalThis as any).process?.env?.NODE_ENV === 'test');
+  if (!isTest) {
+    try {
+      const { runJobAggregationSync } = await import('./jobs/jobAggregatorService');
+      const syncRes = await runJobAggregationSync();
+      if (syncRes.unifiedJobs && syncRes.unifiedJobs.length > 0) {
+        try { localStorage.setItem(JOB_VACANCIES_STORAGE_KEY, JSON.stringify(syncRes.unifiedJobs)); } catch {}
+        if (supabase) {
+          try { await supabase.from('job_vacancies').upsert(syncRes.unifiedJobs); } catch {}
+        }
+        return syncRes.unifiedJobs;
       }
-      return syncRes.unifiedJobs;
-    }
-  } catch {}
+    } catch {}
+  }
 
   return [];
 }

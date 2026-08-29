@@ -244,6 +244,8 @@ interface SuperAppContextType {
   toggleMuteChat: (chatId: string) => void;
   setChatWallpaper: (chatId: string, wallpaper: string) => void;
   clearChatHistory: (chatId: string) => void;
+  deleteChatConversation: (chatId: string) => void;
+  clearAllChatHistory: () => void;
   editChatMessage: (chatId: string, messageId: string, newText: string) => void;
   deleteChatMessage: (chatId: string, messageId: string, forEveryone: boolean) => void;
   pinMessageToChat: (chatId: string, message: ChatMessage) => void;
@@ -1782,17 +1784,6 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     showToast('🎨 Chat wallpaper theme updated!');
   };
 
-  const clearChatHistory = (chatId: string) => {
-    setChats((prev) =>
-      prev.map((c) =>
-        c.id === chatId
-          ? { ...c, messages: [], lastMessage: 'Chat history cleared' }
-          : c
-      )
-    );
-    showToast('🗑️ Chat history cleared.');
-  };
-
   const editChatMessage = (chatId: string, messageId: string, newText: string) => {
     if (!newText.trim()) return;
     const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -1860,6 +1851,39 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       })
     );
     showToast(forEveryone ? '🗑️ Message deleted for everyone.' : '🗑️ Message deleted for you.');
+  };
+
+  const clearChatHistory = (chatId: string) => {
+    setChats((prev) =>
+      prev.map((c) => {
+        if (c.id === chatId) {
+          return {
+            ...c,
+            lastMessage: '',
+            messages: [],
+            unreadCount: 0,
+            pinnedMessages: []
+          };
+        }
+        return c;
+      })
+    );
+    showToast('🗑️ Chat message history cleared.');
+  };
+
+  const deleteChatConversation = (chatId: string) => {
+    setChats((prev) => prev.filter((c) => c.id !== chatId));
+    if (activeChatId === chatId) {
+      setActiveChatId('');
+    }
+    showToast('🗑️ Conversation deleted.');
+  };
+
+  const clearAllChatHistory = () => {
+    setChats([]);
+    setActiveChatId('');
+    localStorage.removeItem('omnilife_chats');
+    showToast('🗑️ Entire chat history permanently deleted.');
   };
 
   const pinMessageToChat = (chatId: string, message: ChatMessage) => {
@@ -2130,6 +2154,8 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         toggleMuteChat,
         setChatWallpaper,
         clearChatHistory,
+        deleteChatConversation,
+        clearAllChatHistory,
         editChatMessage,
         deleteChatMessage,
         pinMessageToChat,

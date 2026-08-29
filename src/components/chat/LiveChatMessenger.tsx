@@ -58,6 +58,8 @@ import {
   Globe,
   Languages,
   ChevronDown,
+  AlertTriangle,
+  Settings,
   X
 } from 'lucide-react';
 import { useSuperApp } from '../../context/SuperAppContext';
@@ -127,6 +129,8 @@ export const LiveChatMessenger: React.FC = () => {
     toggleMuteChat,
     setChatWallpaper,
     clearChatHistory,
+    deleteChatConversation,
+    clearAllChatHistory,
     editChatMessage,
     deleteChatMessage,
     pinMessageToChat,
@@ -152,6 +156,14 @@ export const LiveChatMessenger: React.FC = () => {
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showSecretBar, setShowSecretBar] = useState(false);
   const [secretTimer, setSecretTimer] = useState<number | null>(null);
+
+  // Chat History & Deletion Confirmation State
+  const [confirmModal, setConfirmModal] = useState<{
+    type: 'clear_chat' | 'delete_chat' | 'clear_all';
+    chatId?: string;
+    participantName?: string;
+  } | null>(null);
+  const [showSidebarSettingsMenu, setShowSidebarSettingsMenu] = useState(false);
 
   // New Production Messenger Modals & Drawers
   const [messageInfoModalOpen, setMessageInfoModalOpen] = useState(false);
@@ -767,6 +779,41 @@ export const LiveChatMessenger: React.FC = () => {
               >
                 <Users className="w-3.5 h-3.5" />
               </button>
+
+              {/* Chat Privacy & Global History Management Menu */}
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setShowSidebarSettingsMenu(!showSidebarSettingsMenu)}
+                  className={`p-1.5 rounded-xl border transition-colors ${
+                    showSidebarSettingsMenu
+                      ? 'bg-rose-600 text-white border-rose-500 shadow-md'
+                      : 'bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white border-slate-700'
+                  }`}
+                  title="Chat Privacy & History Settings"
+                >
+                  <Settings className="w-3.5 h-3.5" />
+                </button>
+
+                {showSidebarSettingsMenu && (
+                  <div className="absolute right-0 top-9 bg-slate-900 border border-slate-800 rounded-2xl p-1.5 shadow-2xl z-50 w-56 space-y-1 animate-in fade-in zoom-in-95">
+                    <div className="px-2.5 py-1 text-[10px] font-black text-slate-400 uppercase tracking-wider">
+                      Chat Privacy & Data
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowSidebarSettingsMenu(false);
+                        setConfirmModal({ type: 'clear_all' });
+                      }}
+                      className="w-full flex items-center gap-2 px-2.5 py-2 rounded-xl text-xs font-bold text-rose-400 hover:bg-rose-950/50 hover:text-rose-300 transition-colors text-left"
+                    >
+                      <Trash2 className="w-3.5 h-3.5 text-rose-400 flex-shrink-0" />
+                      <span>Delete All Chat History</span>
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
@@ -872,7 +919,7 @@ export const LiveChatMessenger: React.FC = () => {
               <button
                 key={chat.id}
                 onClick={() => handleSelectChat(chat.id)}
-                className={`w-full p-3.5 text-left transition-all flex items-center gap-3 relative ${
+                className={`w-full p-3.5 text-left transition-all flex items-center gap-3 relative group ${
                   isSelected
                     ? 'bg-indigo-600/15 border-l-4 border-indigo-500'
                     : 'hover:bg-slate-900/50'
@@ -911,7 +958,24 @@ export const LiveChatMessenger: React.FC = () => {
                         </span>
                       )}
                     </div>
-                    <span className="text-[10px] text-slate-500 flex-shrink-0">{chat.lastMessageTime}</span>
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                      <span className="text-[10px] text-slate-500 group-hover:hidden">{chat.lastMessageTime}</span>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setConfirmModal({
+                            type: 'delete_chat',
+                            chatId: chat.id,
+                            participantName: chat.participantName
+                          });
+                        }}
+                        className="hidden group-hover:flex p-1 rounded-lg hover:bg-rose-950/70 text-slate-500 hover:text-rose-400 border border-transparent hover:border-rose-500/30 transition-all"
+                        title="Delete conversation"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   </div>
                   <p className="text-[11px] text-indigo-400 font-medium truncate">{chat.roleOrContext}</p>
                   <p className="text-xs text-slate-400 truncate mt-0.5">{chat.lastMessage}</p>
@@ -1295,6 +1359,42 @@ export const LiveChatMessenger: React.FC = () => {
                       >
                         <Info className="w-4 h-4 text-indigo-400" />
                         <span>Contact Info & Details</span>
+                      </button>
+
+                      <div className="border-t border-slate-800 my-1" />
+
+                      {/* Clear Chat History */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowHeaderMoreMenu(false);
+                          setConfirmModal({
+                            type: 'clear_chat',
+                            chatId: activeChat.id,
+                            participantName: activeChat.participantName
+                          });
+                        }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-amber-400 hover:bg-amber-950/40 transition-colors text-left"
+                      >
+                        <Trash2 className="w-4 h-4 text-amber-400" />
+                        <span>Clear Chat History</span>
+                      </button>
+
+                      {/* Delete Conversation */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowHeaderMoreMenu(false);
+                          setConfirmModal({
+                            type: 'delete_chat',
+                            chatId: activeChat.id,
+                            participantName: activeChat.participantName
+                          });
+                        }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-rose-400 hover:bg-rose-950/40 transition-colors text-left"
+                      >
+                        <AlertTriangle className="w-4 h-4 text-rose-400" />
+                        <span>Delete Conversation</span>
                       </button>
 
                     </div>
@@ -2644,6 +2744,24 @@ export const LiveChatMessenger: React.FC = () => {
             toggleFriendStatus(activeChat.id);
           }
         }}
+        onClearHistory={() => {
+          if (activeChat) {
+            setConfirmModal({
+              type: 'clear_chat',
+              chatId: activeChat.id,
+              participantName: activeChat.participantName
+            });
+          }
+        }}
+        onDeleteConversation={() => {
+          if (activeChat) {
+            setConfirmModal({
+              type: 'delete_chat',
+              chatId: activeChat.id,
+              participantName: activeChat.participantName
+            });
+          }
+        }}
         onReportUser={() => {
           if (activeChat) {
             showToast(`🛡️ Report filed for ${activeChat.participantName}.`);
@@ -2819,6 +2937,68 @@ export const LiveChatMessenger: React.FC = () => {
             setAiAssistantSelectedMsg(null);
           }}
         />
+      )}
+
+      {/* Chat & History Deletion Confirmation Modal */}
+      {confirmModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in">
+          <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-2xl space-y-4 animate-in zoom-in-95">
+            <div className="w-14 h-14 rounded-2xl bg-rose-500/15 text-rose-400 border border-rose-500/30 flex items-center justify-center mx-auto shadow-lg shadow-rose-500/10">
+              <AlertTriangle className="w-7 h-7" />
+            </div>
+
+            <div className="text-center space-y-1.5">
+              <h3 className="text-lg font-black text-white">
+                {confirmModal.type === 'clear_all'
+                  ? 'Delete Entire Chat History?'
+                  : confirmModal.type === 'delete_chat'
+                  ? `Delete Conversation with ${confirmModal.participantName || 'this contact'}?`
+                  : `Clear Chat History with ${confirmModal.participantName || 'this contact'}?`}
+              </h3>
+              <p className="text-xs text-slate-400 leading-relaxed max-w-sm mx-auto">
+                {confirmModal.type === 'clear_all'
+                  ? '⚠️ Warning: This will permanently delete all conversations, messages, media, and attachments for all contacts. This action is irreversible.'
+                  : confirmModal.type === 'delete_chat'
+                  ? 'This will completely remove the conversation thread and delete all messages with this contact from your inbox.'
+                  : 'This will delete all messages in this conversation. The contact will remain in your chat list for future messaging.'}
+              </p>
+            </div>
+
+            <div className="flex items-center gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setConfirmModal(null)}
+                className="flex-1 py-3 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (confirmModal.type === 'clear_all') {
+                    clearAllChatHistory();
+                  } else if (confirmModal.type === 'delete_chat' && confirmModal.chatId) {
+                    deleteChatConversation(confirmModal.chatId);
+                  } else if (confirmModal.type === 'clear_chat' && confirmModal.chatId) {
+                    clearChatHistory(confirmModal.chatId);
+                  }
+                  setConfirmModal(null);
+                  setDetailsDrawerOpen(false);
+                }}
+                className="flex-1 py-3 rounded-2xl bg-rose-600 hover:bg-rose-500 text-white font-black text-xs shadow-lg shadow-rose-600/30 flex items-center justify-center gap-2 active:scale-95 transition-all"
+              >
+                <Trash2 className="w-4 h-4" />
+                <span>
+                  {confirmModal.type === 'clear_all'
+                    ? 'Delete All Chats'
+                    : confirmModal.type === 'delete_chat'
+                    ? 'Delete Conversation'
+                    : 'Clear Messages'}
+                </span>
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
     </div>
