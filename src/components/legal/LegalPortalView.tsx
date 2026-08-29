@@ -52,6 +52,9 @@ export const LegalPortalView: React.FC = () => {
   const [firYear, setFirYear] = useState('2024');
   const [stationSearchFilter, setStationSearchFilter] = useState('');
 
+  const [isCustomStation, setIsCustomStation] = useState(false);
+  const [customStationText, setCustomStationText] = useState('');
+
   // Active FIR Record
   const [currentFIR, setCurrentFIR] = useState<FIRRecord>(() => 
     lookupFIRAndCaseStatus('248/2024', 'Cyber Crime Police Station, Kochi City', 'Ernakulam')
@@ -62,22 +65,61 @@ export const LegalPortalView: React.FC = () => {
     return getPoliceStationsByDistrict(districtQuery);
   }, [districtQuery]);
 
-  // Filtered Stations for search
+  // Filtered Stations for search within current district
   const filteredStations = useMemo(() => {
     if (!stationSearchFilter.trim()) return currentDistrictStations;
     const q = stationSearchFilter.toLowerCase();
     return currentDistrictStations.filter(
-      (s) => s.name.toLowerCase().includes(q) || s.nameMalayalam.toLowerCase().includes(q) || s.stationCode.toLowerCase().includes(q)
+      (s) =>
+        s.name.toLowerCase().includes(q) ||
+        s.nameMalayalam.toLowerCase().includes(q) ||
+        s.stationCode.toLowerCase().includes(q) ||
+        s.subDivision.toLowerCase().includes(q)
     );
   }, [currentDistrictStations, stationSearchFilter]);
 
+  // Smart Cross-District Station Suggestions if not found in current district
+  const crossDistrictMatches = useMemo(() => {
+    if (!stationSearchFilter.trim() || filteredStations.length > 0) return [];
+    const q = stationSearchFilter.toLowerCase();
+    const matches: { district: string; station: PoliceStationInfo }[] = [];
+    for (const d of KERALA_POLICE_DISTRICTS_DIRECTORY) {
+      if (d.district === districtQuery) continue;
+      for (const st of d.policeStations) {
+        if (
+          st.name.toLowerCase().includes(q) ||
+          st.nameMalayalam.toLowerCase().includes(q) ||
+          st.stationCode.toLowerCase().includes(q) ||
+          st.subDivision.toLowerCase().includes(q)
+        ) {
+          matches.push({ district: d.district, station: st });
+          if (matches.length >= 3) break;
+        }
+      }
+      if (matches.length >= 3) break;
+    }
+    return matches;
+  }, [districtQuery, stationSearchFilter, filteredStations.length]);
+
   // Selected Station Details
   const selectedStationObj = useMemo(() => {
+    if (isCustomStation && customStationText.trim()) {
+      return {
+        id: 'custom-station',
+        name: customStationText.trim(),
+        nameMalayalam: `${customStationText.trim()} (കേരള പോലീസ്)`,
+        stationCode: 'CUSTOM-PS',
+        magistrateCourt: getDistrictInfo(districtQuery).magistrateCourtDefault,
+        magistrateCourtMalayalam: getDistrictInfo(districtQuery).magistrateCourtDefaultMalayalam,
+        subDivision: `${districtQuery} Sub-Division`,
+        category: 'Rural / Town' as const
+      };
+    }
     return (
       currentDistrictStations.find((s) => s.name === stationQuery || s.nameMalayalam === stationQuery) ||
       currentDistrictStations[0]
     );
-  }, [currentDistrictStations, stationQuery]);
+  }, [currentDistrictStations, stationQuery, isCustomStation, customStationText, districtQuery]);
 
   // Handle District Change (Cascades & Auto-fills Police Station)
   const handleDistrictChange = (newDistrict: string) => {
@@ -88,6 +130,15 @@ export const LegalPortalView: React.FC = () => {
     }
     setStationSearchFilter('');
     showToast(`🏛️ District switched to ${newDistrict}. Police stations updated!`);
+  };
+
+  // Handle cross-district switch
+  const handleSelectCrossDistrictStation = (destDistrict: string, st: PoliceStationInfo) => {
+    setDistrictQuery(destDistrict);
+    setStationQuery(st.name);
+    setStationSearchFilter('');
+    setIsCustomStation(false);
+    showToast(`🏛️ Switched to ${destDistrict} ➔ ${st.name}`);
   };
 
   // Full Formatted FIR Number
@@ -140,7 +191,8 @@ export const LegalPortalView: React.FC = () => {
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     const cleanNum = firNumOnly.trim() ? `${firNumOnly.trim()}/${firYear}` : `101/${firYear}`;
-    const result = lookupFIRAndCaseStatus(cleanNum, stationQuery, districtQuery);
+    const targetStation = isCustomStation && customStationText.trim() ? customStationText.trim() : stationQuery;
+    const result = lookupFIRAndCaseStatus(cleanNum, targetStation, districtQuery);
     setCurrentFIR(result);
     if (result.mediaReports.length > 0) {
       setSelectedMediaId(result.mediaReports[0].id);
@@ -156,6 +208,9 @@ export const LegalPortalView: React.FC = () => {
     setFirYear(parts[1] || '2024');
     setDistrictQuery(preset.district);
     setStationQuery(preset.policeStation);
+    setIsCustomStation(false);
+    setCustomStationText('');
+    setStationSearchFilter('');
     setCurrentFIR(preset);
     if (preset.mediaReports.length > 0) {
       setSelectedMediaId(preset.mediaReports[0].id);
@@ -292,12 +347,14 @@ export const LegalPortalView: React.FC = () => {
           <div className="flex items-center gap-2">
             <span className="text-amber-400 font-black text-xs uppercase tracking-wider flex items-center gap-1.5">
               <Search className="w-3.5 h-3.5" />
-              <span>{lang === 'ml' ? 'പോലീസ് സ്റ്റേഷനും ജില്ലയും സ്വയം പൂരിപ്പിക്കൽ (Auto-Fill Dropdown)' : 'District & Police Station Cascading Auto-Fill'}</span>
+              <span>{lang === 'ml' ? 'കേരളത്തിലെ എല്ലാ പോലീസ് സ്റ്റേഷനുകളും & ജില്ലകളും (Comprehensive Directory)' : 'All Kerala Police Stations & Districts Auto-Fill'}</span>
             </span>
           </div>
-          <span className="text-[10px] text-emerald-400 font-mono font-bold bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/30">
-            ✓ 14 Kerala Districts • 100+ Official Police Stations
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-emerald-400 font-mono font-bold bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/30">
+              ✓ 14 Districts • 350+ Official Police Stations
+            </span>
+          </div>
         </div>
 
         <form onSubmit={handleSearch} className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
@@ -314,36 +371,96 @@ export const LegalPortalView: React.FC = () => {
             >
               {KERALA_POLICE_DISTRICTS_DIRECTORY.map((d) => (
                 <option key={d.district} value={d.district} className="bg-slate-950 text-white py-1">
-                  {d.district} - {d.districtMalayalam}
+                  {d.district} - {d.districtMalayalam} ({d.policeStations.length} stations)
                 </option>
               ))}
             </select>
           </div>
 
-          {/* 2. Police Station Cascading Dropdown */}
+          {/* 2. Police Station Cascading Dropdown + Live Filter & Custom Mode */}
           <div className="sm:col-span-5 space-y-1">
             <div className="flex items-center justify-between">
               <label className="text-[11px] font-bold text-slate-300 block">
                 {lang === 'ml' ? '2. പോലീസ് സ്റ്റേഷൻ (Police Station)' : '2. Police Station *'}
               </label>
-              <span className="text-[10px] text-indigo-300 font-mono">
-                {filteredStations.length} {lang === 'ml' ? 'സ്റ്റേഷനുകൾ' : 'Stations'}
-              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsCustomStation(!isCustomStation);
+                    if (!isCustomStation && !customStationText) {
+                      setCustomStationText(stationQuery);
+                    }
+                  }}
+                  className={`text-[10px] font-bold px-2 py-0.5 rounded transition-all ${
+                    isCustomStation
+                      ? 'bg-amber-500 text-slate-950 font-black shadow-sm'
+                      : 'bg-slate-800 text-indigo-300 hover:text-white border border-slate-700'
+                  }`}
+                >
+                  {isCustomStation 
+                    ? (lang === 'ml' ? '✓ കസ്റ്റം മോഡ്' : '✓ Custom Active')
+                    : (lang === 'ml' ? '➕ മറ്റുള്ളവ ടൈപ്പ് ചെയ്യുക' : '➕ Type Custom')}
+                </button>
+                <span className="text-[10px] text-indigo-300 font-mono">
+                  {filteredStations.length} {lang === 'ml' ? 'സ്റ്റേഷനുകൾ' : 'Stations'}
+                </span>
+              </div>
             </div>
             
-            <div className="space-y-1.5">
-              <select
-                value={stationQuery}
-                onChange={(e) => setStationQuery(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-xs text-white focus:outline-none focus:border-amber-400 cursor-pointer font-medium"
-              >
-                {filteredStations.map((st) => (
-                  <option key={st.id} value={st.name} className="bg-slate-950 text-white py-1">
-                    {st.name} {st.category === 'Cyber Crime' ? '⚡ (Cyber)' : ''}
-                  </option>
-                ))}
-              </select>
-            </div>
+            {isCustomStation ? (
+              <div className="space-y-1">
+                <input
+                  type="text"
+                  value={customStationText}
+                  onChange={(e) => setCustomStationText(e.target.value)}
+                  placeholder={lang === 'ml' ? 'പോലീസ് സ്റ്റേഷന്റെ പേര് ടൈപ്പ് ചെയ്യുക...' : 'Type specific Police Station or Outpost...'}
+                  required
+                  className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-amber-500 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-400 font-semibold"
+                />
+              </div>
+            ) : (
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-1.5">
+                  <div className="relative flex-1">
+                    <input
+                      type="text"
+                      value={stationSearchFilter}
+                      onChange={(e) => setStationSearchFilter(e.target.value)}
+                      placeholder={lang === 'ml' ? '🔍 സ്റ്റേഷൻ സെർച്ച് ചെയ്യുക (ഉദാ: Aluva, Pala, Tanur...)' : '🔍 Filter stations in this district...'}
+                      className="w-full px-2.5 py-1.5 rounded-lg bg-slate-950/80 border border-slate-700/80 text-[11px] text-slate-200 placeholder-slate-500 focus:outline-none focus:border-amber-400"
+                    />
+                    {stationSearchFilter && (
+                      <button
+                        type="button"
+                        onClick={() => setStationSearchFilter('')}
+                        className="absolute right-2 top-1.5 text-xs text-slate-400 hover:text-white"
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                <select
+                  value={stationQuery}
+                  onChange={(e) => setStationQuery(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-xs text-white focus:outline-none focus:border-amber-400 cursor-pointer font-medium"
+                >
+                  {filteredStations.length > 0 ? (
+                    filteredStations.map((st) => (
+                      <option key={st.id} value={st.name} className="bg-slate-950 text-white py-1">
+                        {st.name} {st.category === 'Cyber Crime' ? '⚡ (Cyber)' : ''}
+                      </option>
+                    ))
+                  ) : (
+                    <option value="" disabled className="bg-slate-950 text-slate-400">
+                      {lang === 'ml' ? 'ഈ ജില്ലയിൽ സ്റ്റേഷൻ കണ്ടെത്തിയില്ല' : 'No matching station in this district'}
+                    </option>
+                  )}
+                </select>
+              </div>
+            )}
           </div>
 
           {/* 3. FIR / Crime Number & Year */}
@@ -388,6 +505,33 @@ export const LegalPortalView: React.FC = () => {
             </button>
           </div>
         </form>
+
+        {/* Cross-District Discovery Suggestions */}
+        {crossDistrictMatches.length > 0 && (
+          <div className="p-3 rounded-2xl bg-indigo-950/40 border border-indigo-500/40 space-y-1.5 text-xs animate-in fade-in">
+            <div className="text-[11px] font-bold text-indigo-300 flex items-center gap-1.5">
+              <span>💡</span>
+              <span>
+                {lang === 'ml'
+                  ? `"${stationSearchFilter}" മറ്റ് ജില്ലകളിൽ കണ്ടെത്തി. ജില്ല മാറ്റാൻ ക്ലിക്ക് ചെയ്യുക:`
+                  : `"${stationSearchFilter}" found in other districts. Click to switch:`}
+              </span>
+            </div>
+            <div className="flex items-center gap-2 flex-wrap">
+              {crossDistrictMatches.map(({ district, station }) => (
+                <button
+                  key={`${district}-${station.id}`}
+                  type="button"
+                  onClick={() => handleSelectCrossDistrictStation(district, station)}
+                  className="px-2.5 py-1 rounded-lg bg-indigo-900/60 hover:bg-indigo-700/80 text-white text-[11px] font-bold border border-indigo-400/30 flex items-center gap-1.5 transition-all"
+                >
+                  <span className="text-amber-300">🏛️ {district}:</span>
+                  <span>{station.name}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Live Auto-Fill Jurisdiction Preview Badge */}
         {selectedStationObj && (
