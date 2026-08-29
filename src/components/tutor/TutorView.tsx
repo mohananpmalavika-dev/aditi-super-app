@@ -6,16 +6,20 @@ import {
   Calendar, 
   Clock, 
   MessageSquare, 
-  X 
+  X,
+  Sparkles,
+  Award
 } from 'lucide-react';
 import { useSuperApp } from '../../context/SuperAppContext';
 import { TutorCategory, TutorProfile } from '../../types/superApp';
 import confetti from 'canvas-confetti';
 import { getSafeAvatarUrl, handleAvatarError } from '../../utils/avatarUtils';
+import { CATutorPortal } from '../caTutor/CATutorPortal';
 
 export const TutorView: React.FC = () => {
   const { tutors, bookings, bookTutorSession, startNewChatWith, showToast } = useSuperApp();
   
+  const [tutorViewMode, setTutorViewMode] = useState<'ca_ai' | 'mentors'>('ca_ai');
   const [selectedCategory, setSelectedCategory] = useState<TutorCategory | 'All'>('All');
   const [searchSubject, setSearchSubject] = useState('');
   
@@ -51,30 +55,63 @@ export const TutorView: React.FC = () => {
   return (
     <div className="space-y-4 sm:space-y-6 pb-6 font-sans">
       
-      {/* Tutor Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 sm:p-6 rounded-3xl bg-slate-900/80 border border-slate-800 shadow-xl">
-        <div className="flex items-center gap-3">
-          <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-gradient-to-tr from-emerald-500 via-teal-600 to-cyan-500 flex items-center justify-center text-white shadow-lg shadow-emerald-500/25 flex-shrink-0">
-            <GraduationCap className="w-5 h-5 sm:w-6 sm:h-6" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <h1 className="text-lg sm:text-2xl font-extrabold text-white">Tutor & Skill Academy</h1>
-              <span className="text-[9px] sm:text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                1-on-1 Mentorship
-              </span>
-            </div>
-            <p className="text-xs text-slate-400">Book top certified mentors in AI, Coding, Mathematics, Languages & Music.</p>
-          </div>
-        </div>
+      {/* Flagship Sub-Navigation Switcher */}
+      <div className="flex items-center gap-2 p-1.5 rounded-2xl bg-slate-900 border border-slate-800 shadow-xl overflow-x-auto no-scrollbar">
+        <button
+          onClick={() => setTutorViewMode('ca_ai')}
+          className={`flex items-center gap-2 px-5 py-3 rounded-xl text-xs sm:text-sm font-black transition-all flex-1 justify-center ${
+            tutorViewMode === 'ca_ai'
+              ? 'bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 text-slate-950 shadow-lg shadow-amber-500/25'
+              : 'text-slate-400 hover:text-white'
+          }`}
+        >
+          <Sparkles className="w-4 h-4" />
+          <span>CA Foundation Bilingual AI Tutor (September 2026)</span>
+        </button>
 
-        <div className="p-2.5 sm:p-3 rounded-2xl bg-slate-950 border border-slate-800 flex items-center gap-3 text-xs self-start sm:self-auto">
-          <div>
-            <span className="text-slate-400 font-bold block text-[10px] uppercase">My Scheduled Sessions</span>
-            <span className="text-emerald-400 font-extrabold">{bookings.length} Active Booking{bookings.length !== 1 ? 's' : ''}</span>
-          </div>
-        </div>
+        <button
+          onClick={() => setTutorViewMode('mentors')}
+          className={`flex items-center gap-2 px-5 py-3 rounded-xl text-xs sm:text-sm font-bold transition-all flex-1 justify-center ${
+            tutorViewMode === 'mentors'
+              ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/30'
+              : 'text-slate-400 hover:text-white'
+          }`}
+        >
+          <GraduationCap className="w-4 h-4" />
+          <span>1-on-1 Certified Mentors Directory</span>
+        </button>
       </div>
+
+      {/* Render CA Foundation AI Tutor as Flagship */}
+      {tutorViewMode === 'ca_ai' && <CATutorPortal />}
+
+      {/* Render 1-on-1 Mentorship Directory */}
+      {tutorViewMode === 'mentors' && (
+        <div className="space-y-6 animate-in fade-in">
+          {/* Tutor Header */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 sm:p-6 rounded-3xl bg-slate-900/80 border border-slate-800 shadow-xl">
+            <div className="flex items-center gap-3">
+              <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-gradient-to-tr from-emerald-500 via-teal-600 to-cyan-500 flex items-center justify-center text-white shadow-lg shadow-emerald-500/25 flex-shrink-0">
+                <GraduationCap className="w-5 h-5 sm:w-6 sm:h-6" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h1 className="text-lg sm:text-2xl font-extrabold text-white">Tutor & Skill Academy</h1>
+                  <span className="text-[9px] sm:text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                    1-on-1 Mentorship
+                  </span>
+                </div>
+                <p className="text-xs text-slate-400">Book top certified mentors in AI, Coding, Mathematics, Languages & Music.</p>
+              </div>
+            </div>
+
+            <div className="p-2.5 sm:p-3 rounded-2xl bg-slate-950 border border-slate-800 flex items-center gap-3 text-xs self-start sm:self-auto">
+              <div>
+                <span className="text-slate-400 font-bold block text-[10px] uppercase">My Scheduled Sessions</span>
+                <span className="text-emerald-400 font-extrabold">{bookings.length} Active Booking{bookings.length !== 1 ? 's' : ''}</span>
+              </div>
+            </div>
+          </div>
 
       {/* Category Navigation & Search */}
       <div className="p-3.5 sm:p-4 rounded-3xl bg-slate-900/80 border border-slate-800 shadow-xl space-y-3">
@@ -307,6 +344,9 @@ export const TutorView: React.FC = () => {
             </form>
 
           </div>
+        </div>
+      )}
+
         </div>
       )}
 
