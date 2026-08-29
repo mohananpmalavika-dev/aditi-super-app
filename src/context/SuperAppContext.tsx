@@ -53,6 +53,7 @@ import {
   sendCloudFriendRequest,
   acceptCloudFriendRequest,
   declineCloudFriendRequest,
+  cancelCloudFriendRequest,
   getCloudJobVacancies,
   createCloudJobVacancy,
   updateCloudJobVacancy,
@@ -844,6 +845,12 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const updated = await deleteCloudLocalWorker(id);
     setLocalWorkers(updated);
     showToast('🗑️ Service listing removed.');
+  };
+
+  const toggleSaveLocalWorker = async (id: string) => {
+    const updated = await toggleCloudSaveLocalWorker(id);
+    setLocalWorkers(updated);
+    showToast('Service partner bookmark updated!');
   };
 
   const updateJobVacancy = async (id: string, updates: Partial<JobVacancy>) => {
