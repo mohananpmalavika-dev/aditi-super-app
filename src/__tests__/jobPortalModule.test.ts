@@ -58,12 +58,11 @@ describe('Job Portal & Local Worker Marketplace Module', () => {
   describe('1. Job Vacancies (Recruiter Openings)', () => {
     it('returns default initial vacancies including verified Infopark Kochi openings', async () => {
       const vacancies = await getCloudJobVacancies();
-      expect(vacancies.length).toBeGreaterThanOrEqual(12);
+      expect(vacancies.length).toBeGreaterThanOrEqual(10);
       expect(vacancies.some(j => j.location.includes('Infopark') && j.city === 'Kochi')).toBe(true);
       expect(vacancies.some(j => j.company.includes('Thinkpalm') || j.company.includes('Experion'))).toBe(true);
       expect(vacancies.some(j => j.company.includes('Tecforz') || j.company.includes('AlignMinds'))).toBe(true);
       expect(vacancies.some(j => j.category === 'Technology & IT')).toBe(true);
-      expect(vacancies.some(j => j.category === 'Local Trades & Skilled Labor')).toBe(true);
     });
 
     it('allows a recruiter to post a new job vacancy', async () => {
@@ -128,15 +127,9 @@ describe('Job Portal & Local Worker Marketplace Module', () => {
   });
 
   describe('2. Job Seekers & Candidates (Talent Pool)', () => {
-    it('returns default candidate profiles with qualification & experience details', async () => {
+    it('returns empty list initially without dummy candidate profiles', async () => {
       const seekers = await getCloudJobSeekers();
-      expect(seekers.length).toBeGreaterThanOrEqual(3);
-      
-      const rahul = seekers.find(s => s.fullName === 'Rahul Krishnan');
-      expect(rahul).toBeDefined();
-      expect(rahul?.experienceYears).toBe(4);
-      expect(rahul?.qualification).toContain('B.Tech');
-      expect(rahul?.availability).toBe('Immediate');
+      expect(seekers).toEqual([]);
     });
 
     it('allows a job seeker to post their qualification and experience profile', async () => {
@@ -162,7 +155,7 @@ describe('Job Portal & Local Worker Marketplace Module', () => {
       };
 
       const updated = await createCloudJobSeeker(newSeeker);
-      expect(updated.length).toBe(INITIAL_JOB_SEEKERS.length + 1);
+      expect(updated.length).toBe(1);
 
       const added = updated.find(s => s.fullName === 'Kavya S. Menon');
       expect(added).toBeDefined();
@@ -171,8 +164,26 @@ describe('Job Portal & Local Worker Marketplace Module', () => {
     });
 
     it('toggles candidate bookmark and deletes seeker profile', async () => {
-      const seekers = await getCloudJobSeekers();
-      const targetId = seekers[0].id;
+      const newSeeker: Omit<JobSeekerProfile, 'id'> = {
+        fullName: 'Test Candidate',
+        desiredRole: 'Software Tester',
+        category: 'Technology & IT',
+        jobTypePreference: 'Full-time',
+        qualification: 'B.Tech',
+        experienceYears: 2,
+        experienceSummary: 'Testing QA',
+        expectedSalary: '₹30,000 / mo',
+        preferredLocation: 'Kochi',
+        city: 'Kochi',
+        skills: ['QA'],
+        resumeHeadline: 'Tester',
+        bio: 'Bio',
+        phone: '+91 98470 11111',
+        avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150',
+        availability: 'Immediate'
+      };
+      const createdList = await createCloudJobSeeker(newSeeker);
+      const targetId = createdList[0].id;
 
       const toggled = await toggleCloudSaveJobSeeker(targetId);
       expect(toggled.find(s => s.id === targetId)?.isSaved).toBe(true);
@@ -183,19 +194,9 @@ describe('Job Portal & Local Worker Marketplace Module', () => {
   });
 
   describe('3. Local Workers & Home Services (Electricians, Plumbers, Housemaids, Drivers)', () => {
-    it('returns verified local trade pros with daily rates and service areas', async () => {
+    it('returns empty list initially without dummy workers', async () => {
       const workers = await getCloudLocalWorkers();
-      expect(workers.length).toBeGreaterThanOrEqual(4);
-
-      expect(workers.some(w => w.trade === 'Electrician')).toBe(true);
-      expect(workers.some(w => w.trade === 'Plumber')).toBe(true);
-      expect(workers.some(w => w.trade === 'Housemaid / Domestic Help')).toBe(true);
-      expect(workers.some(w => w.trade === 'Driver (Car / Heavy)')).toBe(true);
-
-      const electrician = workers.find(w => w.trade === 'Electrician');
-      expect(electrician?.serviceAreas.length).toBeGreaterThan(0);
-      expect(electrician?.rating).toBeGreaterThanOrEqual(4.5);
-      expect(electrician?.verifiedBadge).toBe(true);
+      expect(workers).toEqual([]);
     });
 
     it('allows a local skilled worker to register their trade service', async () => {
@@ -219,7 +220,7 @@ describe('Job Portal & Local Worker Marketplace Module', () => {
       };
 
       const updated = await createCloudLocalWorker(newWorker);
-      expect(updated.length).toBe(INITIAL_LOCAL_WORKERS.length + 1);
+      expect(updated.length).toBe(1);
 
       const registered = updated.find(w => w.name.includes('Gireesh Plumbers'));
       expect(registered).toBeDefined();
@@ -254,8 +255,24 @@ describe('Job Portal & Local Worker Marketplace Module', () => {
     });
 
     it('toggles worker bookmark and deletes worker service profile', async () => {
-      const workers = await getCloudLocalWorkers();
-      const targetId = workers[0].id;
+      const newWorker: Omit<LocalWorkerProfile, 'id'> = {
+        name: 'Test Electrician',
+        trade: 'Electrician',
+        experienceYears: 5,
+        dailyRateOrCharge: '₹500 / visit',
+        serviceAreas: ['Kochi'],
+        city: 'Kochi',
+        rating: 5.0,
+        reviewCount: 1,
+        isAvailableToday: true,
+        completedJobsCount: 10,
+        skills: ['Wiring'],
+        bio: 'Electrician bio',
+        phone: '+91 98470 22222',
+        avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150'
+      };
+      const list = await createCloudLocalWorker(newWorker);
+      const targetId = list[0].id;
 
       const toggled = await toggleCloudSaveLocalWorker(targetId);
       expect(toggled.find(w => w.id === targetId)?.isSaved).toBe(true);
@@ -266,26 +283,26 @@ describe('Job Portal & Local Worker Marketplace Module', () => {
   });
 
   describe('4. Job Applications Pipeline & Candidate Tracking', () => {
-    it('returns seed job applications and allows candidate submission', async () => {
+    it('returns empty list initially and allows candidate submission', async () => {
       const apps = await getCloudJobApplications();
-      expect(apps.length).toBeGreaterThanOrEqual(2);
+      expect(apps).toEqual([]);
 
       const newApp: Omit<JobApplication, 'id'> = {
-        jobId: 'job-1',
-        jobTitle: 'Senior React Developer',
-        company: 'Malabar Innovations',
+        jobId: 'job-infopark-1',
+        jobTitle: 'DevOps & Cloud Infrastructure Lead',
+        company: 'Thinkpalm Technologies',
         candidateId: 'test-cand-123',
         candidateName: 'Adarsh S.',
         candidatePhone: '+91 98470 55667',
-        qualification: 'BCA & MCA',
-        experienceYears: 3,
-        coverLetter: 'I have deep expertise with React and Vite apps.',
+        qualification: 'B.Tech CS',
+        experienceYears: 5,
+        coverLetter: 'I have deep expertise with AWS, Docker and Kubernetes.',
         status: 'Applied',
         appliedAt: 'Just now'
       };
 
       const updated = await createCloudJobApplication(newApp);
-      expect(updated.length).toBe(INITIAL_JOB_APPLICATIONS.length + 1);
+      expect(updated.length).toBe(1);
 
       const created = updated.find(a => a.candidateId === 'test-cand-123');
       expect(created).toBeDefined();
@@ -293,8 +310,18 @@ describe('Job Portal & Local Worker Marketplace Module', () => {
     });
 
     it('updates application status from Applied -> Shortlisted -> Selected', async () => {
-      const apps = await getCloudJobApplications();
-      const targetId = apps[0].id;
+      const newApp: Omit<JobApplication, 'id'> = {
+        jobId: 'job-infopark-2',
+        jobTitle: 'Senior Frontend Engineer',
+        company: 'Tecforz Innovations',
+        candidateId: 'cand-456',
+        candidateName: 'Nisha K.',
+        candidatePhone: '+91 98470 33333',
+        status: 'Applied',
+        appliedAt: 'Just now'
+      };
+      const createdList = await createCloudJobApplication(newApp);
+      const targetId = createdList[0].id;
 
       const shortlisted = await updateCloudJobApplicationStatus(targetId, 'Shortlisted', 'Candidate cleared HR round.');
       expect(shortlisted.find(a => a.id === targetId)?.status).toBe('Shortlisted');
@@ -305,8 +332,17 @@ describe('Job Portal & Local Worker Marketplace Module', () => {
     });
 
     it('allows candidate to withdraw application', async () => {
-      const apps = await getCloudJobApplications();
-      const targetId = apps[0].id;
+      const newApp: Omit<JobApplication, 'id'> = {
+        jobId: 'job-infopark-3',
+        jobTitle: 'Flutter Engineer',
+        company: 'Panasa Technology',
+        candidateId: 'cand-789',
+        candidateName: 'Ajay V.',
+        status: 'Applied',
+        appliedAt: 'Just now'
+      };
+      const createdList = await createCloudJobApplication(newApp);
+      const targetId = createdList[0].id;
 
       const withdrawn = await withdrawCloudJobApplication(targetId);
       expect(withdrawn.find(a => a.id === targetId)?.status).toBe('Withdrawn');
@@ -314,39 +350,55 @@ describe('Job Portal & Local Worker Marketplace Module', () => {
   });
 
   describe('5. Service Booking Workflow & Worker Lifecycle', () => {
-    it('returns initial service bookings and creates on-demand request', async () => {
+    it('returns empty bookings initially and creates on-demand request', async () => {
       const bookings = await getCloudServiceBookings();
-      expect(bookings.length).toBeGreaterThanOrEqual(2);
+      expect(bookings).toEqual([]);
 
       const newBooking: Omit<ServiceBooking, 'id'> = {
         customerId: 'usr-guest',
         customerName: 'Dhanya R.',
         customerPhone: '+91 98470 12345',
-        workerId: 'worker-1',
-        workerName: 'K. Balan (Balan Chettan)',
-        workerTrade: 'Electrician',
-        serviceType: 'Inverter Battery & DB Rewiring',
-        description: 'Need inverter bypass switch installation.',
+        workerId: 'worker-real-1',
+        workerName: 'Gireesh Plumber',
+        workerTrade: 'Plumber',
+        serviceType: 'Pipe Leakage Repair',
+        description: 'Need PVC pipe leakage repair.',
         requestedDate: 'Today',
         requestedTime: '02:00 PM',
         address: 'PT Usha Road, Kozhikode',
         city: 'Kozhikode',
-        estimatedPrice: '₹450 / visit',
+        estimatedPrice: '₹350 / visit',
         status: 'Requested',
         createdAt: 'Just now'
       };
 
       const updated = await createCloudServiceBooking(newBooking);
-      expect(updated.length).toBe(INITIAL_SERVICE_BOOKINGS.length + 1);
+      expect(updated.length).toBe(1);
 
-      const created = updated.find(b => b.serviceType.includes('Inverter Battery'));
+      const created = updated.find(b => b.serviceType.includes('Pipe Leakage'));
       expect(created).toBeDefined();
       expect(created?.status).toBe('Requested');
     });
 
     it('advances service booking through Requested -> Scheduled -> On The Way -> Completed', async () => {
-      const bookings = await getCloudServiceBookings();
-      const targetId = bookings[0].id;
+      const newBooking: Omit<ServiceBooking, 'id'> = {
+        customerId: 'usr-1',
+        customerName: 'Customer Test',
+        workerId: 'w-1',
+        workerName: 'Worker Test',
+        workerTrade: 'Electrician',
+        serviceType: 'Wiring Fix',
+        description: 'Fix switch',
+        requestedDate: 'Today',
+        requestedTime: '10:00 AM',
+        address: 'Kochi',
+        city: 'Kochi',
+        estimatedPrice: '₹300',
+        status: 'Requested',
+        createdAt: 'Just now'
+      };
+      const list = await createCloudServiceBooking(newBooking);
+      const targetId = list[0].id;
 
       const scheduled = await updateCloudServiceBookingStatus(targetId, 'Scheduled', 'Worker accepted.');
       expect(scheduled.find(b => b.id === targetId)?.status).toBe('Scheduled');
@@ -359,8 +411,24 @@ describe('Job Portal & Local Worker Marketplace Module', () => {
     });
 
     it('cancels a booking with reason', async () => {
-      const bookings = await getCloudServiceBookings();
-      const targetId = bookings[0].id;
+      const newBooking: Omit<ServiceBooking, 'id'> = {
+        customerId: 'usr-1',
+        customerName: 'Customer Test',
+        workerId: 'w-1',
+        workerName: 'Worker Test',
+        workerTrade: 'Electrician',
+        serviceType: 'Wiring Fix',
+        description: 'Fix switch',
+        requestedDate: 'Today',
+        requestedTime: '10:00 AM',
+        address: 'Kochi',
+        city: 'Kochi',
+        estimatedPrice: '₹300',
+        status: 'Requested',
+        createdAt: 'Just now'
+      };
+      const list = await createCloudServiceBooking(newBooking);
+      const targetId = list[0].id;
 
       const cancelled = await cancelCloudServiceBooking(targetId, 'Customer rescheduled travel.');
       expect(cancelled.find(b => b.id === targetId)?.status).toBe('Cancelled');
@@ -370,22 +438,42 @@ describe('Job Portal & Local Worker Marketplace Module', () => {
 
   describe('6. Worker Reviews and Rating Recalculation', () => {
     it('creates review and automatically recalculates worker average rating', async () => {
+      // Register a real worker first
+      const worker: Omit<LocalWorkerProfile, 'id'> = {
+        name: 'Gireesh Kumar',
+        trade: 'Plumber',
+        experienceYears: 10,
+        dailyRateOrCharge: '₹400 / visit',
+        serviceAreas: ['Kochi'],
+        city: 'Kochi',
+        rating: 5.0,
+        reviewCount: 0,
+        isAvailableToday: true,
+        completedJobsCount: 15,
+        skills: ['Plumbing'],
+        bio: 'Bio',
+        phone: '+91 94471 22998',
+        avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150'
+      };
+      const wList = await createCloudLocalWorker(worker);
+      const workerId = wList[0].id;
+
       const newReview: Omit<WorkerReview, 'id'> = {
-        workerId: 'worker-1',
+        workerId,
         reviewerId: 'rev-user-99',
         reviewerName: 'Prasanth Nair',
         rating: 5,
-        review: 'Prompt and very neat electrical wiring service. Cleaned up afterwards.',
+        review: 'Prompt and very neat plumbing service. Cleaned up afterwards.',
         createdAt: 'Just now'
       };
 
       const { reviews, updatedWorkerList } = await createCloudWorkerReview(newReview);
       expect(reviews.some(r => r.reviewerName === 'Prasanth Nair')).toBe(true);
 
-      const targetWorker = updatedWorkerList.find(w => w.id === 'worker-1');
+      const targetWorker = updatedWorkerList.find(w => w.id === workerId);
       expect(targetWorker).toBeDefined();
-      expect(targetWorker?.reviewCount).toBeGreaterThanOrEqual(2);
-      expect(targetWorker?.rating).toBeGreaterThanOrEqual(4.5);
+      expect(targetWorker?.reviewCount).toBe(1);
+      expect(targetWorker?.rating).toBe(5);
     });
   });
 

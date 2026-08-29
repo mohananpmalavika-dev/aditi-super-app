@@ -80,7 +80,8 @@ import {
   getCloudWorkerReviews,
   createCloudWorkerReview,
   getCloudReports,
-  createCloudReport
+  createCloudReport,
+  subscribeToJobPortalRealtime
 } from '../services/cloudDatabaseService';
 import {
   ChatConversation,
@@ -494,18 +495,44 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         if (tsk && tsk.length > 0) setTasks(tsk);
         if (h && h.length > 0) setHabits(h);
         if (regUsers && regUsers.length > 0) setRegisteredUsers(regUsers);
-        if (jv && jv.length > 0) setJobVacancies(jv);
-        if (js && js.length > 0) setJobSeekers(js);
-        if (lw && lw.length > 0) setLocalWorkers(lw);
-        if (apps && apps.length > 0) setJobApplications(apps);
-        if (sbs && sbs.length > 0) setServiceBookings(sbs);
-        if (wrs && wrs.length > 0) setWorkerReviews(wrs);
-        if (rps && rps.length > 0) setJobReports(rps);
+        if (jv) setJobVacancies(jv);
+        if (js) setJobSeekers(js);
+        if (lw) setLocalWorkers(lw);
+        if (apps) setJobApplications(apps);
+        if (sbs) setServiceBookings(sbs);
+        if (wrs) setWorkerReviews(wrs);
+        if (rps) setJobReports(rps);
       } catch (e) {
         console.warn('Cloud database sync initialized with remote state');
       }
     }
     loadCloudData();
+
+    // Multi-device runtime realtime sync subscription
+    const unsubscribeJobRealtime = subscribeToJobPortalRealtime(async () => {
+      try {
+        const [jv, js, lw, apps, sbs, wrs] = await Promise.all([
+          getCloudJobVacancies(),
+          getCloudJobSeekers(),
+          getCloudLocalWorkers(),
+          getCloudJobApplications(),
+          getCloudServiceBookings(),
+          getCloudWorkerReviews()
+        ]);
+        if (jv) setJobVacancies(jv);
+        if (js) setJobSeekers(js);
+        if (lw) setLocalWorkers(lw);
+        if (apps) setJobApplications(apps);
+        if (sbs) setServiceBookings(sbs);
+        if (wrs) setWorkerReviews(wrs);
+      } catch (err) {
+        console.warn('Realtime sync payload refresh error:', err);
+      }
+    });
+
+    return () => {
+      unsubscribeJobRealtime();
+    };
   }, []);
 
   const showToast = (msg: string) => {

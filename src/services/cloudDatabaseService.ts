@@ -1834,134 +1834,6 @@ export const LOCAL_WORKERS_STORAGE_KEY = 'aditi-local-workers';
 
 export const INITIAL_JOB_VACANCIES: JobVacancy[] = [
   {
-    id: 'job-1',
-    title: 'Senior React & Full-Stack Developer',
-    company: 'Malabar Tech Innovations',
-    category: 'Technology & IT',
-    jobType: 'Full-time',
-    location: 'Cyberpark, Kozhikode / Hybrid',
-    city: 'Kozhikode',
-    isRemote: true,
-    salaryMin: 50000,
-    salaryMax: 90000,
-    salaryFormatted: '₹50,000 - ₹90,000 / mo',
-    experienceRequired: '2-4 Years',
-    qualificationRequired: 'B.Tech / BCA / MCA / Self-taught',
-    description: 'Looking for a passionate React.js, TypeScript, and Node.js developer to build scalable cloud SaaS portals and mobile-responsive dashboards.',
-    skills: ['React', 'TypeScript', 'TailwindCSS', 'Node.js', 'PostgreSQL'],
-    contactName: 'Naveen Rajan (HR Head)',
-    contactPhone: '+91 98471 99881',
-    contactEmail: 'careers@malabartech.io',
-    contactAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
-    openingsCount: 2,
-    isUrgent: true,
-    isFeatured: true,
-    isSaved: false,
-    createdAt: 'Today'
-  },
-  {
-    id: 'job-2',
-    title: 'Certified Electrician & Site Supervisor',
-    company: 'Skyline Buildtech Kerala',
-    category: 'Local Trades & Skilled Labor',
-    jobType: 'Full-time',
-    location: 'Marine Drive, Kochi',
-    city: 'Kochi',
-    isRemote: false,
-    salaryMin: 28000,
-    salaryMax: 42000,
-    salaryFormatted: '₹28,000 - ₹42,000 / mo',
-    experienceRequired: '3+ Years',
-    qualificationRequired: 'ITI Electrical / Wireman License',
-    description: 'Lead electrical installations, 3-phase wiring, distribution panels, and safety audits across luxury apartment construction projects.',
-    skills: ['3-Phase Wiring', 'Panel Board Assembly', 'Safety Compliance', 'Site Supervision'],
-    contactName: 'Sudheer Babu (Project Manager)',
-    contactPhone: '+91 97450 11223',
-    contactEmail: 'jobs@skylinekerala.com',
-    contactAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150',
-    openingsCount: 4,
-    isUrgent: true,
-    isFeatured: true,
-    isSaved: false,
-    createdAt: 'Yesterday'
-  },
-  {
-    id: 'job-3',
-    title: 'Full-time Resident Housemaid & Cook',
-    company: 'Private Family (Doctor Residence)',
-    category: 'Domestic & Housekeeping',
-    jobType: 'Full-time',
-    location: 'Chevayur, Kozhikode',
-    city: 'Kozhikode',
-    isRemote: false,
-    salaryMin: 18000,
-    salaryMax: 24000,
-    salaryFormatted: '₹18,000 - ₹24,000 / mo + Room & Food',
-    experienceRequired: '2+ Years Experience in Kerala Cooking',
-    qualificationRequired: 'Trustworthy with clean background',
-    description: 'Looking for a caring, hygiene-conscious housemaid and cook for traditional Kerala vegetarian & non-vegetarian meals and daily housekeeping. Private room with attached bath provided.',
-    skills: ['Kerala Cooking', 'Housekeeping', 'Elderly Care', 'Kitchen Management'],
-    contactName: 'Dr. Vineetha Nair',
-    contactPhone: '+91 94471 55667',
-    contactAvatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150',
-    openingsCount: 1,
-    isUrgent: false,
-    isFeatured: true,
-    isSaved: false,
-    createdAt: '2 days ago'
-  },
-  {
-    id: 'job-4',
-    title: 'Tourist & Personal Car Driver',
-    company: 'Wayanad Green Trails Travel',
-    category: 'Logistics & Driving',
-    jobType: 'Full-time',
-    location: 'Calicut & Wayanad Circuit',
-    city: 'Kozhikode',
-    isRemote: false,
-    salaryMin: 22000,
-    salaryMax: 32000,
-    salaryFormatted: '₹22,000 - ₹32,000 / mo + Trip Bata',
-    experienceRequired: '5+ Years with Hill Route Experience',
-    qualificationRequired: 'Valid Light Motor Vehicle (LMV) Badge License',
-    description: 'Drive Innova Crysta & SUV for domestic and international tourists across Wayanad, Calicut, and Munnar routes. Polite behavior and punctuality essential.',
-    skills: ['Ghat Road Driving', 'Tourist Guidance', 'Vehicle Maintenance', 'Malayalam & English'],
-    contactName: 'Shyam Prasath',
-    contactPhone: '+91 98950 44332',
-    contactAvatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150',
-    openingsCount: 2,
-    isUrgent: false,
-    isFeatured: false,
-    isSaved: false,
-    createdAt: '3 days ago'
-  },
-  {
-    id: 'job-5',
-    title: 'Staff Nurse (ICU & Emergency Care)',
-    company: 'Aster MediCity Health Campus',
-    category: 'Healthcare & Nursing',
-    jobType: 'Full-time',
-    location: 'Edappally, Ernakulam',
-    city: 'Kochi',
-    isRemote: false,
-    salaryMin: 32000,
-    salaryMax: 48000,
-    salaryFormatted: '₹32,000 - ₹48,000 / mo',
-    experienceRequired: '1-3 Years',
-    qualificationRequired: 'B.Sc Nursing / GNM with KNMC Registration',
-    description: 'Provide compassionate patient care in advanced multi-speciality medical ICU. Rotating shifts with attractive benefits and health insurance.',
-    skills: ['Critical Care', 'Patient Monitoring', 'BLS / ACLS', 'Medication Admin'],
-    contactName: 'Sister Teresa Joseph (Nursing Supdt)',
-    contactPhone: '+91 98460 77889',
-    contactEmail: 'nursing.careers@asterhealth.com',
-    contactAvatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150',
-    openingsCount: 5,
-    isUrgent: true,
-    isFeatured: true,
-    isSaved: false,
-    createdAt: '4 days ago'
-  },
-  {
     id: 'job-infopark-1',
     title: 'DevOps & Cloud Infrastructure Lead',
     company: 'Thinkpalm Technologies Pvt. Ltd',
@@ -2394,227 +2266,9 @@ export const INITIAL_JOB_VACANCIES: JobVacancy[] = [
   }
 ];
 
-export const INITIAL_JOB_SEEKERS: JobSeekerProfile[] = [
-  {
-    id: 'seeker-1',
-    fullName: 'Rahul Krishnan',
-    desiredRole: 'MERN Stack & Mobile App Developer',
-    category: 'Technology & IT',
-    jobTypePreference: 'Full-time',
-    qualification: 'B.Tech in Computer Science',
-    experienceYears: 4,
-    experienceSummary: 'Built 8+ production web apps and React Native mobile applications. Proficient in TypeScript, Next.js, Tailwind, GraphQL, and Supabase / Firebase.',
-    expectedSalary: '₹65,000 / mo',
-    preferredLocation: 'Kozhikode / Kochi / Remote',
-    city: 'Kozhikode',
-    skills: ['React', 'React Native', 'Node.js', 'PostgreSQL', 'TailwindCSS'],
-    resumeHeadline: 'Passionate Full Stack Engineer with proven track record of shipping fast, modern web & mobile products.',
-    bio: 'Dedicated developer looking for high-growth product companies or progressive remote roles. Available to join immediately.',
-    phone: '+91 97441 23456',
-    email: 'rahul.k.dev@gmail.com',
-    avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150',
-    availability: 'Immediate',
-    isVerified: true,
-    isSaved: false,
-    createdAt: 'Today'
-  },
-  {
-    id: 'seeker-2',
-    fullName: 'Anjali S. Nair',
-    desiredRole: 'Senior Accountant & GST / Tax Specialist',
-    category: 'Finance & Accounting',
-    jobTypePreference: 'Full-time',
-    qualification: 'M.Com, Tally Prime Certified, GST Practitioner',
-    experienceYears: 5,
-    experienceSummary: 'Handled end-to-end company accounting, monthly GST GSTR-1 & 3B filings, TDS reconciliation, and audit preparation for trading & hospitality firms.',
-    expectedSalary: '₹35,000 / mo',
-    preferredLocation: 'Kochi / Kakkanad / Thrissur',
-    city: 'Kochi',
-    skills: ['Tally Prime', 'GST Filing', 'TDS & TCS', 'Balance Sheet Finalization', 'Excel'],
-    resumeHeadline: 'Certified Accounts Professional with 5 years experience in commercial bookkeeping and taxation.',
-    bio: 'Looking for a stable corporate or mid-sized firm where I can streamline financial processes and tax compliance.',
-    phone: '+91 98470 65432',
-    email: 'anjali.accounts@gmail.com',
-    avatar: 'https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?w=150',
-    availability: 'Within 15 Days',
-    isVerified: true,
-    isSaved: false,
-    createdAt: 'Yesterday'
-  },
-  {
-    id: 'seeker-3',
-    fullName: 'Muhammed Jaseel',
-    desiredRole: 'ITI Certified Electrician & Electrical Supervisor',
-    category: 'Local Trades & Skilled Labor',
-    jobTypePreference: 'Full-time',
-    qualification: 'ITI Electrical (NCVT) + Wireman Permit',
-    experienceYears: 6,
-    experienceSummary: 'Extensive experience in residential & commercial wiring, inverter & solar setup, motor pumps, MCB/DB installations, and fault diagnosis.',
-    expectedSalary: '₹30,000 / mo or ₹950 / day',
-    preferredLocation: 'Kozhikode, Malappuram, Wayanad',
-    city: 'Kozhikode',
-    skills: ['Industrial Wiring', 'Solar Installation', 'CCTV Setup', 'Appliance Diagnosis'],
-    resumeHeadline: 'Licensed Wireman and Electrical Technician with 6+ years hands-on site experience.',
-    bio: 'Punctual, hardworking and dedicated to quality electrical work with 100% safety protocols.',
-    phone: '+91 99461 88990',
-    avatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=150',
-    availability: 'Immediate',
-    isVerified: true,
-    isSaved: false,
-    createdAt: '3 days ago'
-  },
-  {
-    id: 'seeker-4',
-    fullName: 'Suresh Babu K.',
-    desiredRole: 'Commercial Heavy & Personal Chauffeur Driver',
-    category: 'Logistics & Driving',
-    jobTypePreference: 'Full-time',
-    qualification: 'SSLC Pass, LMV & HMV Commercial Badge',
-    experienceYears: 12,
-    experienceSummary: '12 years driving experience with accident-free record. Driven luxury sedans, SUVs, and staff transport buses across South India.',
-    expectedSalary: '₹25,000 / mo or ₹900 / day',
-    preferredLocation: 'Kozhikode / Kannur / All Kerala',
-    city: 'Kozhikode',
-    skills: ['Luxury Car Driving', 'Night Driving', 'Vehicle Maintenance', 'Google Maps Navigation'],
-    resumeHeadline: 'Professional, calm-mannered driver with spotless 12-year safety record.',
-    bio: 'Seeking full-time chauffeur role for private family, corporate executives or reputed resort.',
-    phone: '+91 94472 33445',
-    avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150',
-    availability: 'Immediate',
-    isVerified: true,
-    isSaved: false,
-    createdAt: '4 days ago'
-  }
-];
+export const INITIAL_JOB_SEEKERS: JobSeekerProfile[] = [];
 
-export const INITIAL_LOCAL_WORKERS: LocalWorkerProfile[] = [
-  {
-    id: 'worker-1',
-    name: 'K. Balan (Balan Chettan)',
-    trade: 'Electrician',
-    experienceYears: 16,
-    dailyRateOrCharge: '₹800 / day or ₹350 / service visit',
-    serviceAreas: ['Mavoor Road', 'Palayam', 'Calicut Beach', 'Nadakkavu', 'Chevayur', 'Medical College'],
-    city: 'Kozhikode',
-    rating: 4.9,
-    reviewCount: 148,
-    isAvailableToday: true,
-    verifiedBadge: true,
-    skills: ['Wiring Repairs', 'Ceiling Fan & Light Fitting', 'Inverter Battery Setup', 'Fuse & DB Replacement', 'Water Pump Repair'],
-    bio: 'Government licensed master wireman with 16 years experience in Calicut town. Prompt arrival within 45 minutes for urgent electrical breakdowns.',
-    phone: '+91 98471 22330',
-    whatsapp: '+91 98471 22330',
-    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150',
-    completedJobsCount: 420,
-    isSaved: false,
-    createdAt: 'Registered Partner'
-  },
-  {
-    id: 'worker-2',
-    name: 'Saji Mathew',
-    trade: 'Plumber',
-    experienceYears: 14,
-    dailyRateOrCharge: '₹750 / day or ₹300 / service visit',
-    serviceAreas: ['Kakkanad', 'Edappally', 'Palarivattom', 'Marine Drive', 'Aluva', 'Vytilla'],
-    city: 'Kochi',
-    rating: 4.8,
-    reviewCount: 112,
-    isAvailableToday: true,
-    verifiedBadge: true,
-    skills: ['Pipe Leakage Fix', 'Bathroom Fitting Replacement', 'Water Tank Cleaning', 'Drainage Block Clearing', 'Pressure Pump Setup'],
-    bio: 'Expert plumber handling modern CPVC/PVC piping, Grohe/Jaguar fittings, and emergency pipeline leak repairs in Ernakulam.',
-    phone: '+91 97455 33441',
-    whatsapp: '+91 97455 33441',
-    avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150',
-    completedJobsCount: 310,
-    isSaved: false,
-    createdAt: 'Registered Partner'
-  },
-  {
-    id: 'worker-3',
-    name: 'Radha Amma',
-    trade: 'Housemaid / Domestic Help',
-    experienceYears: 9,
-    dailyRateOrCharge: '₹550 / day or ₹14,000 / mo',
-    serviceAreas: ['Chevayur', 'West Hill', 'Kottuli', 'Eranhipalam', 'Karaparamba'],
-    city: 'Kozhikode',
-    rating: 5.0,
-    reviewCount: 84,
-    isAvailableToday: true,
-    verifiedBadge: true,
-    skills: ['Kerala Home Cooking', 'Deep House Cleaning', 'Utensil Washing', 'Laundry & Ironing', 'Baby & Elderly Care'],
-    bio: 'Honest, loving, and trustworthy domestic helper with verified police ID check. Expert in cooking healthy Malabar meals and keeping homes spotless.',
-    phone: '+91 94473 11229',
-    whatsapp: '+91 94473 11229',
-    avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150',
-    completedJobsCount: 95,
-    isSaved: false,
-    createdAt: 'Registered Partner'
-  },
-  {
-    id: 'worker-4',
-    name: 'Shiju V. (Cool Care Service)',
-    trade: 'Appliance & AC Technician',
-    experienceYears: 8,
-    dailyRateOrCharge: '₹400 / service check + parts',
-    serviceAreas: ['All Kochi & Ernakulam Suburbs', 'Kakkanad', 'Tripunithura'],
-    city: 'Kochi',
-    rating: 4.9,
-    reviewCount: 220,
-    isAvailableToday: true,
-    verifiedBadge: true,
-    skills: ['AC Jet Water Cleaning', 'Gas Refill', 'Washing Machine PCB Fix', 'Refrigerator Cooling Repair', 'Microwave Repair'],
-    bio: 'Certified technician for Daikin, Voltas, LG, and Samsung air conditioners and washing machines. 30-day service warranty guaranteed.',
-    phone: '+91 98952 77880',
-    whatsapp: '+91 98952 77880',
-    avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150',
-    completedJobsCount: 540,
-    isSaved: false,
-    createdAt: 'Registered Partner'
-  },
-  {
-    id: 'worker-5',
-    name: 'Manoj Kumar',
-    trade: 'Carpenter',
-    experienceYears: 18,
-    dailyRateOrCharge: '₹900 / day',
-    serviceAreas: ['Palakkad', 'Thrissur', 'Kozhikode'],
-    city: 'Kozhikode',
-    rating: 4.8,
-    reviewCount: 96,
-    isAvailableToday: false,
-    verifiedBadge: true,
-    skills: ['Teak Furniture Making', 'Modular Kitchen Cabinets', 'Door Lock & Hinge Fix', 'Wardrobe Repair', 'Wood Polishing'],
-    bio: 'Traditional Kerala wood craftsman and modern modular interior carpenter. High precision woodwork with flawless finishing.',
-    phone: '+91 94470 99881',
-    whatsapp: '+91 94470 99881',
-    avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150',
-    completedJobsCount: 180,
-    isSaved: false,
-    createdAt: 'Registered Partner'
-  },
-  {
-    id: 'worker-6',
-    name: 'Haridas P.',
-    trade: 'Driver (Car / Heavy)',
-    experienceYears: 20,
-    dailyRateOrCharge: '₹850 / day + Food',
-    serviceAreas: ['All Kerala', 'Airport Pickups (CCJ & COK)', 'Outstation Tours'],
-    city: 'Kozhikode',
-    rating: 4.9,
-    reviewCount: 340,
-    isAvailableToday: true,
-    verifiedBadge: true,
-    skills: ['Airport Transfers', 'Ghats & Hill Stations', 'Automatic & Manual Cars', 'Punctual & Polite'],
-    bio: 'Professional senior chauffeur with 20 years experience. Non-smoker, non-drinker with comprehensive knowledge of all Kerala routes.',
-    phone: '+91 98470 88771',
-    whatsapp: '+91 98470 88771',
-    avatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=150',
-    completedJobsCount: 650,
-    isSaved: false,
-    createdAt: 'Registered Partner'
-  }
-];
+export const INITIAL_LOCAL_WORKERS: LocalWorkerProfile[] = [];
 
 /* ===== Job Vacancies CRUD ===== */
 export async function getCloudJobVacancies(): Promise<JobVacancy[]> {
@@ -2622,21 +2276,13 @@ export async function getCloudJobVacancies(): Promise<JobVacancy[]> {
     const local = localStorage.getItem(JOB_VACANCIES_STORAGE_KEY);
     if (local) {
       const parsed = JSON.parse(local);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed;
+      if (Array.isArray(parsed)) {
+        // Filter out legacy dummy entries
+        const clean = parsed.filter((j: JobVacancy) => !['job-1', 'job-2', 'job-3', 'job-4', 'job-5'].includes(j.id));
+        if (clean.length > 0) return clean;
       }
     }
   } catch {}
-
-  if (supabase && !isTestEnv) {
-    try {
-      const { data, error } = await Promise.race([
-        supabase.from('job_vacancies').select('*').order('created_at', { ascending: false }),
-        new Promise<{ data: any; error: any }>((res) => setTimeout(() => res({ data: null, error: 'timeout' }), 1000))
-      ]);
-      if (!error && data && data.length > 0) return data;
-    } catch {}
-  }
 
   try {
     localStorage.setItem(JOB_VACANCIES_STORAGE_KEY, JSON.stringify(INITIAL_JOB_VACANCIES));
@@ -2706,27 +2352,15 @@ export async function getCloudJobSeekers(): Promise<JobSeekerProfile[]> {
     const local = localStorage.getItem(JOB_SEEKERS_STORAGE_KEY);
     if (local) {
       const parsed = JSON.parse(local);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed;
+      if (Array.isArray(parsed)) {
+        // Filter out legacy dummy seeker ids
+        const clean = parsed.filter((s: JobSeekerProfile) => !['seeker-1', 'seeker-2', 'seeker-3', 'seeker-4'].includes(s.id));
+        return clean;
       }
     }
   } catch {}
 
-  if (supabase && !isTestEnv) {
-    try {
-      const { data, error } = await Promise.race([
-        supabase.from('job_seekers').select('*').order('created_at', { ascending: false }),
-        new Promise<{ data: any; error: any }>((res) => setTimeout(() => res({ data: null, error: 'timeout' }), 1000))
-      ]);
-      if (!error && data && data.length > 0) return data;
-    } catch {}
-  }
-
-  try {
-    localStorage.setItem(JOB_SEEKERS_STORAGE_KEY, JSON.stringify(INITIAL_JOB_SEEKERS));
-  } catch {}
-
-  return [...INITIAL_JOB_SEEKERS];
+  return [];
 }
 
 export async function createCloudJobSeeker(
@@ -2790,8 +2424,10 @@ export async function getCloudLocalWorkers(): Promise<LocalWorkerProfile[]> {
     const local = localStorage.getItem(LOCAL_WORKERS_STORAGE_KEY);
     if (local) {
       const parsed = JSON.parse(local);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed;
+      if (Array.isArray(parsed)) {
+        // Filter out legacy dummy worker ids
+        const clean = parsed.filter((w: LocalWorkerProfile) => !['worker-1', 'worker-2', 'worker-3', 'worker-4', 'worker-5', 'worker-6'].includes(w.id));
+        return clean;
       }
     }
   } catch {}
@@ -2882,6 +2518,14 @@ export async function updateCloudJobVacancy(
     localStorage.setItem(JOB_VACANCIES_STORAGE_KEY, JSON.stringify(currentList));
   } catch {}
 
+  if (supabase && !isTestEnv) {
+    try {
+      await supabase.from('job_vacancies').update({ ...updates, updated_at: new Date().toISOString() }).eq('id', id);
+    } catch (err) {
+      console.warn('Supabase job_vacancies update error:', err);
+    }
+  }
+
   return currentList;
 }
 
@@ -2895,6 +2539,14 @@ export async function updateCloudJobSeeker(
   try {
     localStorage.setItem(JOB_SEEKERS_STORAGE_KEY, JSON.stringify(currentList));
   } catch {}
+
+  if (supabase && !isTestEnv) {
+    try {
+      await supabase.from('job_seekers').update({ ...updates, updated_at: new Date().toISOString() }).eq('id', id);
+    } catch (err) {
+      console.warn('Supabase job_seekers update error:', err);
+    }
+  }
 
   return currentList;
 }
@@ -2910,6 +2562,14 @@ export async function updateCloudLocalWorker(
     localStorage.setItem(LOCAL_WORKERS_STORAGE_KEY, JSON.stringify(currentList));
   } catch {}
 
+  if (supabase && !isTestEnv) {
+    try {
+      await supabase.from('local_workers').update({ ...updates, updated_at: new Date().toISOString() }).eq('id', id);
+    } catch (err) {
+      console.warn('Supabase local_workers update error:', err);
+    }
+  }
+
   return currentList;
 }
 
@@ -2919,129 +2579,44 @@ export const SERVICE_BOOKINGS_STORAGE_KEY = 'aditi-service-bookings';
 export const WORKER_REVIEWS_STORAGE_KEY = 'aditi-worker-reviews';
 export const JOB_REPORTS_STORAGE_KEY = 'aditi-job-reports';
 
-export const INITIAL_JOB_APPLICATIONS: JobApplication[] = [
-  {
-    id: 'app-1',
-    jobId: 'job-1',
-    jobTitle: 'Senior React & Full-Stack Developer',
-    company: 'Malabar Tech Innovations',
-    candidateId: 'seeker-1',
-    candidateName: 'Rahul Krishnan',
-    candidateAvatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150',
-    candidatePhone: '+91 97441 23456',
-    candidateEmail: 'rahul.k.dev@gmail.com',
-    recruiterId: 'usr-guest',
-    coverLetter: 'I have 4 years experience building production React & Node systems with TypeScript and GraphQL.',
-    qualification: 'B.Tech in Computer Science',
-    experienceYears: 4,
-    status: 'Shortlisted',
-    appliedAt: 'Yesterday',
-    recruiterNotes: 'Strong frontend portfolio. Ready for technical interview round.'
-  },
-  {
-    id: 'app-2',
-    jobId: 'job-2',
-    jobTitle: 'Certified Electrician & Site Supervisor',
-    company: 'Skyline Buildtech Kerala',
-    candidateId: 'seeker-3',
-    candidateName: 'Muhammed Jaseel',
-    candidateAvatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=150',
-    candidatePhone: '+91 99461 88990',
-    coverLetter: 'Licensed Wireman with 6 years experience in 3-phase commercial building wiring.',
-    qualification: 'ITI Electrical (NCVT)',
-    experienceYears: 6,
-    status: 'Applied',
-    appliedAt: 'Today'
-  }
-];
-
-export const INITIAL_SERVICE_BOOKINGS: ServiceBooking[] = [
-  {
-    id: 'booking-1',
-    customerId: 'usr-guest',
-    customerName: 'Aditi User',
-    customerPhone: '+91 98470 12345',
-    workerId: 'worker-1',
-    workerName: 'K. Balan (Balan Chettan)',
-    workerTrade: 'Electrician',
-    workerAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150',
-    serviceType: 'Main Switch Board & MCB Replacement',
-    description: 'Frequent tripping in bedroom circuit breaker. Need urgent inspection and DB check.',
-    requestedDate: 'Today',
-    requestedTime: '11:00 AM',
-    address: 'Near Baby Memorial Hospital, Arayidathupalam',
-    city: 'Kozhikode',
-    estimatedPrice: '₹450 / visit + parts',
-    status: 'Scheduled',
-    createdAt: 'Yesterday'
-  },
-  {
-    id: 'booking-2',
-    customerId: 'usr-guest',
-    customerName: 'Aditi User',
-    customerPhone: '+91 98470 12345',
-    workerId: 'worker-2',
-    workerName: 'Saji Mathew',
-    workerTrade: 'Plumber',
-    workerAvatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150',
-    serviceType: 'Kitchen Sink Pipeline Block & Leakage Fix',
-    description: 'Under-sink PVC drainage pipe leakage repair.',
-    requestedDate: 'Tomorrow',
-    requestedTime: '03:30 PM',
-    address: 'Seaport-Airport Road, Kakkanad',
-    city: 'Kochi',
-    estimatedPrice: '₹350 / visit',
-    status: 'Requested',
-    createdAt: 'Today'
-  }
-];
-
-export const INITIAL_WORKER_REVIEWS: WorkerReview[] = [
-  {
-    id: 'rev-1',
-    workerId: 'worker-1',
-    reviewerId: 'user-sample-1',
-    reviewerName: 'Deepak Varma',
-    reviewerAvatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150',
-    rating: 5,
-    review: 'Balan Chettan arrived in 30 minutes! Diagnosed inverter wiring fault quickly and fixed it at reasonable charge. Highly recommended in Calicut.',
-    bookingId: 'booking-seed-1',
-    createdAt: '3 days ago'
-  },
-  {
-    id: 'rev-2',
-    workerId: 'worker-2',
-    reviewerId: 'user-sample-2',
-    reviewerName: 'Sneha Menon',
-    reviewerAvatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150',
-    rating: 5,
-    review: 'Very professional plumbing service. Fixed bathroom concealed pipe leakage with clean tile cut. Punctual and polite.',
-    bookingId: 'booking-seed-2',
-    createdAt: '1 week ago'
-  }
-];
-
+export const INITIAL_JOB_APPLICATIONS: JobApplication[] = [];
+export const INITIAL_SERVICE_BOOKINGS: ServiceBooking[] = [];
+export const INITIAL_WORKER_REVIEWS: WorkerReview[] = [];
 export const INITIAL_JOB_REPORTS: JobReport[] = [];
 
 /* ===== Applications CRUD ===== */
 export async function getCloudJobApplications(userId?: string): Promise<JobApplication[]> {
   let list: JobApplication[] = [];
+
+  if (supabase && !isTestEnv) {
+    try {
+      let query = supabase.from('job_applications').select('*').order('created_at', { ascending: false });
+      if (userId) {
+        query = query.or(`candidateId.eq.${userId},recruiterId.eq.${userId}`);
+      }
+      const { data, error } = await Promise.race([
+        query,
+        new Promise<{ data: any; error: any }>((res) => setTimeout(() => res({ data: null, error: 'timeout' }), 1200))
+      ]);
+      if (!error && data) {
+        list = data.filter((a: JobApplication) => !['app-1', 'app-2'].includes(a.id));
+        try { localStorage.setItem(JOB_APPLICATIONS_STORAGE_KEY, JSON.stringify(list)); } catch {}
+        return list;
+      }
+    } catch (err) {
+      console.warn('Supabase job_applications query error:', err);
+    }
+  }
+
   try {
     const local = localStorage.getItem(JOB_APPLICATIONS_STORAGE_KEY);
     if (local) {
       const parsed = JSON.parse(local);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        list = parsed;
+      if (Array.isArray(parsed)) {
+        list = parsed.filter((a: JobApplication) => !['app-1', 'app-2'].includes(a.id));
       }
     }
   } catch {}
-
-  if (list.length === 0) {
-    list = [...INITIAL_JOB_APPLICATIONS];
-    try {
-      localStorage.setItem(JOB_APPLICATIONS_STORAGE_KEY, JSON.stringify(list));
-    } catch {}
-  }
 
   if (userId) {
     return list.filter(a => a.candidateId === userId || a.recruiterId === userId);
@@ -3066,6 +2641,14 @@ export async function createCloudJobApplication(
   try {
     localStorage.setItem(JOB_APPLICATIONS_STORAGE_KEY, JSON.stringify(list));
   } catch {}
+
+  if (supabase && !isTestEnv) {
+    try {
+      await supabase.from('job_applications').upsert([fullApp]);
+    } catch (err) {
+      console.warn('Supabase job_applications insert error:', err);
+    }
+  }
 
   return list;
 }
@@ -3092,6 +2675,18 @@ export async function updateCloudJobApplicationStatus(
     localStorage.setItem(JOB_APPLICATIONS_STORAGE_KEY, JSON.stringify(list));
   } catch {}
 
+  if (supabase && !isTestEnv) {
+    try {
+      await supabase.from('job_applications').update({ 
+        status, 
+        recruiterNotes: notes, 
+        updated_at: new Date().toISOString() 
+      }).eq('id', id);
+    } catch (err) {
+      console.warn('Supabase job_applications status update error:', err);
+    }
+  }
+
   return list;
 }
 
@@ -3102,22 +2697,36 @@ export async function withdrawCloudJobApplication(id: string): Promise<JobApplic
 /* ===== Service Bookings CRUD ===== */
 export async function getCloudServiceBookings(userId?: string): Promise<ServiceBooking[]> {
   let list: ServiceBooking[] = [];
+
+  if (supabase && !isTestEnv) {
+    try {
+      let query = supabase.from('service_bookings').select('*').order('created_at', { ascending: false });
+      if (userId) {
+        query = query.or(`customerId.eq.${userId},workerId.eq.${userId}`);
+      }
+      const { data, error } = await Promise.race([
+        query,
+        new Promise<{ data: any; error: any }>((res) => setTimeout(() => res({ data: null, error: 'timeout' }), 1200))
+      ]);
+      if (!error && data) {
+        list = data.filter((b: ServiceBooking) => !['booking-1', 'booking-2'].includes(b.id));
+        try { localStorage.setItem(SERVICE_BOOKINGS_STORAGE_KEY, JSON.stringify(list)); } catch {}
+        return list;
+      }
+    } catch (err) {
+      console.warn('Supabase service_bookings query error:', err);
+    }
+  }
+
   try {
     const local = localStorage.getItem(SERVICE_BOOKINGS_STORAGE_KEY);
     if (local) {
       const parsed = JSON.parse(local);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        list = parsed;
+      if (Array.isArray(parsed)) {
+        list = parsed.filter((b: ServiceBooking) => !['booking-1', 'booking-2'].includes(b.id));
       }
     }
   } catch {}
-
-  if (list.length === 0) {
-    list = [...INITIAL_SERVICE_BOOKINGS];
-    try {
-      localStorage.setItem(SERVICE_BOOKINGS_STORAGE_KEY, JSON.stringify(list));
-    } catch {}
-  }
 
   if (userId) {
     return list.filter(b => b.customerId === userId || b.workerId === userId);
@@ -3142,6 +2751,14 @@ export async function createCloudServiceBooking(
   try {
     localStorage.setItem(SERVICE_BOOKINGS_STORAGE_KEY, JSON.stringify(list));
   } catch {}
+
+  if (supabase && !isTestEnv) {
+    try {
+      await supabase.from('service_bookings').upsert([fullBooking]);
+    } catch (err) {
+      console.warn('Supabase service_bookings insert error:', err);
+    }
+  }
 
   return list;
 }
@@ -3168,6 +2785,18 @@ export async function updateCloudServiceBookingStatus(
     localStorage.setItem(SERVICE_BOOKINGS_STORAGE_KEY, JSON.stringify(list));
   } catch {}
 
+  if (supabase && !isTestEnv) {
+    try {
+      await supabase.from('service_bookings').update({
+        status,
+        workerNotes: notes,
+        completedAt: status === 'Completed' ? new Date().toISOString() : undefined
+      }).eq('id', id);
+    } catch (err) {
+      console.warn('Supabase service_bookings status update error:', err);
+    }
+  }
+
   return list;
 }
 
@@ -3178,22 +2807,36 @@ export async function cancelCloudServiceBooking(id: string, reason?: string): Pr
 /* ===== Worker Reviews CRUD ===== */
 export async function getCloudWorkerReviews(workerId?: string): Promise<WorkerReview[]> {
   let list: WorkerReview[] = [];
+
+  if (supabase && !isTestEnv) {
+    try {
+      let query = supabase.from('worker_reviews').select('*').order('created_at', { ascending: false });
+      if (workerId) {
+        query = query.eq('workerId', workerId);
+      }
+      const { data, error } = await Promise.race([
+        query,
+        new Promise<{ data: any; error: any }>((res) => setTimeout(() => res({ data: null, error: 'timeout' }), 1200))
+      ]);
+      if (!error && data) {
+        list = data.filter((r: WorkerReview) => !['rev-1', 'rev-2'].includes(r.id));
+        try { localStorage.setItem(WORKER_REVIEWS_STORAGE_KEY, JSON.stringify(list)); } catch {}
+        return list;
+      }
+    } catch (err) {
+      console.warn('Supabase worker_reviews query error:', err);
+    }
+  }
+
   try {
     const local = localStorage.getItem(WORKER_REVIEWS_STORAGE_KEY);
     if (local) {
       const parsed = JSON.parse(local);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        list = parsed;
+      if (Array.isArray(parsed)) {
+        list = parsed.filter((r: WorkerReview) => !['rev-1', 'rev-2'].includes(r.id));
       }
     }
   } catch {}
-
-  if (list.length === 0) {
-    list = [...INITIAL_WORKER_REVIEWS];
-    try {
-      localStorage.setItem(WORKER_REVIEWS_STORAGE_KEY, JSON.stringify(list));
-    } catch {}
-  }
 
   if (workerId) {
     return list.filter(r => r.workerId === workerId);
@@ -3218,6 +2861,14 @@ export async function createCloudWorkerReview(
     localStorage.setItem(WORKER_REVIEWS_STORAGE_KEY, JSON.stringify(list));
   } catch {}
 
+  if (supabase && !isTestEnv) {
+    try {
+      await supabase.from('worker_reviews').upsert([fullRev]);
+    } catch (err) {
+      console.warn('Supabase worker_reviews insert error:', err);
+    }
+  }
+
   // Recalculate average rating for target worker
   const workerReviews = list.filter(r => r.workerId === review.workerId);
   const avgRating = workerReviews.length > 0 
@@ -3234,6 +2885,21 @@ export async function createCloudWorkerReview(
 
 /* ===== Reports / Moderation ===== */
 export async function getCloudReports(): Promise<JobReport[]> {
+  if (supabase && !isTestEnv) {
+    try {
+      const { data, error } = await Promise.race([
+        supabase.from('job_reports').select('*').order('created_at', { ascending: false }),
+        new Promise<{ data: any; error: any }>((res) => setTimeout(() => res({ data: null, error: 'timeout' }), 1200))
+      ]);
+      if (!error && data) {
+        try { localStorage.setItem(JOB_REPORTS_STORAGE_KEY, JSON.stringify(data)); } catch {}
+        return data;
+      }
+    } catch (err) {
+      console.warn('Supabase job_reports query error:', err);
+    }
+  }
+
   try {
     const local = localStorage.getItem(JOB_REPORTS_STORAGE_KEY);
     if (local) {
@@ -3262,6 +2928,14 @@ export async function createCloudReport(
     localStorage.setItem(JOB_REPORTS_STORAGE_KEY, JSON.stringify(list));
   } catch {}
 
+  if (supabase && !isTestEnv) {
+    try {
+      await supabase.from('job_reports').upsert([fullReport]);
+    } catch (err) {
+      console.warn('Supabase job_reports insert error:', err);
+    }
+  }
+
   return list;
 }
 
@@ -3283,6 +2957,25 @@ export function calculateDistanceKm(
       Math.sin(dLon / 2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return Number((R * c).toFixed(1));
+}
+
+/* ===== Realtime Database Subscription for Multi-Device Runtime Sync ===== */
+export function subscribeToJobPortalRealtime(onSync: () => void) {
+  if (!supabase || isTestEnv) return () => {};
+
+  const channel = supabase
+    .channel('aditi-job-portal-realtime')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'job_vacancies' }, () => onSync())
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'job_seekers' }, () => onSync())
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'local_workers' }, () => onSync())
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'job_applications' }, () => onSync())
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'service_bookings' }, () => onSync())
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'worker_reviews' }, () => onSync())
+    .subscribe();
+
+  return () => {
+    supabase?.removeChannel(channel);
+  };
 }
 
 
