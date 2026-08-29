@@ -159,6 +159,14 @@ describe('AI Legal Intelligence, Case Docket & Defamation Engine', () => {
     expect(cantonment).toBeDefined();
     expect(cantonment?.magistrateCourt).toContain('Chief Judicial Magistrate');
 
+    // Verify Thrissur includes Valapad and Vatanappally
+    const tsrStations = getPoliceStationsByDistrict('Thrissur');
+    expect(tsrStations.length).toBeGreaterThanOrEqual(25);
+    const valapad = tsrStations.find((s) => s.stationCode === 'TSR-VLP');
+    expect(valapad).toBeDefined();
+    expect(valapad?.name).toBe('Valapad Police Station');
+    expect(valapad?.nameMalayalam).toBe('വലപ്പാട് പോലീസ് സ്റ്റേഷൻ');
+
     // Dynamic case lookup with specific station auto-fills proper court
     const customCase = lookupFIRAndCaseStatus('555/2024', 'Cantonment Police Station', 'Thiruvananthapuram');
     expect(customCase.district).toBe('Thiruvananthapuram');
