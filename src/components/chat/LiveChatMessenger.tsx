@@ -114,6 +114,12 @@ export const LiveChatMessenger: React.FC = () => {
     sendBroadcast,
     toggleFriendStatus,
     toggleBlockStatus,
+    friendRequests,
+    sendFriendRequest,
+    acceptFriendRequest,
+    declineFriendRequest,
+    cancelFriendRequest,
+    unfriendContact,
     votePoll,
     toggleStarMessage,
     reactToMessage,
@@ -391,10 +397,32 @@ export const LiveChatMessenger: React.FC = () => {
     return count;
   };
 
-  // Anti-spam 3-Message Limit and Block logic
+  // Anti-spam 3-Message Limit, Block, and Friend Request logic
   const isDirectChat = !activeChat?.conversationType || activeChat?.conversationType === 'direct';
   const isFriend = activeChat?.isFriend ?? false;
   const isBlocked = activeChat?.isBlocked ?? false;
+
+  const incomingReqForActive = activeChat
+    ? friendRequests.find(
+        (r) =>
+          r.status === 'pending' &&
+          (r.fromUserId === activeChat.id ||
+            r.fromUserName.toLowerCase() === activeChat.participantName.toLowerCase())
+      )
+    : null;
+
+  const outgoingReqForActive = activeChat
+    ? friendRequests.find(
+        (r) =>
+          r.status === 'pending' &&
+          (r.toUserId === activeChat.id ||
+            r.toUserName.toLowerCase() === activeChat.participantName.toLowerCase())
+      )
+    : null;
+
+  const isRequestReceived = Boolean(incomingReqForActive || activeChat?.friendRequestReceived);
+  const isRequestSent = Boolean(outgoingReqForActive || activeChat?.friendRequestSent);
+
   const isNonFriendDirect = isDirectChat && !isFriend && !isBlocked;
   const consecutiveSentCount = isNonFriendDirect && activeChat ? getConsecutiveUserSentCount(activeChat) : 0;
   const remainingNonFriendMessages = Math.max(0, 3 - consecutiveSentCount);
@@ -971,7 +999,22 @@ export const LiveChatMessenger: React.FC = () => {
                   <div className="flex items-center gap-1.5 min-w-0">
                     <h3 className="font-black text-xs sm:text-sm text-white truncate">{activeChat.participantName}</h3>
                     {isFriend && (
-                      <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />
+                      <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-0.5 flex-shrink-0">
+                        <Check className="w-2.5 h-2.5 stroke-[3]" />
+                        <span>Friend</span>
+                      </span>
+                    )}
+                    {isRequestSent && !isFriend && (
+                      <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-amber-500/20 text-amber-300 border border-amber-500/30 flex items-center gap-0.5 flex-shrink-0">
+                        <Clock className="w-2.5 h-2.5" />
+                        <span>Requested</span>
+                      </span>
+                    )}
+                    {isRequestReceived && !isFriend && (
+                      <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 flex items-center gap-0.5 flex-shrink-0 animate-pulse">
+                        <UserPlus className="w-2.5 h-2.5" />
+                        <span>Pending</span>
+                      </span>
                     )}
                     {secretTimer && (
                       <span className="flex items-center text-[9px] font-bold px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/40 flex-shrink-0">
@@ -1077,6 +1120,57 @@ export const LiveChatMessenger: React.FC = () => {
                         <Sparkles className="w-4 h-4 text-yellow-400" />
                         <span>OmniBrain AI Tools</span>
                       </button>
+
+                      {/* Friend Request / Friendship Actions in Menu */}
+                      {isFriend ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            unfriendContact(activeChat.id);
+                            setShowHeaderMoreMenu(false);
+                          }}
+                          className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-rose-400 hover:bg-rose-950/40 transition-colors text-left"
+                        >
+                          <UserMinus className="w-4 h-4 text-rose-400" />
+                          <span>Unfriend Contact</span>
+                        </button>
+                      ) : isRequestReceived ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            acceptFriendRequest(activeChat.id);
+                            setShowHeaderMoreMenu(false);
+                          }}
+                          className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-emerald-300 hover:bg-emerald-950/40 transition-colors text-left"
+                        >
+                          <Check className="w-4 h-4 text-emerald-400" />
+                          <span>Accept Friend Request</span>
+                        </button>
+                      ) : isRequestSent ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            cancelFriendRequest(activeChat.id);
+                            setShowHeaderMoreMenu(false);
+                          }}
+                          className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-amber-400 hover:bg-slate-800 transition-colors text-left"
+                        >
+                          <X className="w-4 h-4 text-amber-400" />
+                          <span>Cancel Sent Request</span>
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            sendFriendRequest(activeChat.id, activeChat.participantName, activeChat.participantAvatar, activeChat.roleOrContext);
+                            setShowHeaderMoreMenu(false);
+                          }}
+                          className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-indigo-300 hover:bg-indigo-600/20 transition-colors text-left"
+                        >
+                          <UserPlus className="w-4 h-4 text-indigo-400" />
+                          <span>Send Friend Request</span>
+                        </button>
+                      )}
 
                       {/* Shared Media Vault */}
                       <button
@@ -1210,23 +1304,68 @@ export const LiveChatMessenger: React.FC = () => {
               </div>
             </div>
 
-        {/* Non-Friend Safety & 3-Message Daily Limit Banner */}
+        {/* Non-Friend Safety & 3-Message Daily Limit Banner / Friend Request State */}
         {isNonFriendDirect && (
-          <div className="px-3.5 sm:px-5 py-2.5 bg-gradient-to-r from-amber-950/70 via-slate-900 to-indigo-950/70 border-b border-amber-500/30 flex items-center justify-between gap-3 text-xs z-10 animate-in fade-in">
-            <div className="flex items-center gap-2 text-amber-300 min-w-0">
-              <UserPlus className="w-4 h-4 text-amber-400 flex-shrink-0" />
-              <span className="truncate">
-                <strong>{activeChat.participantName}</strong> is not in your friends list. Daily limit: <strong className="text-amber-200">{remainingNonFriendMessages} of 3</strong> messages remaining.
-              </span>
+          isRequestReceived ? (
+            <div className="px-3.5 sm:px-5 py-2.5 bg-gradient-to-r from-indigo-950/90 via-slate-900 to-purple-950/90 border-b border-indigo-500/40 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 text-xs z-10 animate-in fade-in shadow-lg">
+              <div className="flex items-center gap-2 text-indigo-200 min-w-0">
+                <UserPlus className="w-4 h-4 text-indigo-400 flex-shrink-0" />
+                <span className="leading-snug">
+                  <strong>{activeChat.participantName}</strong> sent you a friend request! Accept to connect and unlock unlimited messaging.
+                </span>
+              </div>
+              <div className="flex items-center gap-2 flex-shrink-0 self-end sm:self-auto">
+                <button
+                  type="button"
+                  onClick={() => acceptFriendRequest(activeChat.id)}
+                  className="px-3 py-1 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs flex items-center gap-1 shadow-md transition-all hover:scale-105"
+                >
+                  <Check className="w-3.5 h-3.5 stroke-[3]" />
+                  <span>Accept Request</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => declineFriendRequest(activeChat.id)}
+                  className="px-2.5 py-1 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold transition-colors"
+                >
+                  Decline
+                </button>
+              </div>
             </div>
-            <button
-              onClick={() => toggleFriendStatus(activeChat.id)}
-              className="px-3 py-1 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold text-xs flex items-center gap-1.5 shadow-md shadow-amber-500/30 transition-all hover:scale-105 flex-shrink-0"
-            >
-              <UserPlus className="w-3.5 h-3.5" />
-              <span>+ Add Friend</span>
-            </button>
-          </div>
+          ) : isRequestSent ? (
+            <div className="px-3.5 sm:px-5 py-2 bg-gradient-to-r from-amber-950/80 via-slate-900 to-slate-950 border-b border-amber-500/30 flex items-center justify-between gap-3 text-xs z-10 animate-in fade-in">
+              <div className="flex items-center gap-2 text-amber-300 min-w-0">
+                <Clock className="w-4 h-4 text-amber-400 flex-shrink-0" />
+                <span className="truncate">
+                  Friend request sent to <strong>{activeChat.participantName}</strong> (Pending approval). Daily limit: <strong className="text-amber-200">{remainingNonFriendMessages} of 3</strong> messages remaining.
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => cancelFriendRequest(activeChat.id)}
+                className="px-2.5 py-1 rounded-xl bg-slate-800 hover:bg-rose-950/60 text-slate-400 hover:text-rose-300 border border-slate-700 text-xs font-bold transition-all flex-shrink-0"
+              >
+                Cancel Request
+              </button>
+            </div>
+          ) : (
+            <div className="px-3.5 sm:px-5 py-2.5 bg-gradient-to-r from-amber-950/70 via-slate-900 to-indigo-950/70 border-b border-amber-500/30 flex items-center justify-between gap-3 text-xs z-10 animate-in fade-in">
+              <div className="flex items-center gap-2 text-amber-300 min-w-0">
+                <UserPlus className="w-4 h-4 text-amber-400 flex-shrink-0" />
+                <span className="truncate">
+                  <strong>{activeChat.participantName}</strong> is not in your friends list. Daily limit: <strong className="text-amber-200">{remainingNonFriendMessages} of 3</strong> messages remaining.
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => sendFriendRequest(activeChat.id, activeChat.participantName, activeChat.participantAvatar, activeChat.roleOrContext)}
+                className="px-3 py-1 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold text-xs flex items-center gap-1.5 shadow-md shadow-amber-500/30 transition-all hover:scale-105 flex-shrink-0"
+              >
+                <UserPlus className="w-3.5 h-3.5" />
+                <span>+ Send Friend Request</span>
+              </button>
+            </div>
+          )
         )}
 
         {/* Authoritative Synchronized Pinned Messages Banner */}

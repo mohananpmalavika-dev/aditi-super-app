@@ -441,9 +441,10 @@ export interface ChatConversation {
   subscriberCount?: number;
   isOwner?: boolean;
   description?: string;
-  isPrivate?: boolean;
   isFriend?: boolean;
   friendRequestSent?: boolean;
+  friendRequestReceived?: boolean;
+  friendshipStatus?: FriendshipStatus;
   isBlocked?: boolean;
   isPinned?: boolean;
   isMuted?: boolean;
@@ -455,6 +456,21 @@ export interface ChatConversation {
   groupPermissions?: GroupPermissions;
   groupInviteToken?: string;
   groupInviteUrl?: string;
+}
+
+export type FriendshipStatus = 'none' | 'request_sent' | 'request_received' | 'friends';
+
+export interface FriendRequest {
+  id: string;
+  fromUserId: string;
+  fromUserName: string;
+  fromUserAvatar: string;
+  fromUserRole?: string;
+  toUserId: string;
+  toUserName: string;
+  status: 'pending' | 'accepted' | 'declined';
+  timestamp: string;
+  createdAt: number;
 }
 
 /* ==================== DIGITAL WALLET ==================== */

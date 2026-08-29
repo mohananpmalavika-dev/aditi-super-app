@@ -15,7 +15,9 @@ import {
   UserCheck,
   MapPin,
   Sparkles,
-  Users
+  Users,
+  Clock,
+  UserMinus
 } from 'lucide-react';
 import { useSuperApp } from '../../context/SuperAppContext';
 import { getCloudRegisteredUsers, saveCustomContact } from '../../services/cloudDatabaseService';
@@ -33,10 +35,23 @@ export const AddFriendModal: React.FC<AddFriendModalProps> = ({
   onClose,
   onSelectChat
 }) => {
-  const { user, chats, registeredUsers, refreshRegisteredUsers, startNewChatWith, showToast } = useSuperApp();
+  const {
+    user,
+    chats,
+    registeredUsers,
+    refreshRegisteredUsers,
+    startNewChatWith,
+    friendRequests,
+    sendFriendRequest,
+    acceptFriendRequest,
+    declineFriendRequest,
+    cancelFriendRequest,
+    unfriendContact,
+    showToast
+  } = useSuperApp();
   
-  // Default to 'search' (Discover Directory) so users can immediately see and add everyone
-  const [activeTab, setActiveTab] = useState<'search' | 'friends' | 'invite' | 'custom'>('search');
+  // Default to 'search' (Discover Directory)
+  const [activeTab, setActiveTab] = useState<'search' | 'requests' | 'friends' | 'invite' | 'custom'>('search');
   const [searchQuery, setSearchQuery] = useState('');
   const [copiedLink, setCopiedLink] = useState(false);
   const [showQrCode, setShowQrCode] = useState(false);
@@ -106,7 +121,7 @@ export const AddFriendModal: React.FC<AddFriendModalProps> = ({
   useEffect(() => {
     if (!isOpen) return;
     fetchUsers();
-  }, [isOpen, registeredUsers, chats]);
+  }, [isOpen, registeredUsers, chats, friendRequests]);
 
   if (!isOpen) return null;
 
@@ -118,7 +133,7 @@ export const AddFriendModal: React.FC<AddFriendModalProps> = ({
   const userInviteUrl = `${appBaseUrl}?invite=${encodeURIComponent(user.handle || user.name.toLowerCase().replace(/\s+/g, ''))}`;
   const qrCodeImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=${encodeURIComponent(userInviteUrl)}&color=99-102-241&bgcolor=3-7-18&margin=1`;
 
-  // Filter out ONLY the actual current user (safe ID/Email matching that does not block shared generic names)
+  // Filter out ONLY the actual current user
   const otherUsers = availableUsers.filter((u) => {
     if (!u) return false;
     const isSelfId = Boolean(u.id && user.id && u.id === user.id && u.id !== 'usr-guest');
@@ -126,7 +141,7 @@ export const AddFriendModal: React.FC<AddFriendModalProps> = ({
     return !isSelfId && !isSelfEmail;
   });
 
-  // Check if a user is already in chats / friends
+  // Check if a user is already in chats
   const getExistingChat = (targetUser: UserProfile) => {
     return chats.find(
       (c) =>
@@ -135,10 +150,27 @@ export const AddFriendModal: React.FC<AddFriendModalProps> = ({
     );
   };
 
-  // Group into Added Friends
+  // Pending incoming and outgoing friend requests
+  const incomingRequests = friendRequests.filter(
+    (r) =>
+      r.status === 'pending' &&
+      (r.toUserId === user.id ||
+        r.toUserId === 'user' ||
+        r.toUserName.toLowerCase() === user.name.toLowerCase())
+  );
+
+  const outgoingRequests = friendRequests.filter(
+    (r) =>
+      r.status === 'pending' &&
+      (r.fromUserId === user.id ||
+        r.fromUserId === 'user' ||
+        r.fromUserName.toLowerCase() === user.name.toLowerCase())
+  );
+
+  // Group into Confirmed Mutual Friends only
   const myAddedFriends = otherUsers.filter((u) => {
     const existing = getExistingChat(u);
-    return Boolean(existing && (existing.isFriend !== false));
+    return Boolean(existing && existing.isFriend);
   });
 
   // Dynamic Search filter across name, handle, email, location, bio
@@ -160,19 +192,18 @@ export const AddFriendModal: React.FC<AddFriendModalProps> = ({
     return matchName || matchHandle;
   });
 
-  // Add friend from directory
-  const handleAddFromDirectory = (targetUser: UserProfile) => {
-    const existing = getExistingChat(targetUser);
-    const chatId = startNewChatWith(
+  // Send friend request from directory
+  const handleSendFriendRequestFromDirectory = async (targetUser: UserProfile) => {
+    await sendFriendRequest(
+      targetUser.id || `usr-${targetUser.name.toLowerCase().replace(/\s+/g, '')}`,
       targetUser.name,
-      targetUser.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80',
-      targetUser.bio || targetUser.location || 'Aditi Friend',
-      existing ? undefined : `Hello ${targetUser.name}! Added you as a friend on AditiChat 👋`
+      targetUser.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300',
+      targetUser.bio || targetUser.location || 'Aditi Friend'
     );
 
-    // Save to permanent custom contacts directory
+    // Save to custom contacts directory
     saveCustomContact({
-      id: targetUser.id || chatId,
+      id: targetUser.id || `usr-${Date.now()}`,
       name: targetUser.name,
       email: targetUser.email || '',
       handle: targetUser.handle || `@${targetUser.name.toLowerCase().replace(/\s+/g, '')}`,
@@ -184,14 +215,10 @@ export const AddFriendModal: React.FC<AddFriendModalProps> = ({
     });
 
     refreshRegisteredUsers();
-    confetti({ particleCount: 60, spread: 60 });
-    showToast(`✨ ${targetUser.name} added to your friends list!`);
-    onSelectChat(chatId);
-    onClose();
   };
 
-  // Add custom manual contact
-  const handleAddCustomContact = (e: React.FormEvent) => {
+  // Add custom manual contact and send friend request
+  const handleAddCustomContact = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!customName.trim()) return;
 
@@ -211,6 +238,13 @@ export const AddFriendModal: React.FC<AddFriendModalProps> = ({
     saveCustomContact(newContact);
     refreshRegisteredUsers();
 
+    await sendFriendRequest(
+      newContact.id,
+      newContact.name,
+      newContact.avatar,
+      newContact.bio
+    );
+
     const chatId = startNewChatWith(
       newContact.name,
       newContact.avatar,
@@ -218,8 +252,6 @@ export const AddFriendModal: React.FC<AddFriendModalProps> = ({
       customMessage
     );
 
-    confetti({ particleCount: 60, spread: 70 });
-    showToast(`🎉 Friend "${customName}" added successfully!`);
     onSelectChat(chatId);
     onClose();
   };
@@ -320,53 +352,69 @@ export const AddFriendModal: React.FC<AddFriendModalProps> = ({
           <button
             type="button"
             onClick={() => setActiveTab('search')}
-            className={`flex-1 min-w-[110px] py-2 px-2.5 rounded-xl text-xs font-extrabold transition-all flex items-center justify-center gap-1.5 whitespace-nowrap ${
+            className={`flex-1 min-w-[110px] py-2 px-2 rounded-xl text-xs font-extrabold transition-all flex items-center justify-center gap-1.5 whitespace-nowrap ${
               activeTab === 'search'
                 ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-md shadow-indigo-600/30 scale-[1.02]'
                 : 'text-slate-400 hover:text-white'
             }`}
           >
             <Search className="w-3.5 h-3.5" />
-            <span>Discover Users ({otherUsers.length})</span>
+            <span>Discover ({otherUsers.length})</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('requests')}
+            className={`flex-1 min-w-[105px] py-2 px-2 rounded-xl text-xs font-extrabold transition-all flex items-center justify-center gap-1.5 whitespace-nowrap relative ${
+              activeTab === 'requests'
+                ? 'bg-gradient-to-r from-pink-600 to-indigo-600 text-white shadow-md shadow-pink-600/30 scale-[1.02]'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <Clock className="w-3.5 h-3.5" />
+            <span>Requests ({incomingRequests.length})</span>
+            {incomingRequests.length > 0 && (
+              <span className="w-2 h-2 rounded-full bg-pink-400 animate-ping absolute top-1.5 right-1.5" />
+            )}
           </button>
 
           <button
             type="button"
             onClick={() => setActiveTab('friends')}
-            className={`flex-1 min-w-[100px] py-2 px-2.5 rounded-xl text-xs font-extrabold transition-all flex items-center justify-center gap-1.5 whitespace-nowrap ${
+            className={`flex-1 min-w-[100px] py-2 px-2 rounded-xl text-xs font-extrabold transition-all flex items-center justify-center gap-1.5 whitespace-nowrap ${
               activeTab === 'friends'
                 ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30 scale-[1.02]'
                 : 'text-slate-400 hover:text-white'
             }`}
           >
             <UserCheck className="w-3.5 h-3.5" />
-            <span>My Friends ({myAddedFriends.length})</span>
+            <span>Friends ({myAddedFriends.length})</span>
           </button>
 
           <button
             type="button"
             onClick={() => setActiveTab('invite')}
-            className={`flex-1 min-w-[90px] py-2 px-2.5 rounded-xl text-xs font-extrabold transition-all flex items-center justify-center gap-1.5 whitespace-nowrap ${
+            className={`flex-1 min-w-[85px] py-2 px-2 rounded-xl text-xs font-extrabold transition-all flex items-center justify-center gap-1.5 whitespace-nowrap ${
               activeTab === 'invite'
                 ? 'bg-indigo-600 text-white shadow-md'
                 : 'text-slate-400 hover:text-white'
             }`}
           >
             <Share2 className="w-3.5 h-3.5" />
-            <span>Invite & QR</span>
+            <span>Invite</span>
           </button>
 
           <button
             type="button"
             onClick={() => setActiveTab('custom')}
-            className={`flex-1 min-w-[90px] py-2 px-2.5 rounded-xl text-xs font-extrabold transition-all flex items-center justify-center gap-1.5 whitespace-nowrap ${
+            className={`flex-1 min-w-[85px] py-2 px-2 rounded-xl text-xs font-extrabold transition-all flex items-center justify-center gap-1.5 whitespace-nowrap ${
               activeTab === 'custom'
                 ? 'bg-indigo-600 text-white shadow-md'
                 : 'text-slate-400 hover:text-white'
             }`}
           >
             <Plus className="w-3.5 h-3.5" />
-            <span>Manual Entry</span>
+            <span>Manual</span>
           </button>
         </div>
 
@@ -403,7 +451,19 @@ export const AddFriendModal: React.FC<AddFriendModalProps> = ({
               {filteredUsers.length > 0 ? (
                 filteredUsers.map((u) => {
                   const existingChat = getExistingChat(u);
-                  const isFriend = Boolean(existingChat && existingChat.isFriend !== false);
+                  const isFriend = Boolean(existingChat && existingChat.isFriend);
+                  const incomingReq = friendRequests.find(
+                    (r) =>
+                      r.status === 'pending' &&
+                      (r.fromUserId === u.id || r.fromUserName.toLowerCase() === u.name.toLowerCase())
+                  );
+                  const outgoingReq = friendRequests.find(
+                    (r) =>
+                      r.status === 'pending' &&
+                      (r.toUserId === u.id || r.toUserName.toLowerCase() === u.name.toLowerCase())
+                  );
+                  const isRequestSent = Boolean(outgoingReq || (existingChat && existingChat.friendRequestSent));
+                  const isRequestReceived = Boolean(incomingReq || (existingChat && existingChat.friendRequestReceived));
 
                   return (
                     <div
@@ -416,7 +476,7 @@ export const AddFriendModal: React.FC<AddFriendModalProps> = ({
                             src={u.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300'}
                             alt={u.name}
                             className={`w-10 h-10 rounded-2xl object-cover ring-2 ${
-                              isFriend ? 'ring-emerald-500/40' : 'ring-indigo-500/30'
+                              isFriend ? 'ring-emerald-500/40' : isRequestReceived ? 'ring-indigo-500/50' : 'ring-slate-700'
                             }`}
                             onError={(e) => {
                               (e.target as HTMLElement).style.display = 'none';
@@ -430,12 +490,20 @@ export const AddFriendModal: React.FC<AddFriendModalProps> = ({
                             {u.isVerified && (
                               <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />
                             )}
-                            {isFriend && (
+                            {isFriend ? (
                               <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-0.5">
                                 <Check className="w-2.5 h-2.5" />
                                 <span>Friend</span>
                               </span>
-                            )}
+                            ) : isRequestReceived ? (
+                              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 animate-pulse">
+                                Requested You
+                              </span>
+                            ) : isRequestSent ? (
+                              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                                Pending
+                              </span>
+                            ) : null}
                           </div>
                           <div className="flex items-center gap-2 text-[11px] text-slate-400 truncate">
                             {u.handle && (
@@ -454,33 +522,66 @@ export const AddFriendModal: React.FC<AddFriendModalProps> = ({
                         </div>
                       </div>
 
-                      <button
-                        onClick={() => {
-                          if (isFriend && existingChat) {
-                            onSelectChat(existingChat.id);
-                            onClose();
-                          } else {
-                            handleAddFromDirectory(u);
-                          }
-                        }}
-                        className={`px-3 py-1.5 rounded-xl font-extrabold text-xs flex items-center gap-1.5 transition-all flex-shrink-0 ${
-                          isFriend
-                            ? 'bg-emerald-600/20 text-emerald-300 border border-emerald-500/40 hover:bg-emerald-600/30'
-                            : 'bg-gradient-to-r from-indigo-600 to-purple-600 hover:brightness-110 text-white shadow-md shadow-indigo-600/30 hover:scale-105 active:scale-95'
-                        }`}
-                      >
+                      <div className="flex items-center gap-1.5 flex-shrink-0">
                         {isFriend ? (
-                          <>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (existingChat) {
+                                onSelectChat(existingChat.id);
+                                onClose();
+                              } else {
+                                const id = startNewChatWith(u.name, u.avatar || '', u.bio || '', undefined, true);
+                                onSelectChat(id);
+                                onClose();
+                              }
+                            }}
+                            className="px-3 py-1.5 rounded-xl font-extrabold text-xs flex items-center gap-1.5 bg-emerald-600/20 text-emerald-300 border border-emerald-500/40 hover:bg-emerald-600/30 transition-all"
+                          >
                             <UserCheck className="w-3.5 h-3.5" />
                             <span>Chat</span>
-                          </>
+                          </button>
+                        ) : isRequestReceived ? (
+                          <div className="flex items-center gap-1">
+                            <button
+                              type="button"
+                              onClick={() => acceptFriendRequest(incomingReq?.id || existingChat?.id || u.id || u.name)}
+                              className="px-2.5 py-1.5 rounded-xl font-extrabold text-xs flex items-center gap-1 bg-emerald-600 hover:bg-emerald-500 text-white shadow-md shadow-emerald-600/30 transition-all hover:scale-105"
+                              title="Accept Friend Request"
+                            >
+                              <Check className="w-3 h-3 stroke-[3]" />
+                              <span>Accept</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => declineFriendRequest(incomingReq?.id || existingChat?.id || u.id || u.name)}
+                              className="p-1.5 rounded-xl text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition-colors"
+                              title="Decline Request"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        ) : isRequestSent ? (
+                          <button
+                            type="button"
+                            onClick={() => cancelFriendRequest(outgoingReq?.id || existingChat?.id || u.id || u.name)}
+                            className="px-2.5 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1 bg-slate-800 hover:bg-rose-950/40 text-amber-300 hover:text-rose-300 border border-slate-700 transition-all"
+                            title="Cancel sent request"
+                          >
+                            <Clock className="w-3 h-3 text-amber-400" />
+                            <span>Pending</span>
+                          </button>
                         ) : (
-                          <>
-                            <Plus className="w-3.5 h-3.5" />
+                          <button
+                            type="button"
+                            onClick={() => handleSendFriendRequestFromDirectory(u)}
+                            className="px-3 py-1.5 rounded-xl font-extrabold text-xs flex items-center gap-1.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:brightness-110 text-white shadow-md shadow-indigo-600/30 hover:scale-105 active:scale-95 transition-all"
+                          >
+                            <UserPlus className="w-3.5 h-3.5" />
                             <span>Add Friend</span>
-                          </>
+                          </button>
                         )}
-                      </button>
+                      </div>
                     </div>
                   );
                 })
@@ -520,7 +621,106 @@ export const AddFriendModal: React.FC<AddFriendModalProps> = ({
         )}
 
         {/* ========================================================================= */}
-        {/* TAB 2: MY ADDED FRIENDS (എന്റെ സുഹൃത്തുക്കൾ) */}
+        {/* TAB 2: FRIEND REQUESTS (ഇൻകമിംഗ് & പെൻഡിംഗ് അപേക്ഷകൾ) */}
+        {/* ========================================================================= */}
+        {activeTab === 'requests' && (
+          <div className="space-y-4 animate-in fade-in">
+            {/* Section A: Incoming Requests */}
+            <div className="space-y-2.5">
+              <div className="flex items-center justify-between">
+                <h4 className="font-extrabold text-xs text-indigo-300 flex items-center gap-1.5">
+                  <UserPlus className="w-3.5 h-3.5 text-indigo-400" />
+                  <span>Incoming Friend Requests ({incomingRequests.length})</span>
+                </h4>
+                <span className="text-[10px] text-slate-400">Must accept to become mutual friends</span>
+              </div>
+
+              {incomingRequests.length > 0 ? (
+                <div className="space-y-2 max-h-48 overflow-y-auto pr-1 divide-y divide-slate-800/60">
+                  {incomingRequests.map((req) => (
+                    <div
+                      key={req.id}
+                      className="pt-2 pb-2 first:pt-0 flex items-center justify-between gap-3 group"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <img
+                          src={req.fromUserAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300'}
+                          alt={req.fromUserName}
+                          className="w-10 h-10 rounded-2xl object-cover ring-2 ring-indigo-500/50 flex-shrink-0"
+                        />
+                        <div className="min-w-0">
+                          <h5 className="font-extrabold text-xs text-white truncate">{req.fromUserName}</h5>
+                          <p className="text-[11px] text-indigo-300/80 truncate">
+                            {req.fromUserRole || 'Wants to connect with you'}
+                          </p>
+                          <span className="text-[10px] text-slate-500 font-mono">{req.timestamp}</span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-1.5 flex-shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => acceptFriendRequest(req.id)}
+                          className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs flex items-center gap-1 shadow-md shadow-emerald-600/30 transition-all hover:scale-105"
+                        >
+                          <Check className="w-3.5 h-3.5 stroke-[3]" />
+                          <span>Accept</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => declineFriendRequest(req.id)}
+                          className="px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold transition-colors"
+                        >
+                          Decline
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="py-4 px-3 rounded-2xl bg-slate-950 border border-slate-800 text-center text-xs text-slate-400">
+                  <p className="font-medium text-slate-300">No incoming friend requests right now</p>
+                  <p className="text-[10px] text-slate-500 mt-0.5">When someone sends you a friend request, it will appear here for you to accept.</p>
+                </div>
+              )}
+            </div>
+
+            {/* Section B: Sent Requests Pending */}
+            {outgoingRequests.length > 0 && (
+              <div className="space-y-2 pt-2 border-t border-slate-800">
+                <h4 className="font-extrabold text-xs text-amber-300 flex items-center gap-1.5">
+                  <Clock className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Sent Requests Pending Approval ({outgoingRequests.length})</span>
+                </h4>
+
+                <div className="space-y-2 max-h-40 overflow-y-auto pr-1 divide-y divide-slate-800/60">
+                  {outgoingRequests.map((req) => (
+                    <div
+                      key={req.id}
+                      className="pt-2 pb-2 first:pt-0 flex items-center justify-between gap-3"
+                    >
+                      <div className="min-w-0">
+                        <h5 className="font-extrabold text-xs text-white truncate">{req.toUserName}</h5>
+                        <p className="text-[10px] text-amber-400/80">Awaiting acceptance • {req.timestamp}</p>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => cancelFriendRequest(req.id)}
+                        className="px-2.5 py-1 rounded-xl bg-slate-800 hover:bg-rose-950/50 text-slate-400 hover:text-rose-300 border border-slate-700 text-[11px] font-bold transition-colors"
+                      >
+                        Cancel Request
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ========================================================================= */}
+        {/* TAB 3: MY CONFIRMED FRIENDS (എന്റെ സുഹൃത്തുക്കൾ) */}
         {/* ========================================================================= */}
         {activeTab === 'friends' && (
           <div className="space-y-3.5 animate-in fade-in">
@@ -531,7 +731,7 @@ export const AddFriendModal: React.FC<AddFriendModalProps> = ({
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search among your friends..."
+                  placeholder="Search among your mutual friends..."
                   className="w-full pl-9 pr-4 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
                 />
               </div>
@@ -563,7 +763,7 @@ export const AddFriendModal: React.FC<AddFriendModalProps> = ({
                             <h4 className="font-extrabold text-xs text-white truncate">{u.name}</h4>
                             <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-0.5">
                               <Check className="w-2.5 h-2.5" />
-                              <span>Added Friend</span>
+                              <span>Mutual Friend</span>
                             </span>
                           </div>
                           <p className="text-[11px] text-slate-400 truncate">
@@ -572,20 +772,35 @@ export const AddFriendModal: React.FC<AddFriendModalProps> = ({
                         </div>
                       </div>
 
-                      <button
-                        onClick={() => {
-                          if (existingChat) {
-                            onSelectChat(existingChat.id);
-                            onClose();
-                          } else {
-                            handleAddFromDirectory(u);
-                          }
-                        }}
-                        className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs flex items-center gap-1.5 shadow-md shadow-emerald-600/30 transition-all hover:scale-105 active:scale-95 flex-shrink-0"
-                      >
-                        <UserCheck className="w-3.5 h-3.5" />
-                        <span>Open Chat</span>
-                      </button>
+                      <div className="flex items-center gap-1.5 flex-shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (existingChat) {
+                              onSelectChat(existingChat.id);
+                              onClose();
+                            } else {
+                              const id = startNewChatWith(u.name, u.avatar || '', u.bio || '', undefined, true);
+                              onSelectChat(id);
+                              onClose();
+                            }
+                          }}
+                          className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs flex items-center gap-1.5 shadow-md shadow-emerald-600/30 transition-all hover:scale-105 active:scale-95"
+                        >
+                          <UserCheck className="w-3.5 h-3.5" />
+                          <span>Chat</span>
+                        </button>
+                        {existingChat && (
+                          <button
+                            type="button"
+                            onClick={() => unfriendContact(existingChat.id)}
+                            className="p-1.5 rounded-xl bg-slate-800 hover:bg-rose-950/50 text-slate-400 hover:text-rose-400 transition-colors"
+                            title="Unfriend"
+                          >
+                            <UserMinus className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
                     </div>
                   );
                 })
@@ -596,10 +811,10 @@ export const AddFriendModal: React.FC<AddFriendModalProps> = ({
                   </div>
                   <div>
                     <p className="font-bold text-slate-300">
-                      {searchQuery ? `No friend found matching "${searchQuery}"` : 'No friends added yet'}
+                      {searchQuery ? `No friend found matching "${searchQuery}"` : 'No confirmed friends yet'}
                     </p>
                     <p className="text-[11px] text-slate-500 mt-1">
-                      Discover other registered members in the directory or send an instant invite link!
+                      Send a friend request to any member in the Discover directory. Once they accept, you will both become mutual friends with unlimited messaging!
                     </p>
                   </div>
                   <div className="flex items-center justify-center gap-2 pt-1">
@@ -618,7 +833,7 @@ export const AddFriendModal: React.FC<AddFriendModalProps> = ({
         )}
 
         {/* ========================================================================= */}
-        {/* TAB 3: 1-CLICK INVITE FRIENDS (WHATSAPP, SMS, QR, EMAIL) */}
+        {/* TAB 4: 1-CLICK INVITE FRIENDS (WHATSAPP, SMS, QR, EMAIL) */}
         {/* ========================================================================= */}
         {activeTab === 'invite' && (
           <div className="space-y-4 animate-in fade-in text-xs">

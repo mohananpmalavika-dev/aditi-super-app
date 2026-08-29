@@ -47,13 +47,21 @@ import {
   toggleCloudShortlistMatrimony,
   updateCloudHabit,
   updateCloudTaskStatus,
-  updateCloudUserProfile
+  updateCloudUserProfile,
+  getLocalFriendRequests,
+  FRIEND_REQUESTS_STORAGE_KEY,
+  sendCloudFriendRequest,
+  acceptCloudFriendRequest,
+  declineCloudFriendRequest,
+  cancelCloudFriendRequest
 } from '../services/cloudDatabaseService';
 import {
   ChatConversation,
   ChatMessage,
   ChatPoll,
   ChatReminder,
+  FriendRequest,
+  FriendshipStatus,
   HabitItem,
   LoginCredentials,
   MatrimonyProfile,
@@ -135,9 +143,14 @@ interface SuperAppContextType {
   startNewChatWith: (name: string, avatar: string, role: string, initialMessage?: string) => string;
   createGroup: (groupData: { name: string; description: string; members: string[]; avatar: string }) => string;
   createChannel: (channelData: { name: string; handle: string; description: string; avatar: string; isPrivate: boolean; initialPost?: string }) => string;
-  sendBroadcast: (recipientChatIds: string[], text: string) => Promise<void>;
   toggleFriendStatus: (chatId: string) => void;
   toggleBlockStatus: (chatId: string) => void;
+  friendRequests: FriendRequest[];
+  sendFriendRequest: (targetUserIdOrChatId: string, targetName?: string, targetAvatar?: string, role?: string) => Promise<void>;
+  acceptFriendRequest: (requestIdOrChatId: string) => Promise<void>;
+  declineFriendRequest: (requestIdOrChatId: string) => Promise<void>;
+  cancelFriendRequest: (requestIdOrChatId: string) => Promise<void>;
+  unfriendContact: (chatId: string) => Promise<void>;
   votePoll: (chatId: string, messageId: string, optionId: string) => void;
   toggleStarMessage: (chatId: string, messageId: string) => void;
   reactToMessage: (chatId: string, messageId: string, emoji: string) => void;
@@ -229,6 +242,13 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   });
   const [activeChatId, setActiveChatId] = useState<string>('');
   const [registeredUsers, setRegisteredUsers] = useState<UserProfile[]>([]);
+  const [friendRequests, setFriendRequests] = useState<FriendRequest[]>(() => {
+    return getLocalFriendRequests();
+  });
+
+  useEffect(() => {
+    localStorage.setItem(FRIEND_REQUESTS_STORAGE_KEY, JSON.stringify(friendRequests));
+  }, [friendRequests]);
 
   useEffect(() => {
     localStorage.setItem('omnilife_chats', JSON.stringify(chats));
@@ -892,11 +912,11 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     });
   };
 
-  const startNewChatWith = (name: string, avatar: string, role: string, initialMessage?: string): string => {
+  const startNewChatWith = (name: string, avatar: string, role: string, initialMessage?: string, autoFriend = false): string => {
     const existing = chats.find((c) => c.participantName.toLowerCase() === name.toLowerCase());
     if (existing) {
-      if (!existing.isFriend) {
-        setChats((prev) => prev.map((c) => (c.id === existing.id ? { ...c, isFriend: true } : c)));
+      if (autoFriend && !existing.isFriend) {
+        setChats((prev) => prev.map((c) => (c.id === existing.id ? { ...c, isFriend: true, friendshipStatus: 'friends' } : c)));
         addCloudFriend(existing.id);
       }
       setActiveChatId(existing.id);
@@ -914,7 +934,8 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       lastMessageTime: 'Just now',
       unreadCount: 0,
       isOnline: true,
-      isFriend: true,
+      isFriend: autoFriend,
+      friendshipStatus: autoFriend ? 'friends' : 'none',
       messages: initialMessage
         ? [
             {
@@ -930,7 +951,9 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     };
 
     setChats((prev) => [newChat, ...prev]);
-    addCloudFriend(newChatId);
+    if (autoFriend) {
+      addCloudFriend(newChatId);
+    }
     setActiveChatId(newChatId);
     setActiveMiniApp('chat');
     return newChatId;
@@ -1001,6 +1024,7 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       conversationType: 'group',
       description: groupData.description,
       isFriend: true,
+      friendshipStatus: 'friends',
       messages: [
         {
           id: `m-${Date.now()}`,
@@ -1043,29 +1067,228 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     setChats(updatedChats);
   };
 
-  const toggleFriendStatus = async (chatId: string) => {
-    const targetChat = chats.find(c => c.id === chatId);
-    const willBeFriend = targetChat ? !targetChat.isFriend : true;
+  const sendFriendRequest = async (targetUserIdOrChatId: string, targetName?: string, targetAvatar?: string, role?: string) => {
+    const targetChat = chats.find(
+      (c) => c.id === targetUserIdOrChatId || (targetName && c.participantName.toLowerCase() === targetName.toLowerCase())
+    );
+    const resolvedName = targetName || targetChat?.participantName || 'Contact';
+    const resolvedAvatar = targetAvatar || targetChat?.participantAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300';
+    const resolvedRole = role || targetChat?.roleOrContext || 'Aditi Contact';
+    const targetId = targetChat?.id || targetUserIdOrChatId;
+
+    const newReqId = `freq-${Date.now()}`;
+    const newRequest: FriendRequest = {
+      id: newReqId,
+      fromUserId: user.id || 'user',
+      fromUserName: user.name,
+      fromUserAvatar: user.avatar,
+      fromUserRole: user.bio || 'Aditi Member',
+      toUserId: targetId,
+      toUserName: resolvedName,
+      status: 'pending',
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      createdAt: Date.now()
+    };
+
+    setFriendRequests((prev) => [
+      ...prev.filter((r) => !(r.toUserId === targetId && r.fromUserId === (user.id || 'user'))),
+      newRequest
+    ]);
+    await sendCloudFriendRequest(newRequest);
+
+    if (targetChat) {
+      setChats((prev) =>
+        prev.map((c) =>
+          c.id === targetChat.id
+            ? {
+                ...c,
+                isFriend: false,
+                friendRequestSent: true,
+                friendRequestReceived: false,
+                friendshipStatus: 'request_sent'
+              }
+            : c
+        )
+      );
+    } else {
+      const newChatId = targetUserIdOrChatId.startsWith('chat-') ? targetUserIdOrChatId : `chat-${Date.now()}`;
+      const newChat: ChatConversation = {
+        id: newChatId,
+        participantName: resolvedName,
+        participantAvatar: resolvedAvatar,
+        roleOrContext: resolvedRole,
+        lastMessage: 'Friend request sent 📩',
+        lastMessageTime: 'Just now',
+        unreadCount: 0,
+        isOnline: true,
+        isFriend: false,
+        friendRequestSent: true,
+        friendRequestReceived: false,
+        friendshipStatus: 'request_sent',
+        messages: [
+          {
+            id: `m-${Date.now()}`,
+            senderId: 'user',
+            senderName: user.name,
+            text: `📩 Sent friend request to ${resolvedName}. Unlimited messaging will unlock once they accept!`,
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            isUser: true
+          }
+        ]
+      };
+      setChats((prev) => [newChat, ...prev]);
+    }
+
+    showToast(`📩 Friend request sent to ${resolvedName}! Awaiting acceptance.`);
+  };
+
+  const acceptFriendRequest = async (requestIdOrChatId: string) => {
+    const req = friendRequests.find(
+      (r) => r.id === requestIdOrChatId || r.fromUserId === requestIdOrChatId || r.toUserId === requestIdOrChatId
+    );
+
+    const fromName = req ? req.fromUserName : (chats.find((c) => c.id === requestIdOrChatId)?.participantName || 'Contact');
+    const fromId = req ? req.fromUserId : requestIdOrChatId;
+    const toId = req ? req.toUserId : (user.id || 'user');
+
+    setFriendRequests((prev) =>
+      prev.map((r) =>
+        r.id === req?.id || r.fromUserId === fromId
+          ? { ...r, status: 'accepted' }
+          : r
+      )
+    );
+
+    if (req) {
+      await acceptCloudFriendRequest(req.id, fromId, toId);
+    } else {
+      await addCloudFriend(fromId);
+    }
 
     setChats((prev) =>
       prev.map((c) => {
-        if (c.id === chatId) {
-          if (willBeFriend) {
-            confetti({ particleCount: 70, spread: 70 });
-            showToast(`🎉 Added ${c.participantName} as friend! Unlimited messaging unlocked.`);
-          } else {
-            showToast(`Removed ${c.participantName} from friends list.`);
-          }
-          return { ...c, isFriend: willBeFriend };
+        const matches =
+          c.id === requestIdOrChatId ||
+          c.participantName.toLowerCase() === fromName.toLowerCase() ||
+          (req && (c.id === req.fromUserId || c.id === req.toUserId));
+
+        if (matches) {
+          const sysMsg: ChatMessage = {
+            id: `m-accept-${Date.now()}`,
+            senderId: 'system',
+            senderName: 'System',
+            text: `🎉 You and ${c.participantName} are now friends! Unlimited messaging unlocked.`,
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            isUser: false
+          };
+          return {
+            ...c,
+            isFriend: true,
+            friendRequestSent: false,
+            friendRequestReceived: false,
+            friendshipStatus: 'friends',
+            messages: [...c.messages, sysMsg]
+          };
         }
         return c;
       })
     );
 
-    if (willBeFriend) {
-      await addCloudFriend(chatId);
+    confetti({ particleCount: 80, spread: 80 });
+    showToast(`🎉 You accepted ${fromName}'s friend request! You are now friends.`);
+  };
+
+  const declineFriendRequest = async (requestIdOrChatId: string) => {
+    const req = friendRequests.find(
+      (r) => r.id === requestIdOrChatId || r.fromUserId === requestIdOrChatId || r.toUserId === requestIdOrChatId
+    );
+    const targetName = req ? req.fromUserName : (chats.find((c) => c.id === requestIdOrChatId)?.participantName || 'Contact');
+
+    setFriendRequests((prev) => prev.filter((r) => r.id !== req?.id && r.fromUserId !== requestIdOrChatId));
+    if (req) {
+      await declineCloudFriendRequest(req.id, req.fromUserId, req.toUserId);
+    }
+
+    setChats((prev) =>
+      prev.map((c) => {
+        if (c.id === requestIdOrChatId || c.participantName.toLowerCase() === targetName.toLowerCase()) {
+          return {
+            ...c,
+            isFriend: false,
+            friendRequestReceived: false,
+            friendRequestSent: false,
+            friendshipStatus: 'none'
+          };
+        }
+        return c;
+      })
+    );
+
+    showToast(`Declined friend request from ${targetName}.`);
+  };
+
+  const cancelFriendRequest = async (requestIdOrChatId: string) => {
+    const req = friendRequests.find(
+      (r) => r.id === requestIdOrChatId || r.toUserId === requestIdOrChatId || r.fromUserId === requestIdOrChatId
+    );
+    const targetName = req ? req.toUserName : (chats.find((c) => c.id === requestIdOrChatId)?.participantName || 'Contact');
+
+    setFriendRequests((prev) => prev.filter((r) => r.id !== req?.id && r.toUserId !== requestIdOrChatId));
+    if (req) {
+      await cancelCloudFriendRequest(req.fromUserId, req.toUserId);
+    }
+
+    setChats((prev) =>
+      prev.map((c) => {
+        if (c.id === requestIdOrChatId || c.participantName.toLowerCase() === targetName.toLowerCase()) {
+          return {
+            ...c,
+            isFriend: false,
+            friendRequestSent: false,
+            friendRequestReceived: false,
+            friendshipStatus: 'none'
+          };
+        }
+        return c;
+      })
+    );
+
+    showToast(`Cancelled friend request to ${targetName}.`);
+  };
+
+  const unfriendContact = async (chatId: string) => {
+    const targetChat = chats.find((c) => c.id === chatId);
+    const name = targetChat?.participantName || 'Contact';
+
+    setChats((prev) =>
+      prev.map((c) =>
+        c.id === chatId
+          ? {
+              ...c,
+              isFriend: false,
+              friendRequestSent: false,
+              friendRequestReceived: false,
+              friendshipStatus: 'none'
+            }
+          : c
+      )
+    );
+
+    setFriendRequests((prev) => prev.filter((r) => r.fromUserId !== chatId && r.toUserId !== chatId));
+    await removeCloudFriend(chatId);
+    showToast(`Removed ${name} from friends list.`);
+  };
+
+  const toggleFriendStatus = async (chatId: string) => {
+    const targetChat = chats.find((c) => c.id === chatId);
+    if (targetChat?.isFriend) {
+      await unfriendContact(chatId);
+    } else if (targetChat?.friendRequestReceived) {
+      await acceptFriendRequest(chatId);
+    } else if (targetChat?.friendRequestSent) {
+      await cancelFriendRequest(chatId);
     } else {
-      await removeCloudFriend(chatId);
+      await sendFriendRequest(chatId);
     }
   };
 
@@ -1528,6 +1751,12 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         sendBroadcast,
         toggleFriendStatus,
         toggleBlockStatus,
+        friendRequests,
+        sendFriendRequest,
+        acceptFriendRequest,
+        declineFriendRequest,
+        cancelFriendRequest,
+        unfriendContact,
         votePoll,
         toggleStarMessage,
         reactToMessage,

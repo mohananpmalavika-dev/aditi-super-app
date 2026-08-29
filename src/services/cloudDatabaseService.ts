@@ -2,6 +2,8 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { 
   ChatConversation, 
   ChatMessage,
+  FriendRequest,
+  FriendshipStatus,
   HabitItem, 
   LoginCredentials,
   MatrimonyProfile, 
@@ -1523,11 +1525,136 @@ export async function sendCloudMessage(
   return [...cloudState.chats];
 }
 
-export async function addCloudFriend(friendId: string): Promise<void> {
+export const FRIEND_REQUESTS_STORAGE_KEY = 'aditi-friend-requests';
+
+export function getLocalFriendRequests(): FriendRequest[] {
+  try {
+    const raw = localStorage.getItem(FRIEND_REQUESTS_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function saveLocalFriendRequest(req: FriendRequest): void {
+  try {
+    const existing = getLocalFriendRequests();
+    const filtered = existing.filter((r) => r.id !== req.id);
+    filtered.push(req);
+    localStorage.setItem(FRIEND_REQUESTS_STORAGE_KEY, JSON.stringify(filtered));
+  } catch (err) {
+    console.warn('Failed to save friend request to local storage:', err);
+  }
+}
+
+export function updateLocalFriendRequestStatus(requestId: string, status: 'pending' | 'accepted' | 'declined'): void {
+  try {
+    const existing = getLocalFriendRequests();
+    const updated = existing.map((r) => (r.id === requestId ? { ...r, status } : r));
+    localStorage.setItem(FRIEND_REQUESTS_STORAGE_KEY, JSON.stringify(updated));
+  } catch (err) {
+    console.warn('Failed to update friend request in local storage:', err);
+  }
+}
+
+export function removeLocalFriendRequest(filter: { id?: string; fromUserId?: string; toUserId?: string }): void {
+  try {
+    const existing = getLocalFriendRequests();
+    const filtered = existing.filter((r) => {
+      if (filter.id && r.id === filter.id) return false;
+      if (
+        filter.fromUserId &&
+        filter.toUserId &&
+        ((r.fromUserId === filter.fromUserId && r.toUserId === filter.toUserId) ||
+         (r.fromUserId === filter.toUserId && r.toUserId === filter.fromUserId))
+      ) {
+        return false;
+      }
+      return true;
+    });
+    localStorage.setItem(FRIEND_REQUESTS_STORAGE_KEY, JSON.stringify(filtered));
+  } catch (err) {
+    console.warn('Failed to remove friend request from local storage:', err);
+  }
+}
+
+const FRIENDS_STORAGE_KEY = 'ADITI_SUPER_APP_FRIENDS_STORAGE';
+
+export function getLocalFriends(): string[] {
+  try {
+    const raw = localStorage.getItem(FRIENDS_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function isCloudFriend(friendId: string): boolean {
+  const list = getLocalFriends();
+  return list.includes(friendId);
+}
+
+export async function sendCloudFriendRequest(req: FriendRequest): Promise<void> {
+  saveLocalFriendRequest(req);
   if (supabase) {
     const { data: authData } = await supabase.auth.getUser();
     if (authData.user) {
-      await supabase.from('friendships').insert({
+      await supabase.from('friendships').upsert({
+        user_id: authData.user.id,
+        friend_id: req.toUserId,
+        status: 'pending'
+      });
+    }
+  }
+}
+
+export async function acceptCloudFriendRequest(reqId: string, fromUserId: string, toUserId: string): Promise<void> {
+  updateLocalFriendRequestStatus(reqId, 'accepted');
+  await addCloudFriend(fromUserId);
+  await addCloudFriend(toUserId);
+  if (supabase) {
+    await supabase.from('friendships')
+      .update({ status: 'accepted' })
+      .or(`and(user_id.eq.${fromUserId},friend_id.eq.${toUserId}),and(user_id.eq.${toUserId},friend_id.eq.${fromUserId})`);
+  }
+}
+
+export async function declineCloudFriendRequest(reqId: string, fromUserId?: string, toUserId?: string): Promise<void> {
+  updateLocalFriendRequestStatus(reqId, 'declined');
+  if (fromUserId && toUserId) {
+    removeLocalFriendRequest({ fromUserId, toUserId });
+  }
+  if (supabase) {
+    await supabase.from('friendships')
+      .delete()
+      .or(`and(user_id.eq.${fromUserId},friend_id.eq.${toUserId}),and(user_id.eq.${toUserId},friend_id.eq.${fromUserId})`);
+  }
+}
+
+export async function cancelCloudFriendRequest(fromUserId: string, toUserId: string): Promise<void> {
+  removeLocalFriendRequest({ fromUserId, toUserId });
+  if (supabase) {
+    await supabase.from('friendships')
+      .delete()
+      .match({ user_id: fromUserId, friend_id: toUserId, status: 'pending' });
+  }
+}
+
+export async function addCloudFriend(friendId: string): Promise<void> {
+  try {
+    const list = getLocalFriends();
+    if (!list.includes(friendId)) {
+      list.push(friendId);
+      localStorage.setItem(FRIENDS_STORAGE_KEY, JSON.stringify(list));
+    }
+  } catch (err) {
+    console.warn('Failed to save friend locally:', err);
+  }
+
+  if (supabase) {
+    const { data: authData } = await supabase.auth.getUser();
+    if (authData.user) {
+      await supabase.from('friendships').upsert({
         user_id: authData.user.id,
         friend_id: friendId,
         status: 'accepted'
@@ -1537,6 +1664,14 @@ export async function addCloudFriend(friendId: string): Promise<void> {
 }
 
 export async function removeCloudFriend(friendId: string): Promise<void> {
+  try {
+    const list = getLocalFriends();
+    const filtered = list.filter((id) => id !== friendId);
+    localStorage.setItem(FRIENDS_STORAGE_KEY, JSON.stringify(filtered));
+  } catch (err) {
+    console.warn('Failed to remove friend locally:', err);
+  }
+
   if (supabase) {
     const { data: authData } = await supabase.auth.getUser();
     if (authData.user) {
