@@ -57,7 +57,8 @@ import {
   Film,
   Globe,
   Languages,
-  ChevronDown
+  ChevronDown,
+  X
 } from 'lucide-react';
 import { useSuperApp } from '../../context/SuperAppContext';
 import { ChatConversation, ChatMessage, ChatPoll } from '../../types/superApp';
@@ -177,6 +178,11 @@ export const LiveChatMessenger: React.FC = () => {
     voiceProfile?: Partial<UserVoiceProfile>;
   } | null>(null);
   const stopVoiceRef = useRef<(() => void) | null>(null);
+
+  // Mobile Ergonomics & De-congestion State
+  const [showHeaderMoreMenu, setShowHeaderMoreMenu] = useState(false);
+  const [showAttachmentsMenu, setShowAttachmentsMenu] = useState(false);
+  const [showSidebarActionsMenu, setShowSidebarActionsMenu] = useState(false);
 
   const handlePlayMessageInSenderVoice = (msg: ChatMessage) => {
     if (activePlayingVoiceMsgId === msg.id) {
@@ -563,7 +569,7 @@ export const LiveChatMessenger: React.FC = () => {
   };
 
   return (
-    <div className="h-[calc(100vh-4rem)] flex flex-col md:flex-row bg-slate-950 text-slate-100 overflow-hidden font-sans border-t border-slate-800">
+    <div className="h-[calc(100dvh-7.5rem)] md:h-[calc(100vh-4rem)] flex flex-col md:flex-row bg-slate-950 text-slate-100 overflow-hidden font-sans border-t md:border border-slate-800 md:rounded-3xl md:shadow-2xl">
       
       {/* ========================================================================= */}
       {/* LEFT SIDEBAR: CONVERSATION LIST & SEARCH */}
@@ -571,16 +577,121 @@ export const LiveChatMessenger: React.FC = () => {
       <div className={`w-full md:w-80 lg:w-96 flex-shrink-0 border-r border-slate-800 flex flex-col bg-slate-950 ${mobileView === 'chat' ? 'hidden md:flex' : 'flex'}`}>
         
         {/* Top Header */}
-        <div className="p-4 border-b border-slate-800 space-y-3 bg-slate-900/50 backdrop-blur-md">
+        <div className="p-3.5 sm:p-4 border-b border-slate-800 space-y-3 bg-slate-900/60 backdrop-blur-xl relative">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2.5">
               <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-indigo-600 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-600/30">
                 <Send className="w-4 h-4 text-white" />
               </div>
-              <h2 className="font-extrabold text-base tracking-tight text-white">AditiChat Pro</h2>
+              <div>
+                <h2 className="font-black text-sm sm:text-base tracking-tight text-white flex items-center gap-1.5">
+                  <span>AditiChat Pro</span>
+                  <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                    Live
+                  </span>
+                </h2>
+              </div>
             </div>
             
-            <div className="flex items-center gap-1">
+            {/* Mobile Actions Menu Dropdown Trigger */}
+            <div className="flex md:hidden items-center gap-1">
+              <button
+                type="button"
+                onClick={() => setAddFriendModalOpen(true)}
+                className="p-2 rounded-xl bg-indigo-600/20 text-indigo-400 border border-indigo-500/30 hover:bg-indigo-600/30 text-xs font-extrabold flex items-center gap-1"
+                title="Add Friends"
+              >
+                <UserPlus className="w-4 h-4" />
+              </button>
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setShowSidebarActionsMenu(!showSidebarActionsMenu)}
+                  className={`p-2 rounded-xl border transition-colors ${
+                    showSidebarActionsMenu
+                      ? 'bg-indigo-600 text-white border-indigo-500 shadow-md'
+                      : 'bg-slate-800 text-slate-300 border-slate-700 hover:text-white'
+                  }`}
+                  title="More actions"
+                >
+                  <MoreVertical className="w-4 h-4" />
+                </button>
+
+                {showSidebarActionsMenu && (
+                  <div className="absolute right-0 top-11 bg-slate-900 border border-slate-800 rounded-2xl p-1.5 shadow-2xl z-50 w-56 space-y-1 animate-in fade-in zoom-in-95">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAddFriendModalOpen(true);
+                        setShowSidebarActionsMenu(false);
+                      }}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-slate-200 hover:bg-indigo-600/20 hover:text-indigo-300 transition-colors text-left"
+                    >
+                      <UserPlus className="w-4 h-4 text-indigo-400" />
+                      <span>Add & Discover Friends</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setGroupModalOpen(true);
+                        setShowSidebarActionsMenu(false);
+                      }}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-slate-200 hover:bg-slate-800 transition-colors text-left"
+                    >
+                      <Users className="w-4 h-4 text-purple-400" />
+                      <span>New Group Chat</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setChannelModalOpen(true);
+                        setShowSidebarActionsMenu(false);
+                      }}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-slate-200 hover:bg-slate-800 transition-colors text-left"
+                    >
+                      <Megaphone className="w-4 h-4 text-pink-400" />
+                      <span>New Broadcast Channel</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setBroadcastModalOpen(true);
+                        setShowSidebarActionsMenu(false);
+                      }}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-slate-200 hover:bg-slate-800 transition-colors text-left"
+                    >
+                      <Radio className="w-4 h-4 text-emerald-400" />
+                      <span>WhatsApp Broadcast</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setStarredDrawerOpen(true);
+                        setShowSidebarActionsMenu(false);
+                      }}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-slate-200 hover:bg-slate-800 transition-colors text-left"
+                    >
+                      <Star className="w-4 h-4 text-yellow-400 fill-current" />
+                      <span>Starred Bookmarks</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setScheduledQueueDrawerOpen(true);
+                        setShowSidebarActionsMenu(false);
+                      }}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-slate-200 hover:bg-slate-800 transition-colors text-left"
+                    >
+                      <Clock className="w-4 h-4 text-amber-400" />
+                      <span>Scheduled Queue</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Desktop Actions Row */}
+            <div className="hidden md:flex items-center gap-1">
               <button
                 onClick={() => setScheduledQueueDrawerOpen(true)}
                 className="p-1.5 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 text-amber-400 border border-amber-500/30 transition-colors relative"
@@ -830,89 +941,41 @@ export const LiveChatMessenger: React.FC = () => {
             />
 
             {/* Top Active Chat Header */}
-            <div className="px-3.5 sm:px-5 py-3 bg-slate-950/90 border-b border-slate-800 backdrop-blur-xl flex items-center justify-between z-20">
-              <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+            <div className="px-3 sm:px-4 py-2.5 bg-slate-950/95 border-b border-slate-800 backdrop-blur-xl flex items-center justify-between z-20 gap-2">
+              <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
                 
                 {/* Mobile Back Button */}
                 <button
                   onClick={() => setMobileView('list')}
-                  className="md:hidden p-1.5 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-white transition-colors"
+                  className="md:hidden p-2 -ml-1 rounded-xl hover:bg-slate-800 text-slate-300 hover:text-white transition-colors flex-shrink-0"
                   title="Back to conversations"
                 >
                   <ChevronLeft className="w-5 h-5" />
                 </button>
 
+                {/* Avatar */}
                 <div className="relative flex-shrink-0 cursor-pointer" onClick={() => setDetailsDrawerOpen(true)}>
                   <img
                     src={getSafeAvatarUrl(activeChat.participantAvatar, activeChat.participantName)}
                     alt={activeChat.participantName}
                     onError={(e) => handleAvatarError(e, activeChat.participantName)}
-                    className="w-10 h-10 rounded-2xl object-cover ring-2 ring-indigo-500/40"
+                    className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl object-cover ring-2 ring-indigo-500/40"
                   />
                   {activeChat.isOnline && (
                     <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-400 border-2 border-slate-950" />
                   )}
                 </div>
 
-                <div className="min-w-0 cursor-pointer" onClick={() => setDetailsDrawerOpen(true)}>
-                  <div className="flex items-center gap-1.5 sm:gap-2">
-                    <h3 className="font-extrabold text-xs sm:text-sm text-white truncate">{activeChat.participantName}</h3>
-                    <span className="hidden sm:inline-block text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-800 text-indigo-300 truncate">
-                      {activeChat.roleOrContext}
-                    </span>
-                    
-                    {/* Friend / Non-friend / Blocked Badges */}
-                    {isDirectChat && (
-                      isBlocked ? (
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            toggleBlockStatus(activeChat.id);
-                          }}
-                          className="text-[10px] font-extrabold px-2 py-0.5 rounded-lg bg-rose-500/20 text-rose-300 border border-rose-500/40 hover:bg-rose-500/30 flex items-center gap-1 transition-all"
-                          title="Click to unblock this contact"
-                        >
-                          <Ban className="w-2.5 h-2.5" />
-                          <span>Blocked (Unblock)</span>
-                        </button>
-                      ) : isFriend ? (
-                        <div className="flex items-center gap-1">
-                          <span className="hidden sm:inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                            <UserCheck className="w-2.5 h-2.5" />
-                            <span>Friend</span>
-                          </span>
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              toggleFriendStatus(activeChat.id);
-                            }}
-                            className="hidden sm:inline-flex text-[10px] font-semibold px-2 py-0.5 rounded-lg hover:bg-rose-950/40 text-slate-400 hover:text-rose-300 items-center gap-1 transition-colors"
-                            title="Unfriend this contact"
-                          >
-                            <UserMinus className="w-2.5 h-2.5" />
-                            <span>Unfriend</span>
-                          </button>
-                        </div>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            toggleFriendStatus(activeChat.id);
-                          }}
-                          className="text-[10px] font-extrabold px-2 py-0.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 flex items-center gap-1 shadow-sm transition-all hover:scale-105"
-                        >
-                          <UserPlus className="w-2.5 h-2.5" />
-                          <span>+ Add Friend</span>
-                        </button>
-                      )
+                {/* Participant Info */}
+                <div className="min-w-0 cursor-pointer flex-1" onClick={() => setDetailsDrawerOpen(true)}>
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <h3 className="font-black text-xs sm:text-sm text-white truncate">{activeChat.participantName}</h3>
+                    {isFriend && (
+                      <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />
                     )}
-
                     {secretTimer && (
-                      <span className="flex items-center text-[10px] font-bold px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/40">
-                        <Lock className="w-2.5 h-2.5 mr-1" />
+                      <span className="flex items-center text-[9px] font-bold px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/40 flex-shrink-0">
+                        <Lock className="w-2.5 h-2.5 mr-0.5" />
                         {secretTimer}s
                       </span>
                     )}
@@ -921,163 +984,231 @@ export const LiveChatMessenger: React.FC = () => {
                     {isTyping ? (
                       <span className="text-emerald-400 font-bold animate-pulse">Typing a message...</span>
                     ) : activeChat.isOnline ? (
-                      'Online • WebRTC & STUN E2EE'
+                      <span className="text-emerald-400 font-medium">Online • E2EE</span>
                     ) : (
-                      'Active today'
+                      <span className="text-slate-400">{activeChat.roleOrContext || 'Aditi Contact'}</span>
                     )}
                   </p>
+                </div>
+              </div>
+
+              {/* Action Toolbar */}
+              <div className="flex items-center gap-1 sm:gap-1.5 flex-shrink-0">
+                
+                {/* Voice Call */}
+                <button
+                  onClick={() => handleStartCall(false)}
+                  className="p-2 sm:p-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-indigo-400 hover:text-indigo-300 transition-colors"
+                  title="Voice Call"
+                >
+                  <Phone className="w-4 h-4" />
+                </button>
+
+                {/* HD Video Call */}
+                <button
+                  onClick={() => handleStartCall(true)}
+                  className="p-2 sm:p-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 text-white shadow-md shadow-indigo-600/30 transition-all hover:scale-105"
+                  title="HD Video Call"
+                >
+                  <Video className="w-4 h-4" />
+                </button>
+
+                {/* Desktop-Only Quick Buttons */}
+                <button
+                  onClick={() => {
+                    setAiAssistantSelectedMsg(null);
+                    setAiAssistantModalOpen(true);
+                  }}
+                  className="hidden md:flex p-2.5 rounded-xl bg-indigo-600/20 hover:bg-indigo-600/40 text-yellow-400 border border-indigo-500/30 transition-all"
+                  title="OmniBrain AI Assistant"
+                >
+                  <Sparkles className="w-4 h-4" />
+                </button>
+
+                <button
+                  onClick={() => setChatSearchModalOpen(true)}
+                  className="hidden md:flex p-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors"
+                  title="Search in Chat"
+                >
+                  <Search className="w-4 h-4" />
+                </button>
+
+                {/* More Options Menu (Dropdown for both Mobile & Desktop) */}
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setShowHeaderMoreMenu(!showHeaderMoreMenu)}
+                    className={`p-2 sm:p-2.5 rounded-xl border transition-colors ${
+                      showHeaderMoreMenu
+                        ? 'bg-indigo-600 text-white border-indigo-500 shadow-md'
+                        : 'bg-slate-800/80 text-slate-300 border-slate-700 hover:text-white'
+                    }`}
+                    title="More conversation options"
+                  >
+                    <MoreVertical className="w-4 h-4" />
+                  </button>
+
+                  {showHeaderMoreMenu && (
+                    <div className="absolute right-0 top-12 bg-slate-900 border border-slate-800 rounded-2xl p-1.5 shadow-2xl z-50 w-60 space-y-0.5 animate-in fade-in zoom-in-95 max-h-[75vh] overflow-y-auto">
+                      
+                      {/* Search */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setChatSearchModalOpen(true);
+                          setShowHeaderMoreMenu(false);
+                        }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-slate-200 hover:bg-slate-800 transition-colors text-left"
+                      >
+                        <Search className="w-4 h-4 text-indigo-400" />
+                        <span>Search in Chat</span>
+                      </button>
+
+                      {/* AI Assistant */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAiAssistantSelectedMsg(null);
+                          setAiAssistantModalOpen(true);
+                          setShowHeaderMoreMenu(false);
+                        }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-yellow-300 hover:bg-indigo-600/20 transition-colors text-left"
+                      >
+                        <Sparkles className="w-4 h-4 text-yellow-400" />
+                        <span>OmniBrain AI Tools</span>
+                      </button>
+
+                      {/* Shared Media Vault */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSharedMediaDrawerOpen(true);
+                          setShowHeaderMoreMenu(false);
+                        }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-slate-200 hover:bg-slate-800 transition-colors text-left"
+                      >
+                        <FileText className="w-4 h-4 text-purple-400" />
+                        <span>Media, Links & Docs Vault</span>
+                      </button>
+
+                      {/* Wallpaper & Themes */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setWallpaperModalOpen(true);
+                          setShowHeaderMoreMenu(false);
+                        }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-slate-200 hover:bg-slate-800 transition-colors text-left"
+                      >
+                        <Palette className="w-4 h-4 text-pink-400" />
+                        <span>Chat Wallpaper & Themes</span>
+                      </button>
+
+                      {/* Pin Chat */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          togglePinChat(activeChat.id);
+                          setShowHeaderMoreMenu(false);
+                        }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-slate-200 hover:bg-slate-800 transition-colors text-left"
+                      >
+                        <Pin className="w-4 h-4 text-amber-400" />
+                        <span>{activeChat.isPinned ? 'Unpin Conversation' : 'Pin to Top'}</span>
+                      </button>
+
+                      {/* Mute Chat */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          toggleMuteChat(activeChat.id);
+                          setShowHeaderMoreMenu(false);
+                        }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-slate-200 hover:bg-slate-800 transition-colors text-left"
+                      >
+                        {activeChat.isMuted ? <VolumeX className="w-4 h-4 text-rose-400" /> : <Volume2 className="w-4 h-4 text-slate-400" />}
+                        <span>{activeChat.isMuted ? 'Unmute Notifications' : 'Mute Notifications'}</span>
+                      </button>
+
+                      {/* Disappearing Messages */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowSecretBar(!showSecretBar);
+                          setShowHeaderMoreMenu(false);
+                        }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-slate-200 hover:bg-slate-800 transition-colors text-left"
+                      >
+                        <Lock className="w-4 h-4 text-rose-400" />
+                        <span>Disappearing Messages</span>
+                      </button>
+
+                      {/* Live Cam Walk & Chat */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const next = !isLiveBgActive;
+                          setIsLiveBgActive(next);
+                          setShowHeaderMoreMenu(false);
+                          showToast(next ? '🎥 Live Camera Background activated!' : 'Live background deactivated');
+                        }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-slate-200 hover:bg-slate-800 transition-colors text-left"
+                      >
+                        <Camera className="w-4 h-4 text-emerald-400" />
+                        <span>Walk & Chat (Live Cam)</span>
+                      </button>
+
+                      {/* Send Direct Email */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEmailInitialSubject(`Aditi Inquiry with ${activeChat.participantName}`);
+                          setEmailInitialBody('');
+                          setEmailModalOpen(true);
+                          setShowHeaderMoreMenu(false);
+                        }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-slate-200 hover:bg-slate-800 transition-colors text-left"
+                      >
+                        <Mail className="w-4 h-4 text-emerald-400" />
+                        <span>Send Direct Email</span>
+                      </button>
+
+                      {/* Group Settings (if group) */}
+                      {(activeChat.conversationType === 'group' || activeChat.conversationType === 'channel') && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setGroupSettingsModalOpen(true);
+                            setShowHeaderMoreMenu(false);
+                          }}
+                          className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-slate-200 hover:bg-slate-800 transition-colors text-left"
+                        >
+                          <Users className="w-4 h-4 text-indigo-400" />
+                          <span>Group Permissions</span>
+                        </button>
+                      )}
+
+                      <div className="border-t border-slate-800 my-1" />
+
+                      {/* View Contact Details */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDetailsDrawerOpen(true);
+                          setShowHeaderMoreMenu(false);
+                        }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-indigo-300 hover:bg-indigo-600/20 transition-colors text-left"
+                      >
+                        <Info className="w-4 h-4 text-indigo-400" />
+                        <span>Contact Info & Details</span>
+                      </button>
+
+                    </div>
+                  )}
+                </div>
+
+              </div>
             </div>
-          </div>
-
-          {/* Action Toolbar */}
-          <div className="flex items-center gap-1 sm:gap-1.5 flex-shrink-0">
-            
-            {/* Live Camera & Audio Background with Location Tagging */}
-            <button
-              onClick={() => {
-                const next = !isLiveBgActive;
-                setIsLiveBgActive(next);
-                if (next) {
-                  showToast('🎥 Live Cam & Ambient Audio Chat Background activated!');
-                } else {
-                  showToast('Live background deactivated');
-                }
-              }}
-              className={`p-2 rounded-xl transition-all ${
-                isLiveBgActive
-                  ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/40 ring-2 ring-emerald-400 animate-pulse'
-                  : 'bg-slate-800/80 hover:bg-slate-700 text-emerald-400 hover:text-emerald-300'
-              }`}
-              title="Walk & Chat: Live Camera & Audio Background with Location Tagging"
-            >
-              <Camera className="w-4 h-4" />
-            </button>
-
-            {/* Custom Chat Wallpaper / Theme */}
-            <button
-              onClick={() => setWallpaperModalOpen(true)}
-              className="p-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-indigo-400 hover:text-indigo-300 transition-colors"
-              title="Chat Wallpapers & Themes (WhatsApp & Telegram)"
-            >
-              <Palette className="w-4 h-4" />
-            </button>
-
-            {/* Pin / Unpin Chat */}
-            <button
-              onClick={() => togglePinChat(activeChat.id)}
-              className={`p-2 rounded-xl transition-colors ${
-                activeChat.isPinned ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' : 'bg-slate-800/80 text-slate-400 hover:text-white'
-              }`}
-              title={activeChat.isPinned ? 'Unpin chat' : 'Pin chat to top'}
-            >
-              <Pin className={`w-4 h-4 ${activeChat.isPinned ? 'fill-current' : ''}`} />
-            </button>
-
-            {/* Mute / Unmute Notifications */}
-            <button
-              onClick={() => toggleMuteChat(activeChat.id)}
-              className={`p-2 rounded-xl transition-colors ${
-                activeChat.isMuted ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30' : 'bg-slate-800/80 text-slate-400 hover:text-white'
-              }`}
-              title={activeChat.isMuted ? 'Unmute notifications' : 'Mute notifications'}
-            >
-              {activeChat.isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
-            </button>
-
-            {/* Secret Timer */}
-            <button
-              onClick={() => setShowSecretBar(!showSecretBar)}
-              className={`p-2 rounded-xl transition-colors ${
-                secretTimer ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30' : 'bg-slate-800/80 text-slate-400 hover:text-white'
-              }`}
-              title="Disappearing Messages (Viber & Telegram Secret Chat)"
-            >
-              <Lock className="w-4 h-4" />
-            </button>
-
-            {/* Direct Email to Contact */}
-            <button
-              onClick={() => {
-                setEmailInitialSubject(`Aditi Inquiry with ${activeChat.participantName}`);
-                setEmailInitialBody('');
-                setEmailModalOpen(true);
-              }}
-              className="p-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-emerald-400 hover:text-emerald-300 transition-colors hidden sm:block"
-              title="Send Direct Email"
-            >
-              <Mail className="w-4 h-4" />
-            </button>
-
-            {/* In-Chat & Media Search Modal */}
-            <button
-              onClick={() => setChatSearchModalOpen(true)}
-              className="p-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-indigo-300 hover:text-white transition-colors"
-              title="Search Messages & Media in Chat"
-            >
-              <Search className="w-4 h-4" />
-            </button>
-
-            {/* Shared Media & Docs Vault */}
-            <button
-              onClick={() => setSharedMediaDrawerOpen(true)}
-              className="p-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-purple-400 hover:text-purple-300 transition-colors"
-              title="Shared Photos, Documents, Audio & Links Vault"
-            >
-              <FileText className="w-4 h-4" />
-            </button>
-
-            {/* OmniBrain AI Chat Assistant Tools */}
-            <button
-              onClick={() => {
-                setAiAssistantSelectedMsg(null);
-                setAiAssistantModalOpen(true);
-              }}
-              className="p-2 rounded-xl bg-indigo-600/20 hover:bg-indigo-600/40 text-yellow-400 border border-indigo-500/30 transition-all hover:scale-105 shadow-sm"
-              title="OmniBrain AI: Unread Summaries, Task Extraction & Writing Assistant"
-            >
-              <Sparkles className="w-4 h-4" />
-            </button>
-
-            {/* Group Settings & Invite Link (if Group or Channel) */}
-            {(activeChat.conversationType === 'group' || activeChat.conversationType === 'channel') && (
-              <button
-                onClick={() => setGroupSettingsModalOpen(true)}
-                className="p-2 rounded-xl bg-indigo-600/30 hover:bg-indigo-600/50 text-indigo-300 border border-indigo-500/40 transition-colors"
-                title="Group Permissions & QR Invite Links"
-              >
-                <Users className="w-4 h-4" />
-              </button>
-            )}
-
-            {/* Voice Call */}
-            <button
-              onClick={() => handleStartCall(false)}
-              className="p-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-indigo-400 hover:text-indigo-300 transition-colors"
-              title="Voice Call"
-            >
-              <Phone className="w-4 h-4" />
-            </button>
-
-            {/* HD Video Call (Dual Merge + PiP) */}
-            <button
-              onClick={() => handleStartCall(true)}
-              className="p-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/30 transition-colors"
-              title="HD Video Call (Dual Video Merge & PiP)"
-            >
-              <Video className="w-4 h-4" />
-            </button>
-
-            {/* Contact Details Drawer */}
-            <button
-              onClick={() => setDetailsDrawerOpen(true)}
-              className="p-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-400 hover:text-white transition-colors"
-              title="View Details"
-            >
-              <Info className="w-4 h-4" />
-            </button>
-
-          </div>
-        </div>
 
         {/* Non-Friend Safety & 3-Message Daily Limit Banner */}
         {isNonFriendDirect && (
@@ -1958,15 +2089,13 @@ export const LiveChatMessenger: React.FC = () => {
               </div>
             )}
 
-            {/* Bottom Input Form */}
+            {/* Bottom Input Form & Smart Attachment Tools Sheet */}
             {!isRecordingAudio && (
-              <form
-                onSubmit={handleSendText}
-                className="p-2 sm:p-3 bg-slate-950/95 border-t border-slate-800 flex items-center gap-1 sm:gap-2 backdrop-blur-xl relative"
-              >
-                {/* Emoji Picker */}
+              <div className="relative bg-slate-950/95 border-t border-slate-800 backdrop-blur-xl">
+                
+                {/* Emoji Picker Popover */}
                 {showEmojiPicker && (
-                  <div className="absolute bottom-16 left-2 sm:left-4 bg-slate-900 border border-slate-800 rounded-2xl p-3 shadow-2xl z-30 grid grid-cols-7 gap-2 animate-in fade-in">
+                  <div className="absolute bottom-16 left-2 sm:left-4 bg-slate-900 border border-slate-800 rounded-2xl p-3 shadow-2xl z-40 grid grid-cols-7 gap-2 animate-in fade-in zoom-in-95">
                     {emojis.map((emoji) => (
                       <button
                         key={emoji}
@@ -1983,162 +2112,255 @@ export const LiveChatMessenger: React.FC = () => {
                   </div>
                 )}
 
-                {/* Quick Emoji Button */}
-                <button
-                  type="button"
-                  onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                  className="p-2 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-yellow-400 transition-colors"
-                  title="Add Emoji"
-                >
-                  <Smile className="w-4 h-4 sm:w-5 sm:h-5" />
-                </button>
+                {/* Smart Attachments & Advanced Tools Sheet (WhatsApp / Telegram 3D Grid) */}
+                {showAttachmentsMenu && (
+                  <div className="p-3 bg-slate-900/95 border-b border-slate-800 border-t border-indigo-500/30 animate-in slide-in-from-bottom-2 shadow-2xl">
+                    <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-800">
+                      <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                        <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
+                        <span>Media & Super Tools</span>
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setShowAttachmentsMenu(false)}
+                        className="text-slate-400 hover:text-white p-1"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
 
-                {/* Stickers & GIFs Button (WhatsApp / Telegram / Viber) */}
-                <button
-                  type="button"
-                  onClick={() => setStickerModalOpen(true)}
-                  className="p-2 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-yellow-300 transition-colors"
-                  title="Stickers & Trending GIFs (WhatsApp, Telegram & Viber)"
-                >
-                  <Sparkles className="w-4 h-4 sm:w-5 sm:h-5" />
-                </button>
+                    <div className="grid grid-cols-4 sm:grid-cols-8 gap-2">
+                      
+                      {/* 1. Snap Camera */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSnapModalOpen(true);
+                          setShowAttachmentsMenu(false);
+                        }}
+                        className="flex flex-col items-center justify-center p-2.5 rounded-2xl bg-slate-950 hover:bg-slate-800 border border-slate-800 hover:border-pink-500/50 text-slate-300 hover:text-pink-300 transition-all hover:scale-105 group"
+                      >
+                        <div className="w-9 h-9 rounded-xl bg-pink-500/20 text-pink-400 flex items-center justify-center mb-1 group-hover:bg-pink-500/30">
+                          <Camera className="w-4 h-4" />
+                        </div>
+                        <span className="text-[10px] font-bold truncate">Snap</span>
+                      </button>
 
-                {/* AI Voice Avatar & Voice Cloning Studio */}
-                <button
-                  type="button"
-                  onClick={() => setVoiceStudioOpen(true)}
-                  className="p-2 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-purple-400 transition-colors"
-                  title="AI Voice Avatar & Cloning Studio (നിങ്ങളുടെ സ്വന്തം AI ശബ്ദം)"
-                >
-                  <Volume2 className="w-4 h-4 sm:w-5 sm:h-5" />
-                </button>
+                      {/* 2. File Attachment */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          fileInputRef.current?.click();
+                          setShowAttachmentsMenu(false);
+                        }}
+                        className="flex flex-col items-center justify-center p-2.5 rounded-2xl bg-slate-950 hover:bg-slate-800 border border-slate-800 hover:border-indigo-500/50 text-slate-300 hover:text-indigo-300 transition-all hover:scale-105 group"
+                      >
+                        <div className="w-9 h-9 rounded-xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center mb-1 group-hover:bg-indigo-500/30">
+                          <Paperclip className="w-4 h-4" />
+                        </div>
+                        <span className="text-[10px] font-bold truncate">Document</span>
+                      </button>
 
-                {/* Message Scheduler & In-Chat Reminder (Telegram & WhatsApp) */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSchedulerInitialText(inputText);
-                    setSchedulerInitialMode('schedule');
-                    setSchedulerModalOpen(true);
-                  }}
-                  className="p-2 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-amber-400 transition-colors"
-                  title="Schedule Message / Set Chat Reminder"
-                >
-                  <Clock className="w-4 h-4 sm:w-5 sm:h-5" />
-                </button>
+                      {/* 3. GPS Location */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setLocationModalOpen(true);
+                          setShowAttachmentsMenu(false);
+                        }}
+                        className="flex flex-col items-center justify-center p-2.5 rounded-2xl bg-slate-950 hover:bg-slate-800 border border-slate-800 hover:border-emerald-500/50 text-slate-300 hover:text-emerald-300 transition-all hover:scale-105 group"
+                      >
+                        <div className="w-9 h-9 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center mb-1 group-hover:bg-emerald-500/30">
+                          <MapPin className="w-4 h-4" />
+                        </div>
+                        <span className="text-[10px] font-bold truncate">Location</span>
+                      </button>
 
-                {/* Live Poll Creator Button (WhatsApp & Telegram) */}
-                <button
-                  type="button"
-                  onClick={() => setPollModalOpen(true)}
-                  className="p-2 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-indigo-400 transition-colors"
-                  title="Create Live Poll (WhatsApp & Telegram)"
-                >
-                  <BarChart2 className="w-4 h-4 sm:w-5 sm:h-5" />
-                </button>
+                      {/* 4. Live Poll */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPollModalOpen(true);
+                          setShowAttachmentsMenu(false);
+                        }}
+                        className="flex flex-col items-center justify-center p-2.5 rounded-2xl bg-slate-950 hover:bg-slate-800 border border-slate-800 hover:border-amber-500/50 text-slate-300 hover:text-amber-300 transition-all hover:scale-105 group"
+                      >
+                        <div className="w-9 h-9 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center mb-1 group-hover:bg-amber-500/30">
+                          <BarChart2 className="w-4 h-4" />
+                        </div>
+                        <span className="text-[10px] font-bold truncate">Live Poll</span>
+                      </button>
 
-                {/* Circular Video Note (Telegram Round Video) */}
-                <button
-                  type="button"
-                  onClick={() => setVideoNoteModalOpen(true)}
-                  className="p-2 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-cyan-400 transition-colors"
-                  title="Record Circular Video Note (Telegram Style)"
-                >
-                  <Video className="w-4 h-4 sm:w-5 sm:h-5" />
-                </button>
+                      {/* 5. Scheduler & Reminders */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSchedulerInitialText(inputText);
+                          setSchedulerInitialMode('schedule');
+                          setSchedulerModalOpen(true);
+                          setShowAttachmentsMenu(false);
+                        }}
+                        className="flex flex-col items-center justify-center p-2.5 rounded-2xl bg-slate-950 hover:bg-slate-800 border border-slate-800 hover:border-cyan-500/50 text-slate-300 hover:text-cyan-300 transition-all hover:scale-105 group"
+                      >
+                        <div className="w-9 h-9 rounded-xl bg-cyan-500/20 text-cyan-400 flex items-center justify-center mb-1 group-hover:bg-cyan-500/30">
+                          <Clock className="w-4 h-4" />
+                        </div>
+                        <span className="text-[10px] font-bold truncate">Schedule</span>
+                      </button>
 
-                {/* Ephemeral Snap (Snapchat) */}
-                <button
-                  type="button"
-                  onClick={() => setSnapModalOpen(true)}
-                  className="p-2 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-purple-400 transition-colors"
-                  title="Send Ephemeral Snap (Snapchat Style)"
-                >
-                  <Camera className="w-4 h-4 sm:w-5 sm:h-5" />
-                </button>
+                      {/* 6. Video Note */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setVideoNoteModalOpen(true);
+                          setShowAttachmentsMenu(false);
+                        }}
+                        className="flex flex-col items-center justify-center p-2.5 rounded-2xl bg-slate-950 hover:bg-slate-800 border border-slate-800 hover:border-blue-500/50 text-slate-300 hover:text-blue-300 transition-all hover:scale-105 group"
+                      >
+                        <div className="w-9 h-9 rounded-xl bg-blue-500/20 text-blue-400 flex items-center justify-center mb-1 group-hover:bg-blue-500/30">
+                          <Video className="w-4 h-4" />
+                        </div>
+                        <span className="text-[10px] font-bold truncate">Video Note</span>
+                      </button>
 
-                {/* Location Share (OpenStreetMap GPS) */}
-                <button
-                  type="button"
-                  onClick={() => setLocationModalOpen(true)}
-                  className="p-2 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-emerald-400 transition-colors hidden sm:block"
-                  title="Share GPS Location"
-                >
-                  <MapPin className="w-4 h-4 sm:w-5 sm:h-5" />
-                </button>
+                      {/* 7. AI Voice Studio */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setVoiceStudioOpen(true);
+                          setShowAttachmentsMenu(false);
+                        }}
+                        className="flex flex-col items-center justify-center p-2.5 rounded-2xl bg-slate-950 hover:bg-slate-800 border border-slate-800 hover:border-purple-500/50 text-slate-300 hover:text-purple-300 transition-all hover:scale-105 group"
+                      >
+                        <div className="w-9 h-9 rounded-xl bg-purple-500/20 text-purple-400 flex items-center justify-center mb-1 group-hover:bg-purple-500/30">
+                          <Volume2 className="w-4 h-4" />
+                        </div>
+                        <span className="text-[10px] font-bold truncate">AI Voice</span>
+                      </button>
 
-                {/* File Attachment */}
+                      {/* 8. Stickers & GIFs */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setStickerModalOpen(true);
+                          setShowAttachmentsMenu(false);
+                        }}
+                        className="flex flex-col items-center justify-center p-2.5 rounded-2xl bg-slate-950 hover:bg-slate-800 border border-slate-800 hover:border-yellow-500/50 text-slate-300 hover:text-yellow-300 transition-all hover:scale-105 group"
+                      >
+                        <div className="w-9 h-9 rounded-xl bg-yellow-500/20 text-yellow-400 flex items-center justify-center mb-1 group-hover:bg-yellow-500/30">
+                          <Sparkles className="w-4 h-4" />
+                        </div>
+                        <span className="text-[10px] font-bold truncate">Stickers</span>
+                      </button>
+
+                    </div>
+                  </div>
+                )}
+
+                {/* Hidden File Input */}
                 <input
                   type="file"
                   ref={fileInputRef}
                   onChange={handleFileUpload}
                   className="hidden"
                 />
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="p-2 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-indigo-400 transition-colors hidden sm:block"
-                  title="Attach File"
+
+                {/* Main Clean Input Bar */}
+                <form
+                  onSubmit={handleSendText}
+                  className="p-2 sm:p-3 flex items-center gap-1.5 sm:gap-2"
                 >
-                  <Paperclip className="w-4 h-4 sm:w-5 sm:h-5" />
-                </button>
+                  {/* Emoji Picker Button */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowEmojiPicker(!showEmojiPicker);
+                      setShowAttachmentsMenu(false);
+                    }}
+                    className="p-2 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-yellow-400 transition-colors flex-shrink-0"
+                    title="Add Emoji"
+                  >
+                    <Smile className="w-5 h-5" />
+                  </button>
 
-                {/* Voice to Text Dictation Mic Button */}
-                <button
-                  type="button"
-                  onClick={() => toggleVoiceToTextDictation()}
-                  className={`p-2 rounded-xl transition-all flex items-center justify-center ${
-                    isDictating
-                      ? 'bg-rose-600 text-white animate-pulse ring-2 ring-rose-400 shadow-lg shadow-rose-600/40'
-                      : 'hover:bg-slate-800 text-slate-400 hover:text-rose-400'
-                  }`}
-                  title={isDictating ? 'Stop Voice-to-Text Dictation (സംസാരം നിർത്തുക)' : 'Voice-to-Text Dictation (സംസാരിച്ച് ടൈപ്പ് ചെയ്യുക)'}
-                >
-                  <Mic className={`w-4 h-4 sm:w-5 sm:h-5 ${isDictating ? 'animate-bounce text-white' : ''}`} />
-                </button>
+                  {/* Smart Plus (+) Tools Toggle */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowAttachmentsMenu(!showAttachmentsMenu);
+                      setShowEmojiPicker(false);
+                    }}
+                    className={`p-2 rounded-xl transition-all flex-shrink-0 ${
+                      showAttachmentsMenu
+                        ? 'bg-indigo-600 text-white shadow-md rotate-45'
+                        : 'bg-slate-800/80 hover:bg-slate-700 text-indigo-400 hover:text-indigo-300'
+                    }`}
+                    title="Attach Media & Tools"
+                  >
+                    <Plus className="w-5 h-5 transition-transform" />
+                  </button>
 
-                {/* Input Field */}
-                <input
-                  type="text"
-                  value={inputText}
-                  onChange={(e) => setInputText(e.target.value)}
-                  placeholder={`Message ${activeChat?.participantName || 'contact'}...`}
-                  className="flex-1 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl bg-slate-900 border border-slate-800 text-xs sm:text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 min-w-0"
-                />
+                  {/* Wide Text Input Box */}
+                  <div className="flex-1 relative flex items-center min-w-0">
+                    <input
+                      type="text"
+                      value={inputText}
+                      onChange={(e) => setInputText(e.target.value)}
+                      placeholder={`Message ${activeChat?.participantName || 'contact'}...`}
+                      className="w-full pl-3.5 pr-10 py-2 sm:py-2.5 rounded-2xl bg-slate-900 border border-slate-800 text-xs sm:text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all shadow-inner"
+                    />
 
-                {/* Action Buttons: Text to Voice / Send / Raw Audio */}
-                {inputText.trim() ? (
-                  <div className="flex items-center gap-1 sm:gap-1.5 flex-shrink-0">
+                    {/* Quick Mic Speech Dictation inside input */}
                     <button
                       type="button"
-                      onClick={() => handleSendTextAsVoiceNote()}
-                      className="p-2 sm:p-2.5 px-2 sm:px-3 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold flex items-center gap-1 shadow-lg shadow-purple-600/30 transition-all hover:scale-105 active:scale-95"
-                      title="Send as Voice Note (Text to Voice / ശബ്ദമാക്കുക)"
+                      onClick={() => toggleVoiceToTextDictation()}
+                      className={`absolute right-2 p-1.5 rounded-xl transition-all ${
+                        isDictating
+                          ? 'bg-rose-600 text-white animate-pulse shadow-md shadow-rose-600/40'
+                          : 'text-slate-400 hover:text-rose-400'
+                      }`}
+                      title={isDictating ? 'Stop Voice Dictation' : 'Voice-to-Text Dictation (സംസാരിച്ച് ടൈപ്പ് ചെയ്യുക)'}
                     >
-                      <Volume2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                      <span className="hidden md:inline text-xs">Text to Voice</span>
-                    </button>
-                    <button
-                      type="submit"
-                      className="p-2 sm:p-2.5 px-3 sm:px-4 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold flex items-center gap-1.5 shadow-lg shadow-indigo-600/30 transition-all hover:scale-105 active:scale-95"
-                    >
-                      <Send className="w-4 h-4" />
-                      <span className="hidden sm:inline text-xs">Send</span>
+                      <Mic className={`w-4 h-4 ${isDictating ? 'animate-bounce text-white' : ''}`} />
                     </button>
                   </div>
-                ) : (
-                  <div className="flex items-center gap-1 flex-shrink-0">
-                    <button
-                      type="button"
-                      onClick={() => setIsRecordingAudio(true)}
-                      className="p-2 sm:p-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/30 transition-all hover:scale-105 active:scale-95"
-                      title="Record Voice Memo"
-                    >
-                      <Mic className="w-4 h-4 sm:w-5 sm:h-5" />
-                    </button>
-                  </div>
-                )}
-              </form>
+
+                  {/* Action Buttons: Send / Text-to-Voice / Voice Memo */}
+                  {inputText.trim() ? (
+                    <div className="flex items-center gap-1 flex-shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => handleSendTextAsVoiceNote()}
+                        className="hidden sm:flex p-2.5 px-3 rounded-xl bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 border border-purple-500/30 font-bold text-xs items-center gap-1 transition-all"
+                        title="Send as AI Voice Note (Text to Voice)"
+                      >
+                        <Volume2 className="w-4 h-4 text-purple-400" />
+                        <span className="hidden md:inline">Voice Note</span>
+                      </button>
+
+                      <button
+                        type="submit"
+                        className="p-2 sm:p-2.5 px-3.5 sm:px-4 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-extrabold flex items-center gap-1.5 shadow-lg shadow-indigo-600/30 transition-all hover:scale-105 active:scale-95 flex-shrink-0"
+                      >
+                        <Send className="w-4 h-4" />
+                        <span className="hidden sm:inline text-xs">Send</span>
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center flex-shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => setIsRecordingAudio(true)}
+                        className="p-2 sm:p-2.5 rounded-xl bg-gradient-to-tr from-indigo-600 to-purple-600 hover:from-indigo-500 text-white shadow-lg shadow-indigo-600/30 transition-all hover:scale-105 active:scale-95"
+                        title="Record Voice Memo"
+                      >
+                        <Mic className="w-5 h-5" />
+                      </button>
+                    </div>
+                  )}
+
+                </form>
+              </div>
             )}
           </div>
         )}

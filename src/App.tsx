@@ -89,7 +89,7 @@ const SuperAppContent: React.FC = () => {
       <TopHeader onOpenLauncher={() => setIsLauncherOpen(true)} />
 
       {/* Main Mini-App Viewport with Safe Bottom Padding */}
-      <main className={`flex-1 max-w-7xl w-full mx-auto p-3 sm:p-5 lg:p-7 ${isChatView ? 'pb-20 sm:pb-24' : 'pb-28 sm:pb-32'}`}>
+      <main className={`flex-1 w-full mx-auto ${isChatView ? 'p-0 md:p-4 lg:p-6 max-w-7xl pb-16 md:pb-24' : 'max-w-7xl p-3 sm:p-5 lg:p-7 pb-28 sm:pb-32'}`}>
         {renderActiveView()}
       </main>
 

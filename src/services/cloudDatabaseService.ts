@@ -202,19 +202,19 @@ export async function getCloudRegisteredUsers(): Promise<UserProfile[]> {
     try {
       const { data, error } = await Promise.race([
         supabase.from('profiles').select('*').order('created_at', { ascending: false }),
-        new Promise<{ data: any; error: any }>((res) => setTimeout(() => res({ data: null, error: 'timeout' }), 1000))
+        new Promise<{ data: any; error: any }>((res) => setTimeout(() => res({ data: null, error: 'timeout' }), 1200))
       ]);
 
       if (!error && data && Array.isArray(data)) {
         data.forEach((p: any) => {
-          if (p && (p.id || p.email)) {
-            const key = (p.email || p.id).toLowerCase();
+          if (p && (p.id || p.email || p.name)) {
+            const key = (p.email || p.id || p.name).toLowerCase();
             usersMap.set(key, {
               id: p.id,
               name: p.name || p.email?.split('@')[0] || 'User',
               email: p.email || '',
               handle: p.handle ? (p.handle.startsWith('@') ? p.handle : `@${p.handle}`) : `@${p.email?.split('@')[0] || 'user'}`,
-              avatar: p.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80',
+              avatar: p.avatar_url || getSafeAvatarUrl(undefined, p.name || p.email?.split('@')[0]),
               zodiacSign: p.zodiac_sign || 'Leo',
               bio: p.bio || 'Aditi Verified Member 🚀',
               location: p.location || 'Kozhikode, Kerala, India',
@@ -232,8 +232,8 @@ export async function getCloudRegisteredUsers(): Promise<UserProfile[]> {
   // 2. Merge registered local accounts
   const localAccounts = getLocalAccounts();
   Object.values(localAccounts).forEach((acc) => {
-    if (acc.user && (acc.user.id || acc.user.email)) {
-      const key = (acc.user.id || acc.user.email).toLowerCase();
+    if (acc.user && (acc.user.id || acc.user.email || acc.user.name)) {
+      const key = (acc.user.email || acc.user.id || acc.user.name).toLowerCase();
       if (!usersMap.has(key)) {
         usersMap.set(key, acc.user);
       }
@@ -244,12 +244,75 @@ export async function getCloudRegisteredUsers(): Promise<UserProfile[]> {
   const customContacts = getCustomContacts();
   customContacts.forEach((contact) => {
     if (contact && (contact.id || contact.email || contact.name)) {
-      const key = (contact.id || contact.email || contact.name).toLowerCase();
+      const key = (contact.email || contact.id || contact.name).toLowerCase();
       if (!usersMap.has(key)) {
         usersMap.set(key, contact);
       }
     }
   });
+
+  // 4. Merge matrimony profiles
+  try {
+    if (typeof localStorage !== 'undefined') {
+      const savedMatrimony = localStorage.getItem('omnilife_matrimony_profiles');
+      if (savedMatrimony) {
+        const matProfiles: MatrimonyProfile[] = JSON.parse(savedMatrimony);
+        matProfiles.forEach((m) => {
+          if (m && m.name) {
+            const key = m.name.toLowerCase();
+            const photoAvatar = (m.photos && m.photos.length > 0) ? m.photos[0] : undefined;
+            const locStr = [m.city, m.state].filter(Boolean).join(', ') || 'Kerala, India';
+            if (!usersMap.has(key)) {
+              usersMap.set(key, {
+                id: m.id || `usr-mat-${Date.now()}`,
+                name: m.name,
+                email: m.contactEmail || '',
+                handle: `@${m.name.toLowerCase().replace(/\s+/g, '')}`,
+                avatar: photoAvatar || getSafeAvatarUrl(undefined, m.name),
+                bio: `${m.profession || 'Aditi Member'} • ${locStr}`,
+                location: locStr,
+                zodiacSign: (m.zodiac as any) || 'Leo',
+                isVerified: true
+              });
+            }
+          }
+        });
+      }
+    }
+  } catch (err) {
+    console.warn('Error loading matrimony profiles for discovery:', err);
+  }
+
+  // 5. Merge chat direct participants
+  try {
+    if (typeof localStorage !== 'undefined') {
+      const savedChats = localStorage.getItem('omnilife_chats');
+      if (savedChats) {
+        const chatsList: ChatConversation[] = JSON.parse(savedChats);
+        chatsList.forEach((c) => {
+          const isDirect = !c.conversationType || c.conversationType === 'direct';
+          if (isDirect && c.participantName) {
+            const key = c.participantName.toLowerCase();
+            if (!usersMap.has(key)) {
+              usersMap.set(key, {
+                id: c.id,
+                name: c.participantName,
+                email: '',
+                handle: `@${c.participantName.toLowerCase().replace(/\s+/g, '')}`,
+                avatar: c.participantAvatar || getSafeAvatarUrl(undefined, c.participantName),
+                bio: c.roleOrContext || 'Aditi Member',
+                location: 'Kerala, India',
+                zodiacSign: 'Leo',
+                isVerified: true
+              });
+            }
+          }
+        });
+      }
+    }
+  } catch (err) {
+    console.warn('Error loading chat contacts for discovery:', err);
+  }
 
   return Array.from(usersMap.values());
 }
@@ -381,6 +444,7 @@ export async function cloudRegisterUser(creds: RegisterCredentials): Promise<{ u
           isVerified: true,
           createdAt: new Date().toISOString()
         };
+        saveLocalAccount(normalizedEmail(creds.email), { password: creds.password, user: newUser });
         cloudState.user = newUser;
         return { user: newUser };
       }
@@ -521,6 +585,7 @@ export async function cloudGoogleAuthUser(googleUserData?: {
       location: 'Kozhikode, Kerala, India',
       isVerified: true
     };
+    saveLocalAccount(cleanEmail, { password: '', user: userProfile });
     cloudState.user = userProfile;
     return { user: userProfile };
   }

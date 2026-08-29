@@ -98,4 +98,45 @@ describe('Friend Discovery & Registered Users Service', () => {
     const matching = allUsers.filter((u) => u.email === 'ambassador@aditi.app');
     expect(matching.length).toBe(1);
   });
+
+  it('discovers matrimony members and existing chat contacts in global directory', async () => {
+    localStorage.setItem(
+      'omnilife_matrimony_profiles',
+      JSON.stringify([
+        {
+          id: 'mat-101',
+          name: 'Kavya Madhavan',
+          age: 27,
+          profession: 'Architect',
+          city: 'Thrissur',
+          state: 'Kerala',
+          photos: ['https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300'],
+          zodiac: 'Taurus'
+        }
+      ])
+    );
+
+    localStorage.setItem(
+      'omnilife_chats',
+      JSON.stringify([
+        {
+          id: 'chat-kiran-202',
+          participantName: 'Kiran Raj',
+          participantAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300',
+          roleOrContext: 'Designer',
+          isFriend: true,
+          messages: []
+        }
+      ])
+    );
+
+    const allUsers = await getCloudRegisteredUsers();
+    const foundKavya = allUsers.find((u) => u.name === 'Kavya Madhavan');
+    const foundKiran = allUsers.find((u) => u.name === 'Kiran Raj');
+
+    expect(foundKavya).toBeDefined();
+    expect(foundKavya?.location).toBe('Thrissur, Kerala');
+    expect(foundKiran).toBeDefined();
+    expect(foundKiran?.name).toBe('Kiran Raj');
+  });
 });

@@ -13,7 +13,9 @@ import {
   RefreshCw,
   ShieldCheck,
   UserCheck,
-  MapPin
+  MapPin,
+  Sparkles,
+  Users
 } from 'lucide-react';
 import { useSuperApp } from '../../context/SuperAppContext';
 import { getCloudRegisteredUsers, saveCustomContact } from '../../services/cloudDatabaseService';
@@ -32,7 +34,9 @@ export const AddFriendModal: React.FC<AddFriendModalProps> = ({
   onSelectChat
 }) => {
   const { user, chats, registeredUsers, refreshRegisteredUsers, startNewChatWith, showToast } = useSuperApp();
-  const [activeTab, setActiveTab] = useState<'friends' | 'search' | 'invite' | 'custom'>('friends');
+  
+  // Default to 'search' (Discover Directory) so users can immediately see and add everyone
+  const [activeTab, setActiveTab] = useState<'search' | 'friends' | 'invite' | 'custom'>('search');
   const [searchQuery, setSearchQuery] = useState('');
   const [copiedLink, setCopiedLink] = useState(false);
   const [showQrCode, setShowQrCode] = useState(false);
@@ -45,91 +49,63 @@ export const AddFriendModal: React.FC<AddFriendModalProps> = ({
   const [customRole, setCustomRole] = useState('Friend');
   const [customMessage, setCustomMessage] = useState('Hey! Connected via AditiChat.');
 
-  // Fetch available users on modal open & merge chat contacts
+  // Fetch available users on modal open & merge all directory sources
+  const fetchUsers = async () => {
+    setLoadingUsers(true);
+    try {
+      const usersList = await getCloudRegisteredUsers();
+      const usersMap = new Map<string, UserProfile>();
+
+      // 1. Add cloud & local registered users
+      usersList.forEach((u) => {
+        if (u && (u.id || u.email || u.name)) {
+          const key = (u.email || u.id || u.name).toLowerCase();
+          usersMap.set(key, u);
+        }
+      });
+
+      // 2. Merge registeredUsers from context
+      registeredUsers.forEach((u) => {
+        if (u && (u.id || u.email || u.name)) {
+          const key = (u.email || u.id || u.name).toLowerCase();
+          if (!usersMap.has(key)) {
+            usersMap.set(key, u);
+          }
+        }
+      });
+
+      // 3. Merge all chat contacts & direct participants
+      chats.forEach((c) => {
+        const isDirect = !c.conversationType || c.conversationType === 'direct';
+        if (isDirect && c.participantName) {
+          const key = c.participantName.toLowerCase();
+          if (!usersMap.has(key)) {
+            usersMap.set(key, {
+              id: c.id,
+              name: c.participantName,
+              email: '',
+              handle: `@${c.participantName.toLowerCase().replace(/\s+/g, '')}`,
+              avatar: c.participantAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300',
+              bio: c.roleOrContext || 'Aditi Member',
+              location: 'Kerala, India',
+              zodiacSign: 'Leo',
+              isVerified: true
+            });
+          }
+        }
+      });
+
+      setAvailableUsers(Array.from(usersMap.values()));
+    } catch (err) {
+      console.warn('Could not fetch discoverable users:', err);
+    } finally {
+      setLoadingUsers(false);
+    }
+  };
+
   useEffect(() => {
     if (!isOpen) return;
-
-    let isMounted = true;
-    const fetchUsers = async () => {
-      setLoadingUsers(true);
-      try {
-        const usersList = await getCloudRegisteredUsers();
-        const usersMap = new Map<string, UserProfile>();
-
-        // 1. Add cloud & local registered users
-        usersList.forEach((u) => {
-          if (u && (u.id || u.email || u.name)) {
-            usersMap.set((u.name || u.id || u.email).toLowerCase(), u);
-          }
-        });
-
-        // 2. Merge all chat contacts & friends from active state
-        chats.forEach((c) => {
-          const isDirect = !c.conversationType || c.conversationType === 'direct';
-          if (isDirect && c.participantName) {
-            const key = c.participantName.toLowerCase();
-            if (!usersMap.has(key)) {
-              usersMap.set(key, {
-                id: c.id,
-                name: c.participantName,
-                email: '',
-                handle: `@${c.participantName.toLowerCase().replace(/\s+/g, '')}`,
-                avatar: c.participantAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300',
-                bio: c.roleOrContext || 'Aditi Friend',
-                location: 'Kerala, India',
-                zodiacSign: 'Leo',
-                isVerified: true
-              });
-            }
-          }
-        });
-
-        // 3. Merge registeredUsers from context
-        registeredUsers.forEach((u) => {
-          if (u && (u.id || u.email || u.name)) {
-            const key = (u.name || u.id || u.email).toLowerCase();
-            if (!usersMap.has(key)) {
-              usersMap.set(key, u);
-            }
-          }
-        });
-
-        if (isMounted) {
-          setAvailableUsers(Array.from(usersMap.values()));
-        }
-      } catch (err) {
-        console.warn('Could not fetch discoverable users:', err);
-        if (isMounted) {
-          const fallbackMap = new Map<string, UserProfile>();
-          chats.forEach((c) => {
-            const isDirect = !c.conversationType || c.conversationType === 'direct';
-            if (isDirect && c.participantName) {
-              fallbackMap.set(c.participantName.toLowerCase(), {
-                id: c.id,
-                name: c.participantName,
-                email: '',
-                handle: `@${c.participantName.toLowerCase().replace(/\s+/g, '')}`,
-                avatar: c.participantAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300',
-                bio: c.roleOrContext || 'Aditi Friend',
-                location: 'Kerala, India',
-                zodiacSign: 'Leo',
-                isVerified: true
-              });
-            }
-          });
-          setAvailableUsers(Array.from(fallbackMap.values()));
-        }
-      } finally {
-        if (isMounted) {
-          setLoadingUsers(false);
-        }
-      }
-    };
-
     fetchUsers();
-    return () => {
-      isMounted = false;
-    };
   }, [isOpen, registeredUsers, chats]);
 
   if (!isOpen) return null;
@@ -142,13 +118,12 @@ export const AddFriendModal: React.FC<AddFriendModalProps> = ({
   const userInviteUrl = `${appBaseUrl}?invite=${encodeURIComponent(user.handle || user.name.toLowerCase().replace(/\s+/g, ''))}`;
   const qrCodeImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=${encodeURIComponent(userInviteUrl)}&color=99-102-241&bgcolor=3-7-18&margin=1`;
 
-  // Filter out the current active user
+  // Filter out ONLY the actual current user (safe ID/Email matching that does not block shared generic names)
   const otherUsers = availableUsers.filter((u) => {
     if (!u) return false;
-    const isSelfId = Boolean(u.id && user.id && u.id === user.id);
-    const isSelfEmail = Boolean(u.email && user.email && u.email.toLowerCase() === user.email.toLowerCase());
-    const isSelfName = Boolean(u.name && user.name && u.name.toLowerCase() === user.name.toLowerCase());
-    return !isSelfId && !isSelfEmail && !isSelfName;
+    const isSelfId = Boolean(u.id && user.id && u.id === user.id && u.id !== 'usr-guest');
+    const isSelfEmail = Boolean(u.email && user.email && u.email.trim().toLowerCase() === user.email.trim().toLowerCase());
+    return !isSelfId && !isSelfEmail;
   });
 
   // Check if a user is already in chats / friends
@@ -160,7 +135,7 @@ export const AddFriendModal: React.FC<AddFriendModalProps> = ({
     );
   };
 
-  // Group into Added Friends and New Users
+  // Group into Added Friends
   const myAddedFriends = otherUsers.filter((u) => {
     const existing = getExistingChat(u);
     return Boolean(existing && (existing.isFriend !== false));
@@ -194,7 +169,22 @@ export const AddFriendModal: React.FC<AddFriendModalProps> = ({
       targetUser.bio || targetUser.location || 'Aditi Friend',
       existing ? undefined : `Hello ${targetUser.name}! Added you as a friend on AditiChat 👋`
     );
-    confetti({ particleCount: 50, spread: 60 });
+
+    // Save to permanent custom contacts directory
+    saveCustomContact({
+      id: targetUser.id || chatId,
+      name: targetUser.name,
+      email: targetUser.email || '',
+      handle: targetUser.handle || `@${targetUser.name.toLowerCase().replace(/\s+/g, '')}`,
+      avatar: targetUser.avatar,
+      bio: targetUser.bio || 'Aditi Friend',
+      location: targetUser.location || 'Kerala, India',
+      zodiacSign: targetUser.zodiacSign || 'Leo',
+      isVerified: true
+    });
+
+    refreshRegisteredUsers();
+    confetti({ particleCount: 60, spread: 60 });
     showToast(`✨ ${targetUser.name} added to your friends list!`);
     onSelectChat(chatId);
     onClose();
@@ -285,39 +275,67 @@ export const AddFriendModal: React.FC<AddFriendModalProps> = ({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-xl p-3 sm:p-4 animate-in fade-in overflow-y-auto">
       <div className="relative w-full max-w-lg max-h-[90dvh] overflow-y-auto rounded-3xl bg-slate-900 border border-indigo-500/40 shadow-2xl p-5 sm:p-6 space-y-5 my-auto">
         
-        {/* Top Header */}
+        {/* Top Header with Manual Refresh Sync Button */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <div className="p-2.5 rounded-2xl bg-indigo-500/20 text-indigo-400 border border-indigo-500/30">
               <UserPlus className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="font-extrabold text-sm sm:text-base text-white flex items-center gap-2">
-                <span>Add & Invite Friends</span>
+              <div className="flex items-center gap-2">
+                <h3 className="font-extrabold text-sm sm:text-base text-white">
+                  Add & Discover Friends
+                </h3>
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
                   Global Directory
                 </span>
-              </h3>
-              <p className="text-[11px] text-slate-400">Discover registered users or send direct invitations</p>
+              </div>
+              <p className="text-[11px] text-slate-400">Discover all registered users or send direct invitations</p>
             </div>
           </div>
 
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-white transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={() => {
+                fetchUsers();
+                refreshRegisteredUsers();
+                showToast('🔄 Directory synced with latest database users!');
+              }}
+              className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors flex items-center gap-1 text-xs font-bold"
+              title="Sync Directory"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${loadingUsers ? 'animate-spin text-indigo-400' : ''}`} />
+            </button>
+            <button
+              onClick={onClose}
+              className="p-2 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-white transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {/* Tab Navigation */}
         <div className="flex items-center p-1 rounded-2xl bg-slate-950 border border-slate-800 gap-1 overflow-x-auto">
           <button
             type="button"
+            onClick={() => setActiveTab('search')}
+            className={`flex-1 min-w-[110px] py-2 px-2.5 rounded-xl text-xs font-extrabold transition-all flex items-center justify-center gap-1.5 whitespace-nowrap ${
+              activeTab === 'search'
+                ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-md shadow-indigo-600/30 scale-[1.02]'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <Search className="w-3.5 h-3.5" />
+            <span>Discover Users ({otherUsers.length})</span>
+          </button>
+
+          <button
+            type="button"
             onClick={() => setActiveTab('friends')}
-            className={`flex-1 min-w-[100px] py-2 px-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 whitespace-nowrap ${
+            className={`flex-1 min-w-[100px] py-2 px-2.5 rounded-xl text-xs font-extrabold transition-all flex items-center justify-center gap-1.5 whitespace-nowrap ${
               activeTab === 'friends'
-                ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30'
+                ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30 scale-[1.02]'
                 : 'text-slate-400 hover:text-white'
             }`}
           >
@@ -327,21 +345,8 @@ export const AddFriendModal: React.FC<AddFriendModalProps> = ({
 
           <button
             type="button"
-            onClick={() => setActiveTab('search')}
-            className={`flex-1 min-w-[100px] py-2 px-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 whitespace-nowrap ${
-              activeTab === 'search'
-                ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
-                : 'text-slate-400 hover:text-white'
-            }`}
-          >
-            <Search className="w-3.5 h-3.5" />
-            <span>Discover ({otherUsers.length})</span>
-          </button>
-
-          <button
-            type="button"
             onClick={() => setActiveTab('invite')}
-            className={`flex-1 min-w-[90px] py-2 px-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 whitespace-nowrap ${
+            className={`flex-1 min-w-[90px] py-2 px-2.5 rounded-xl text-xs font-extrabold transition-all flex items-center justify-center gap-1.5 whitespace-nowrap ${
               activeTab === 'invite'
                 ? 'bg-indigo-600 text-white shadow-md'
                 : 'text-slate-400 hover:text-white'
@@ -354,7 +359,7 @@ export const AddFriendModal: React.FC<AddFriendModalProps> = ({
           <button
             type="button"
             onClick={() => setActiveTab('custom')}
-            className={`flex-1 min-w-[90px] py-2 px-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 whitespace-nowrap ${
+            className={`flex-1 min-w-[90px] py-2 px-2.5 rounded-xl text-xs font-extrabold transition-all flex items-center justify-center gap-1.5 whitespace-nowrap ${
               activeTab === 'custom'
                 ? 'bg-indigo-600 text-white shadow-md'
                 : 'text-slate-400 hover:text-white'
@@ -366,7 +371,156 @@ export const AddFriendModal: React.FC<AddFriendModalProps> = ({
         </div>
 
         {/* ========================================================================= */}
-        {/* TAB 1: MY ADDED FRIENDS (എന്റെ സുഹൃത്തുക്കൾ) */}
+        {/* TAB 1: DISCOVER ALL REGISTERED USERS DIRECTORY */}
+        {/* ========================================================================= */}
+        {activeTab === 'search' && (
+          <div className="space-y-3.5 animate-in fade-in">
+            <div className="relative">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search by name, handle, email, or city..."
+                className="w-full pl-9 pr-10 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+              />
+              {loadingUsers ? (
+                <RefreshCw className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-indigo-400 animate-spin" />
+              ) : (
+                searchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white text-xs font-bold"
+                  >
+                    Clear
+                  </button>
+                )
+              )}
+            </div>
+
+            <div className="space-y-2 max-h-72 overflow-y-auto pr-1 divide-y divide-slate-800/60">
+              {filteredUsers.length > 0 ? (
+                filteredUsers.map((u) => {
+                  const existingChat = getExistingChat(u);
+                  const isFriend = Boolean(existingChat && existingChat.isFriend !== false);
+
+                  return (
+                    <div
+                      key={u.id || u.email || u.name}
+                      className="pt-2.5 pb-2.5 first:pt-0 flex items-center justify-between gap-3 group"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="relative flex-shrink-0">
+                          <img
+                            src={u.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300'}
+                            alt={u.name}
+                            className={`w-10 h-10 rounded-2xl object-cover ring-2 ${
+                              isFriend ? 'ring-emerald-500/40' : 'ring-indigo-500/30'
+                            }`}
+                            onError={(e) => {
+                              (e.target as HTMLElement).style.display = 'none';
+                            }}
+                          />
+                          <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-400 border-2 border-slate-900" />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <h4 className="font-extrabold text-xs text-white truncate">{u.name}</h4>
+                            {u.isVerified && (
+                              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />
+                            )}
+                            {isFriend && (
+                              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-0.5">
+                                <Check className="w-2.5 h-2.5" />
+                                <span>Friend</span>
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2 text-[11px] text-slate-400 truncate">
+                            {u.handle && (
+                              <span className="text-indigo-400/80 font-mono">{u.handle}</span>
+                            )}
+                            {u.location && (
+                              <span className="flex items-center gap-0.5 text-slate-400 truncate">
+                                <MapPin className="w-3 h-3 text-slate-500 flex-shrink-0" />
+                                <span className="truncate">{u.location}</span>
+                              </span>
+                            )}
+                            {u.bio && !u.location && (
+                              <span className="truncate">{u.bio}</span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      <button
+                        onClick={() => {
+                          if (isFriend && existingChat) {
+                            onSelectChat(existingChat.id);
+                            onClose();
+                          } else {
+                            handleAddFromDirectory(u);
+                          }
+                        }}
+                        className={`px-3 py-1.5 rounded-xl font-extrabold text-xs flex items-center gap-1.5 transition-all flex-shrink-0 ${
+                          isFriend
+                            ? 'bg-emerald-600/20 text-emerald-300 border border-emerald-500/40 hover:bg-emerald-600/30'
+                            : 'bg-gradient-to-r from-indigo-600 to-purple-600 hover:brightness-110 text-white shadow-md shadow-indigo-600/30 hover:scale-105 active:scale-95'
+                        }`}
+                      >
+                        {isFriend ? (
+                          <>
+                            <UserCheck className="w-3.5 h-3.5" />
+                            <span>Chat</span>
+                          </>
+                        ) : (
+                          <>
+                            <Plus className="w-3.5 h-3.5" />
+                            <span>Add Friend</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="py-8 text-center space-y-3 text-slate-400 text-xs">
+                  <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 flex items-center justify-center mx-auto">
+                    <Search className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <p className="font-bold text-slate-300">
+                      {searchQuery ? `No user found matching "${searchQuery}"` : 'No other users found in the directory yet'}
+                    </p>
+                    <p className="text-[11px] text-slate-500 mt-1">
+                      You can send an instant invite link or manually add your friend's contact.
+                    </p>
+                  </div>
+                  <div className="flex items-center justify-center gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('invite')}
+                      className="px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs transition-all shadow-md"
+                    >
+                      Send Invite Link →
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('custom')}
+                      className="px-3.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs transition-all"
+                    >
+                      Manual Entry
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ========================================================================= */}
+        {/* TAB 2: MY ADDED FRIENDS (എന്റെ സുഹൃത്തുക്കൾ) */}
         {/* ========================================================================= */}
         {activeTab === 'friends' && (
           <div className="space-y-3.5 animate-in fade-in">
@@ -464,145 +618,7 @@ export const AddFriendModal: React.FC<AddFriendModalProps> = ({
         )}
 
         {/* ========================================================================= */}
-        {/* TAB 2: SEARCH & DISCOVER REGISTERED USERS DIRECTORY */}
-        {/* ========================================================================= */}
-        {activeTab === 'search' && (
-          <div className="space-y-3.5 animate-in fade-in">
-            <div className="relative">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search by name, handle, email, or city..."
-                className="w-full pl-9 pr-10 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
-              />
-              {loadingUsers ? (
-                <RefreshCw className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-indigo-400 animate-spin" />
-              ) : (
-                searchQuery && (
-                  <button
-                    type="button"
-                    onClick={() => setSearchQuery('')}
-                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white text-xs font-bold"
-                  >
-                    Clear
-                  </button>
-                )
-              )}
-            </div>
-
-            <div className="space-y-2 max-h-72 overflow-y-auto pr-1 divide-y divide-slate-800/60">
-              {filteredUsers.length > 0 ? (
-                filteredUsers.map((u) => {
-                  const existingChat = getExistingChat(u);
-                  const isFriend = Boolean(existingChat && existingChat.isFriend !== false);
-
-                  return (
-                    <div
-                      key={u.id || u.email || u.name}
-                      className="pt-2.5 pb-2.5 first:pt-0 flex items-center justify-between gap-3 group"
-                    >
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div className="relative flex-shrink-0">
-                          <img
-                            src={u.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300'}
-                            alt={u.name}
-                            className={`w-10 h-10 rounded-2xl object-cover ring-2 ${
-                              isFriend ? 'ring-emerald-500/40' : 'ring-indigo-500/30'
-                            }`}
-                            onError={(e) => {
-                              (e.target as HTMLElement).style.display = 'none';
-                            }}
-                          />
-                          <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-400 border-2 border-slate-900" />
-                        </div>
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-1.5">
-                            <h4 className="font-extrabold text-xs text-white truncate">{u.name}</h4>
-                            {u.isVerified && (
-                              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />
-                            )}
-                            {isFriend && (
-                              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                                Added Friend
-                              </span>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-2 text-[11px] text-slate-400 truncate">
-                            {u.location && (
-                              <span className="flex items-center gap-0.5 text-slate-400 truncate">
-                                <MapPin className="w-3 h-3 text-slate-500 flex-shrink-0" />
-                                <span className="truncate">{u.location}</span>
-                              </span>
-                            )}
-                            {u.bio && !u.location && (
-                              <span className="truncate">{u.bio}</span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-
-                      <button
-                        onClick={() => handleAddFromDirectory(u)}
-                        className={`px-3 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all flex-shrink-0 ${
-                          isFriend
-                            ? 'bg-emerald-600/20 text-emerald-300 border border-emerald-500/40 hover:bg-emerald-600/30'
-                            : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-md shadow-indigo-600/30 hover:scale-105 active:scale-95'
-                        }`}
-                      >
-                        {isFriend ? (
-                          <>
-                            <UserCheck className="w-3.5 h-3.5" />
-                            <span>Friend • Chat</span>
-                          </>
-                        ) : (
-                          <>
-                            <Plus className="w-3.5 h-3.5" />
-                            <span>Add & Chat</span>
-                          </>
-                        )}
-                      </button>
-                    </div>
-                  );
-                })
-              ) : (
-                <div className="py-8 text-center space-y-3 text-slate-400 text-xs">
-                  <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 flex items-center justify-center mx-auto">
-                    <Search className="w-6 h-6" />
-                  </div>
-                  <div>
-                    <p className="font-bold text-slate-300">
-                      {searchQuery ? `No user found matching "${searchQuery}"` : 'No other users found in the directory yet'}
-                    </p>
-                    <p className="text-[11px] text-slate-500 mt-1">
-                      You can send an instant invite link or manually add your friend's contact.
-                    </p>
-                  </div>
-                  <div className="flex items-center justify-center gap-2 pt-1">
-                    <button
-                      type="button"
-                      onClick={() => setActiveTab('invite')}
-                      className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs transition-all shadow-md"
-                    >
-                      Send Invite Link →
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setActiveTab('custom')}
-                      className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs transition-all"
-                    >
-                      Manual Entry
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* ========================================================================= */}
-        {/* TAB 2: 1-CLICK INVITE FRIENDS (WHATSAPP, SMS, QR, EMAIL) */}
+        {/* TAB 3: 1-CLICK INVITE FRIENDS (WHATSAPP, SMS, QR, EMAIL) */}
         {/* ========================================================================= */}
         {activeTab === 'invite' && (
           <div className="space-y-4 animate-in fade-in text-xs">
@@ -692,7 +708,7 @@ export const AddFriendModal: React.FC<AddFriendModalProps> = ({
         )}
 
         {/* ========================================================================= */}
-        {/* TAB 3: MANUAL CUSTOM CONTACT ENTRY */}
+        {/* TAB 4: MANUAL CUSTOM CONTACT ENTRY */}
         {/* ========================================================================= */}
         {activeTab === 'custom' && (
           <form onSubmit={handleAddCustomContact} className="space-y-3.5 animate-in fade-in text-xs">
