@@ -27,7 +27,7 @@ export async function fetchAdzunaJobs(params: AdzunaSearchParams = {}): Promise<
       pincode: '122002',
       isRemote: false,
       workMode: 'hybrid',
-      category: 'Accounting & Finance',
+      category: 'Finance & Accounting',
       subcategory: 'Statutory Audit & International Taxation',
       jobType: 'Full-time',
       salaryMin: 90000,

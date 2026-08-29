@@ -53,6 +53,7 @@ import {
   sendCloudFriendRequest,
   acceptCloudFriendRequest,
   declineCloudFriendRequest,
+  cancelCloudFriendRequest,
   getCloudJobSources,
   updateCloudJobSource,
   syncAllCloudJobSources,
@@ -473,7 +474,7 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   useEffect(() => {
     async function loadCloudData() {
       try {
-        const [u, p, reqs, m, t, b, pos, ch, tsk, h, regUsers, jv, js, lw, apps, sbs, wrs, rps] = await Promise.all([
+        const [u, p, reqs, m, t, b, pos, ch, tsk, h, regUsers, sources, jv, js, lw, apps, sbs, wrs, rps] = await Promise.all([
           getCloudUserProfile(),
           getCloudProperties(),
           getCloudPropertyRequirements(),

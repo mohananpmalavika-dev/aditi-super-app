@@ -80,7 +80,7 @@ export async function fetchNCSJobs(params: NCSSearchParams = {}): Promise<Import
       workMode: 'onsite',
       category: 'Technology & IT',
       subcategory: 'Industrial Automation & Power Systems',
-      jobType: 'Internship / Contract',
+      jobType: 'Contract',
       salaryMin: 18000,
       salaryMax: 22000,
       salaryText: '₹18,000 - ₹22,000 / mo (Stipend as per NATS norms)',
