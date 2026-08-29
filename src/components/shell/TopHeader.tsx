@@ -56,9 +56,9 @@ export const TopHeader: React.FC<TopHeaderProps> = ({ onOpenLauncher }) => {
         {/* Brand Logo & Mini-App Launcher Button */}
         <div className="flex items-center gap-2 sm:gap-3">
           <button
-            onClick={() => setActiveMiniApp('home')}
+            onClick={() => setActiveMiniApp('chat')}
             className="flex items-center gap-2.5 group focus:outline-none"
-            aria-label="Go to Home"
+            aria-label="Go to Chat"
           >
             <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-indigo-500 via-purple-600 to-pink-500 flex items-center justify-center shadow-[0_8px_20px_-4px_rgba(99,102,241,0.6),inset_0_1px_1px_rgba(255,255,255,0.45)] group-hover:scale-105 active:scale-95 transition-all flex-shrink-0 border border-white/20">
               <span className="text-xl drop-shadow-md">🌐</span>

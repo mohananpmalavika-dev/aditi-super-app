@@ -33,7 +33,26 @@ interface MiniAppMeta {
   color: string;
 }
 
-const MINI_APPS: MiniAppMeta[] = [
+// All mini-app definitions are preserved in code
+const ALL_MINI_APPS: MiniAppMeta[] = [
+  {
+    id: 'chat',
+    name: 'Chat & Messenger',
+    category: 'daily',
+    icon: <MessageSquare className="w-5 h-5 sm:w-6 sm:h-6" />,
+    description: 'Real-Time Messaging with Agents, Tutors, Matches & AI Bot',
+    badge: 'Live',
+    color: 'from-sky-500 to-indigo-600'
+  },
+  {
+    id: 'astrology',
+    name: 'Astrology & Tarot',
+    category: 'lifestyle',
+    icon: <MoonStar className="w-5 h-5 sm:w-6 sm:h-6" />,
+    description: 'Daily Horoscopes, Vedic Kundali & 3-Card Tarot Deck',
+    badge: 'Mystic',
+    color: 'from-indigo-500 to-violet-600'
+  },
   {
     id: 'home',
     name: 'Home Hub',
@@ -59,15 +78,6 @@ const MINI_APPS: MiniAppMeta[] = [
     description: 'FLUX Image Generator, Text-to-Video & Web Video Editor',
     badge: '100% Free',
     color: 'from-pink-500 to-rose-600'
-  },
-  {
-    id: 'astrology',
-    name: 'Astrology & Tarot',
-    category: 'lifestyle',
-    icon: <MoonStar className="w-5 h-5 sm:w-6 sm:h-6" />,
-    description: 'Daily Horoscopes, Vedic Kundali & 3-Card Tarot Deck',
-    badge: 'Mystic',
-    color: 'from-indigo-500 to-violet-600'
   },
   {
     id: 'social',
@@ -103,15 +113,6 @@ const MINI_APPS: MiniAppMeta[] = [
     color: 'from-emerald-500 to-teal-600'
   },
   {
-    id: 'chat',
-    name: 'Chat & Messenger',
-    category: 'daily',
-    icon: <MessageSquare className="w-5 h-5 sm:w-6 sm:h-6" />,
-    description: 'Real-Time Messaging with Agents, Tutors, Matches & AI Bot',
-    badge: 'Live',
-    color: 'from-sky-500 to-indigo-600'
-  },
-  {
     id: 'productivity',
     name: 'Tasks & Habits',
     category: 'daily',
@@ -128,6 +129,9 @@ const MINI_APPS: MiniAppMeta[] = [
     color: 'from-gray-600 to-gray-800'
   }
 ];
+
+// Display only Chat and Astrology in the menu
+const MINI_APPS: MiniAppMeta[] = ALL_MINI_APPS.filter(app => app.id === 'chat' || app.id === 'astrology');
 
 export const AppLauncherModal: React.FC<AppLauncherModalProps> = ({ isOpen, onClose }) => {
   const { setActiveMiniApp } = useSuperApp();
@@ -160,10 +164,10 @@ export const AppLauncherModal: React.FC<AppLauncherModalProps> = ({ isOpen, onCl
               <h2 className="text-lg sm:text-xl font-black text-white flex items-center gap-2 drop-shadow-sm">
                 <span>🚀 Mini-App Launcher</span>
                 <span className="text-[10px] sm:text-xs font-black px-2.5 py-0.5 rounded-full bg-indigo-500/30 text-indigo-300 border border-indigo-400/40 shadow-[0_0_10px_rgba(99,102,241,0.4)]">
-                  12 Verticals
+                  {MINI_APPS.length} Apps Active
                 </span>
               </h2>
-              <p className="text-xs text-slate-300 mt-0.5">Instant access to creative AI tools, marketplaces, and daily LifeOS essentials.</p>
+              <p className="text-xs text-slate-300 mt-0.5">Instant access to Chat & Messenger and Astrology & Tarot.</p>
             </div>
             <button
               onClick={onClose}
@@ -188,17 +192,21 @@ export const AppLauncherModal: React.FC<AppLauncherModalProps> = ({ isOpen, onCl
           </div>
 
           <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-0.5">
-            {['all', 'creative', 'lifestyle', 'commerce', 'daily'].map((cat) => (
+            {[
+              { id: 'all', label: 'All' },
+              { id: 'daily', label: 'Chat & Messenger' },
+              { id: 'lifestyle', label: 'Astrology & Tarot' }
+            ].map((cat) => (
               <button
-                key={cat}
-                onClick={() => setSelectedCategory(cat)}
+                key={cat.id}
+                onClick={() => setSelectedCategory(cat.id)}
                 className={`px-3 py-1.5 rounded-xl text-xs font-black capitalize whitespace-nowrap transition-all active:scale-95 ${
-                  selectedCategory === cat
+                  selectedCategory === cat.id
                     ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-[0_4px_12px_rgba(99,102,241,0.5),inset_0_1px_1px_rgba(255,255,255,0.4)] border border-white/20'
                     : 'bg-slate-900/80 text-slate-400 hover:bg-slate-800 hover:text-white border border-slate-800'
                 }`}
               >
-                {cat === 'all' ? 'All' : cat}
+                {cat.label}
               </button>
             ))}
           </div>

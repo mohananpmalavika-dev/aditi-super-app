@@ -164,29 +164,26 @@ export const SuperAppHome: React.FC = () => {
           <span className="text-[11px] text-indigo-300 font-bold">1-Tap 3D Launch</span>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-3.5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 max-w-2xl">
           {[
-            { id: 'media_studio', name: 'AI Creative Studio', icon: <Palette className="w-5 h-5" />, desc: 'FLUX Art & Video', color: 'from-pink-500 via-rose-500 to-pink-600', shadow: 'shadow-[0_8px_20px_-4px_rgba(236,72,153,0.5)]' },
-            { id: 'astrology', name: 'Astrology & Tarot', icon: <MoonStar className="w-5 h-5" />, desc: 'Kundali & Horoscopes', color: 'from-purple-500 via-indigo-600 to-purple-700', shadow: 'shadow-[0_8px_20px_-4px_rgba(168,85,247,0.5)]' },
-            { id: 'realestate', name: 'Real Estate', icon: <Building2 className="w-5 h-5" />, desc: 'Luxury Buy & Rent', color: 'from-amber-500 via-orange-500 to-amber-600', shadow: 'shadow-[0_8px_20px_-4px_rgba(245,158,11,0.5)]' },
-            { id: 'matrimony', name: 'Matrimony', icon: <Heart className="w-5 h-5" />, desc: 'Verified Matches', color: 'from-rose-500 via-pink-600 to-rose-700', shadow: 'shadow-[0_8px_20px_-4px_rgba(244,63,94,0.5)]' },
-            { id: 'tutor', name: 'Tutor Academy', icon: <GraduationCap className="w-5 h-5" />, desc: '1-on-1 Mentorship', color: 'from-emerald-500 via-teal-600 to-emerald-700', shadow: 'shadow-[0_8px_20px_-4px_rgba(16,185,129,0.5)]' },
-            { id: 'chat', name: 'AditiChat & Calls', icon: <Send className="w-5 h-5" />, desc: 'P2P Video & Voice', color: 'from-blue-600 via-indigo-600 to-blue-700', shadow: 'shadow-[0_8px_20px_-4px_rgba(59,130,246,0.5)]' },
+            { id: 'chat', name: 'Chat & Messenger', icon: <Send className="w-5 h-5" />, desc: 'P2P Video, Voice & Real-time Messaging', color: 'from-blue-600 via-indigo-600 to-blue-700', shadow: 'shadow-[0_8px_20px_-4px_rgba(59,130,246,0.5)]' },
+            { id: 'astrology', name: 'Astrology & Tarot', icon: <MoonStar className="w-5 h-5" />, desc: 'Daily Horoscopes, Vedic Kundali & Tarot', color: 'from-purple-500 via-indigo-600 to-purple-700', shadow: 'shadow-[0_8px_20px_-4px_rgba(168,85,247,0.5)]' },
           ].map((app) => (
             <button
               key={app.id}
               onClick={() => setActiveMiniApp(app.id as MiniAppId)}
-              className="p-3.5 sm:p-4 rounded-3xl card-3d card-3d-interactive text-left transition-all group flex flex-col justify-between"
+              className="p-4 sm:p-5 rounded-3xl card-3d card-3d-interactive text-left transition-all group flex items-center gap-4"
             >
-              <div className={`w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-gradient-to-tr ${app.color} flex items-center justify-center text-white ${app.shadow} mb-2.5 group-hover:scale-110 group-hover:-translate-y-1 transition-all border border-white/25 shadow-inner`}>
+              <div className={`w-12 h-12 rounded-2xl bg-gradient-to-tr ${app.color} flex items-center justify-center text-white ${app.shadow} flex-shrink-0 group-hover:scale-110 group-hover:-translate-y-1 transition-all border border-white/25 shadow-inner`}>
                 {app.icon}
               </div>
-              <div>
-                <h3 className="font-extrabold text-xs sm:text-sm text-white group-hover:text-indigo-200 transition-colors truncate">
+              <div className="min-w-0 flex-1">
+                <h3 className="font-extrabold text-sm sm:text-base text-white group-hover:text-indigo-200 transition-colors truncate">
                   {app.name}
                 </h3>
-                <p className="text-[10px] sm:text-[11px] text-slate-400 mt-0.5 truncate">{app.desc}</p>
+                <p className="text-xs text-slate-400 mt-0.5 truncate">{app.desc}</p>
               </div>
+              <span className="text-slate-500 group-hover:text-indigo-300 font-bold group-hover:translate-x-1 transition-transform">→</span>
             </button>
           ))}
         </div>

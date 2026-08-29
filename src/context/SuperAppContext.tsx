@@ -224,7 +224,7 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [isDeviceLocked, setIsDeviceLocked] = useState<boolean>(false);
   const [sessionUser, setSessionUser] = useState<DeviceSessionUser | null>(null);
 
-  const [activeMiniApp, setActiveMiniApp] = useState<MiniAppId>('home');
+  const [activeMiniApp, setActiveMiniApp] = useState<MiniAppId>('chat');
   const [user, setUser] = useState<UserProfile>(INITIAL_USER);
   const [properties, setProperties] = useState<RealEstateProperty[]>([]);
   const [propertyRequirements, setPropertyRequirements] = useState<PropertyRequirement[]>([]);
