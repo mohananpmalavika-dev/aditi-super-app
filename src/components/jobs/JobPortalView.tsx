@@ -612,26 +612,37 @@ export const JobPortalView: React.FC = () => {
 
                   {/* Recruiter Bar & Quick Action */}
                   <div className="pt-3 border-t border-slate-800/80 flex items-center justify-between gap-3" onClick={(e) => e.stopPropagation()}>
-                    <div className="flex items-center gap-2.5">
+                    <div className="flex items-center gap-2.5 min-w-0">
                       <img
                         src={job.contactAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150'}
                         alt={job.contactName}
-                        className="w-8 h-8 rounded-xl object-cover border border-indigo-500/30"
+                        className="w-8 h-8 rounded-xl object-cover border border-indigo-500/30 shrink-0"
                       />
-                      <div className="text-[11px]">
-                        <div className="font-bold text-white">{job.contactName}</div>
-                        <div className="text-slate-400 text-[10px]">{job.contactPhone}</div>
+                      <div className="text-[11px] min-w-0">
+                        <div className="font-bold text-white truncate">{job.contactName}</div>
+                        <div className="text-slate-400 text-[10px] truncate">{job.contactEmail || job.contactPhone || 'HR Desk'}</div>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2">
-                      <a
-                        href={`tel:${job.contactPhone}`}
-                        className="p-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white transition-colors"
-                        title="Call Recruiter"
-                      >
-                        <Phone className="w-4 h-4" />
-                      </a>
+                    <div className="flex items-center gap-2 shrink-0">
+                      {job.contactEmail && (
+                        <a
+                          href={`mailto:${job.contactEmail}?subject=Application for ${encodeURIComponent(job.title)}`}
+                          className="p-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white transition-colors"
+                          title="Email Recruiter"
+                        >
+                          <Mail className="w-4 h-4 text-cyan-400" />
+                        </a>
+                      )}
+                      {job.contactPhone && (
+                        <a
+                          href={`tel:${job.contactPhone}`}
+                          className="p-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white transition-colors"
+                          title="Call Recruiter"
+                        >
+                          <Phone className="w-4 h-4 text-emerald-400" />
+                        </a>
+                      )}
                       <button
                         onClick={() => setJobToApply(job)}
                         className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold text-xs shadow-md shadow-indigo-500/20 flex items-center gap-1.5 active:scale-95 transition-all"

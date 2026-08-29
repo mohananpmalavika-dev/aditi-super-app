@@ -1863,8 +1863,7 @@ export const INITIAL_JOB_VACANCIES: JobVacancy[] = [
       'Implement zero-trust security, Datadog observability, and cost optimization'
     ],
     skills: ['AWS', 'Docker', 'Kubernetes', 'CI/CD', 'Terraform', 'Datadog', 'Linux RHEL'],
-    contactName: 'Nandana V. (Senior HR Manager)',
-    contactPhone: '+91 484 410 7000',
+    contactName: 'HR Talent Team',
     contactEmail: 'careers@thinkpalm.com',
     contactAvatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150',
     openingsCount: 3,
@@ -1906,8 +1905,7 @@ export const INITIAL_JOB_VACANCIES: JobVacancy[] = [
       'Write robust unit and integration tests using Vitest and React Testing Library'
     ],
     skills: ['React', 'TypeScript', 'Next.js', 'TailwindCSS', 'GraphQL', 'Redux Toolkit', 'Vitest'],
-    contactName: 'Arun Madhav (Talent Lead)',
-    contactPhone: '+91 484 298 4455',
+    contactName: 'Talent Acquisition Team',
     contactEmail: 'hr@tecforz.com',
     contactAvatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150',
     openingsCount: 2,
@@ -1949,8 +1947,7 @@ export const INITIAL_JOB_VACANCIES: JobVacancy[] = [
       'Manage end-to-end Google Play Console and Apple App Store deployment pipelines'
     ],
     skills: ['Flutter', 'Dart', 'Bloc', 'REST APIs', 'Firebase', 'App Store Deployment'],
-    contactName: 'Divya Pillai (HR Operations)',
-    contactPhone: '+91 484 404 8890',
+    contactName: 'HR Operations',
     contactEmail: 'careers@panasatech.com',
     contactAvatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150',
     openingsCount: 2,
@@ -1992,8 +1989,7 @@ export const INITIAL_JOB_VACANCIES: JobVacancy[] = [
       'Deploy low-latency AI inference endpoints on AWS SageMaker and GCP Vertex AI'
     ],
     skills: ['Python', 'LangChain', 'LlamaIndex', 'Vector Databases', 'PyTorch', 'FastAPI', 'AWS SageMaker'],
-    contactName: 'Rohit K. George (VP Engineering)',
-    contactPhone: '+91 484 669 5000',
+    contactName: 'Engineering Talent Team',
     contactEmail: 'talent@experionglobal.com',
     contactAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150',
     openingsCount: 3,
@@ -2035,8 +2031,7 @@ export const INITIAL_JOB_VACANCIES: JobVacancy[] = [
       'Write automated integration tests and optimize database query plans'
     ],
     skills: ['C#', '.NET Core', 'Angular', 'SQL Server', 'Entity Framework', 'Azure', 'Microservices'],
-    contactName: 'Neetha Thomas (Senior Recruiter)',
-    contactPhone: '+91 484 402 3344',
+    contactName: 'Talent Acquisition Team',
     contactEmail: 'careers@alignminds.com',
     contactAvatar: 'https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?w=150',
     openingsCount: 4,
@@ -2078,8 +2073,7 @@ export const INITIAL_JOB_VACANCIES: JobVacancy[] = [
       'Analyze funnel analytics using GA4, Mixpanel, and Google Tag Manager'
     ],
     skills: ['Google Ads', 'Meta Ads', 'SEO', 'GA4 Analytics', 'Conversion Rate Optimization', 'Copywriting'],
-    contactName: 'Sanjay Krishnan (Growth Director)',
-    contactPhone: '+91 484 485 9900',
+    contactName: 'Growth Hiring Desk',
     contactEmail: 'jobs@inspitetech.com',
     contactAvatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150',
     openingsCount: 2,
@@ -2121,8 +2115,7 @@ export const INITIAL_JOB_VACANCIES: JobVacancy[] = [
       'Document knowledge base articles and common troubleshooting workflows'
     ],
     skills: ['English Communication', 'Technical Support', 'CRM Ticketing', 'ITIL', 'Problem Solving'],
-    contactName: 'Meera Vinod (HR Executive)',
-    contactPhone: '+91 484 429 8000',
+    contactName: 'HR Sourcing Team',
     contactEmail: 'careers.kochi@speridian.com',
     contactAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
     openingsCount: 8,
@@ -2164,8 +2157,7 @@ export const INITIAL_JOB_VACANCIES: JobVacancy[] = [
       'Drive employee engagement programs and performance appraisal cycles'
     ],
     skills: ['Technical Recruiting', 'LinkedIn Sourcing', 'HR Operations', 'Employee Onboarding', 'Payroll'],
-    contactName: 'Kavitha R. (Lead HR)',
-    contactPhone: '+91 484 485 9901',
+    contactName: 'HR Recruitment Desk',
     contactEmail: 'hr@inspitetech.com',
     contactAvatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150',
     openingsCount: 2,
@@ -2207,8 +2199,7 @@ export const INITIAL_JOB_VACANCIES: JobVacancy[] = [
       'Perform load and stress testing using k6 / JMeter'
     ],
     skills: ['Playwright', 'Cypress', 'TypeScript', 'Postman API Testing', 'CI/CD Pipelines', 'k6 Load Testing'],
-    contactName: 'George Kurian (QA Manager)',
-    contactPhone: '+91 484 319 7788',
+    contactName: 'QA Engineering Desk',
     contactEmail: 'careers@grapelime.in',
     contactAvatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150',
     openingsCount: 3,
@@ -2250,8 +2241,7 @@ export const INITIAL_JOB_VACANCIES: JobVacancy[] = [
       'Conduct regular vulnerability assessments and incident response drills'
     ],
     skills: ['Cisco Routing & Switching', 'Fortinet Firewalls', 'Linux Server Admin', 'Network Security', 'ISO 27001'],
-    contactName: 'Muralidharan P. (Infrastructure Director)',
-    contactPhone: '+91 484 241 5566',
+    contactName: 'Infrastructure HR Desk',
     contactEmail: 'noc.careers@penguindc.com',
     contactAvatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=150',
     openingsCount: 2,

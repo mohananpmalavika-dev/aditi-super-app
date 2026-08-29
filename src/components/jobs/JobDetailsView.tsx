@@ -9,6 +9,7 @@ import {
   Clock, 
   CheckCircle2, 
   Phone, 
+  Mail,
   MessageSquare, 
   Bookmark, 
   Share2, 
@@ -205,33 +206,49 @@ export const JobDetailsView: React.FC<JobDetailsViewProps> = ({
 
           {/* Recruiter Details */}
           <div className="p-3.5 rounded-2xl bg-slate-900/90 border border-slate-800 flex items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 min-w-0">
               <img
                 src={job.contactAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150'}
                 alt={job.contactName}
-                className="w-10 h-10 rounded-xl object-cover border border-indigo-500/30"
+                className="w-10 h-10 rounded-xl object-cover border border-indigo-500/30 shrink-0"
               />
-              <div>
-                <div className="font-bold text-white text-xs">{job.contactName}</div>
-                <div className="text-slate-400 text-[11px]">Hiring Manager • {job.company}</div>
-                <div className="text-indigo-400 text-[10px] font-semibold">{job.contactPhone}</div>
+              <div className="min-w-0">
+                <div className="font-bold text-white text-xs truncate">{job.contactName}</div>
+                <div className="text-slate-400 text-[11px] truncate">Hiring Desk • {job.company}</div>
+                {job.contactEmail ? (
+                  <div className="text-indigo-400 text-[10px] font-semibold truncate">{job.contactEmail}</div>
+                ) : job.contactPhone ? (
+                  <div className="text-indigo-400 text-[10px] font-semibold truncate">{job.contactPhone}</div>
+                ) : null}
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
-              <a
-                href={`tel:${job.contactPhone}`}
-                className="p-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white transition-colors"
-                title="Call Recruiter"
-              >
-                <Phone className="w-4 h-4" />
-              </a>
+            <div className="flex items-center gap-2 shrink-0">
+              {job.contactEmail && (
+                <a
+                  href={`mailto:${job.contactEmail}?subject=Application for ${encodeURIComponent(job.title)}`}
+                  className="p-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white transition-colors"
+                  title="Email Official HR"
+                >
+                  <Mail className="w-4 h-4 text-cyan-400" />
+                </a>
+              )}
+              {job.contactPhone && (
+                <a
+                  href={`tel:${job.contactPhone}`}
+                  className="p-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white transition-colors"
+                  title="Call Recruiter"
+                >
+                  <Phone className="w-4 h-4 text-emerald-400" />
+                </a>
+              )}
               <button
                 onClick={handleStartChat}
-                className="p-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white shadow-md shadow-indigo-500/20 transition-colors"
+                className="p-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white shadow-md shadow-indigo-500/20 transition-colors flex items-center gap-1.5 px-3 font-bold text-xs"
                 title="Message Recruiter"
               >
-                <MessageSquare className="w-4 h-4" />
+                <MessageSquare className="w-3.5 h-3.5" />
+                <span>Chat</span>
               </button>
             </div>
           </div>

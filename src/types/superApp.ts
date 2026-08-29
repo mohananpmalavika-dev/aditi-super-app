@@ -711,7 +711,7 @@ export interface JobVacancy {
   responsibilities?: string[];
   skills: string[];
   contactName: string;
-  contactPhone: string;
+  contactPhone?: string;
   contactEmail?: string;
   contactAvatar?: string;
   openingsCount: number;
