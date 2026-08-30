@@ -295,7 +295,14 @@ interface SuperAppContextType {
   
   // Real-Time WebRTC Live Calling
   incomingLiveCall: IncomingLiveCall | null;
-  activeLiveCall: { contactName: string; contactAvatar: string; isVideo: boolean } | null;
+  activeLiveCall: {
+    callId: string;
+    contactName: string;
+    contactAvatar: string;
+    isVideo: boolean;
+    isCaller: boolean;
+    targetUserId: string;
+  } | null;
   acceptIncomingLiveCall: () => void;
   declineIncomingLiveCall: () => void;
   startLiveCallWith: (contactName: string, contactAvatar: string, isVideo: boolean) => void;
@@ -757,16 +764,26 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   } | null>(null);
 
   const [incomingLiveCall, setIncomingLiveCall] = useState<IncomingLiveCall | null>(null);
-  const [activeLiveCall, setActiveLiveCall] = useState<{ contactName: string; contactAvatar: string; isVideo: boolean } | null>(null);
+  const [activeLiveCall, setActiveLiveCall] = useState<{
+    callId: string;
+    contactName: string;
+    contactAvatar: string;
+    isVideo: boolean;
+    isCaller: boolean;
+    targetUserId: string;
+  } | null>(null);
 
   const acceptIncomingLiveCall = () => {
     if (!incomingLiveCall) return;
     const call = incomingLiveCall;
     setIncomingLiveCall(null);
     setActiveLiveCall({
+      callId: call.callId,
       contactName: call.callerName,
       contactAvatar: call.callerAvatar,
-      isVideo: call.isVideo
+      isVideo: call.isVideo,
+      isCaller: false,
+      targetUserId: call.callerId
     });
     broadcastSocialEvent({
       type: 'CALL_RESPONSE_SIGNAL',
@@ -792,15 +809,26 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   const startLiveCallWith = (contactName: string, contactAvatar: string, isVideo: boolean) => {
-    setActiveLiveCall({ contactName, contactAvatar, isVideo });
     const targetUser = registeredUsers.find((u) => u.name.toLowerCase() === contactName.toLowerCase());
+    const callId = `call-${Date.now()}`;
+    const targetUserId = targetUser?.id || targetUser?.email || contactName;
+
+    setActiveLiveCall({
+      callId,
+      contactName,
+      contactAvatar,
+      isVideo,
+      isCaller: true,
+      targetUserId
+    });
+
     broadcastSocialEvent({
       type: 'INCOMING_CALL_SIGNAL',
-      callId: `call-${Date.now()}`,
+      callId,
       callerId: user.id || 'user',
       callerName: user.name,
       callerAvatar: user.avatar,
-      targetUserId: targetUser?.id || targetUser?.email || contactName,
+      targetUserId,
       targetUserName: contactName,
       targetEmail: targetUser?.email,
       isVideo

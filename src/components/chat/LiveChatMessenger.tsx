@@ -2642,6 +2642,9 @@ export const LiveChatMessenger: React.FC = () => {
         contactName={activeLiveCall?.contactName || activeChat?.participantName || 'Aditi Contact'}
         contactAvatar={activeLiveCall?.contactAvatar || activeChat?.participantAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300'}
         isVideo={activeLiveCall ? activeLiveCall.isVideo : isVideoCall}
+        callId={activeLiveCall?.callId}
+        isCaller={activeLiveCall?.isCaller}
+        targetUserId={activeLiveCall?.targetUserId}
         onClose={() => {
           setCallModalOpen(false);
           endLiveCall();

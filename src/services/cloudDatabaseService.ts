@@ -1705,6 +1705,29 @@ export type SocialBroadcastEvent =
   | {
       type: 'CALL_ENDED_SIGNAL';
       callId: string;
+    }
+  | {
+      type: 'WEBRTC_OFFER';
+      callId: string;
+      fromUserId: string;
+      toUserId: string;
+      fromUserName?: string;
+      offer: RTCSessionDescriptionInit;
+    }
+  | {
+      type: 'WEBRTC_ANSWER';
+      callId: string;
+      fromUserId: string;
+      toUserId: string;
+      fromUserName?: string;
+      answer: RTCSessionDescriptionInit;
+    }
+  | {
+      type: 'WEBRTC_ICE_CANDIDATE';
+      callId: string;
+      fromUserId: string;
+      toUserId: string;
+      candidate: RTCIceCandidateInit;
     };
 
 // HTML5 BroadcastChannel for instant local cross-tab sync
