@@ -622,7 +622,7 @@ export const LiveChatMessenger: React.FC = () => {
   };
 
   return (
-    <div className="h-[calc(100dvh-7.5rem)] md:h-[calc(100vh-4rem)] flex flex-col md:flex-row bg-slate-950 text-slate-100 overflow-hidden font-sans border-t md:border border-slate-800 md:rounded-3xl md:shadow-2xl">
+    <div className="h-full w-full flex flex-col md:flex-row bg-slate-950 text-slate-100 overflow-hidden font-sans border-t md:border border-slate-800 md:rounded-3xl md:shadow-2xl">
       
       {/* ========================================================================= */}
       {/* LEFT SIDEBAR: CONVERSATION LIST & SEARCH */}
@@ -1002,7 +1002,7 @@ export const LiveChatMessenger: React.FC = () => {
       {/* ========================================================================= */}
       {/* RIGHT MAIN CHAT WINDOW */}
       {/* ========================================================================= */}
-      <div className={`flex-1 flex flex-col ${activeChat?.customWallpaper || 'bg-slate-950/40'} relative ${mobileView === 'list' ? 'hidden md:flex' : 'flex'}`}>
+      <div className={`flex-1 flex flex-col ${activeChat?.customWallpaper || 'bg-slate-950/40'} relative ${mobileView === 'list' ? 'hidden md:flex' : 'flex'} h-full min-h-0 overflow-hidden`}>
         
         {!activeChat ? (
           <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-slate-950/40">
@@ -2335,7 +2335,7 @@ export const LiveChatMessenger: React.FC = () => {
 
             {/* Bottom Input Form & Smart Attachment Tools Sheet */}
             {!isRecordingAudio && (
-              <div className="relative bg-slate-950/95 border-t border-slate-800 backdrop-blur-xl">
+              <div className="relative bg-slate-950/95 border-t border-slate-800 backdrop-blur-xl flex-shrink-0 z-30">
                 
                 {/* Emoji Picker Popover */}
                 {showEmojiPicker && (
