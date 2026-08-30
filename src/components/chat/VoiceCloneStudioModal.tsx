@@ -34,6 +34,12 @@ import {
   DEFAULT_ENROLLED_VOICE 
 } from '../../services/voice/voiceProfileService';
 import { playSyntheticVoice, voiceCacheManager } from '../../services/voice/voiceSynthesisEngine';
+import { 
+  getNeuralVoiceConfig, 
+  saveNeuralVoiceConfig, 
+  createElevenLabsVoiceClone,
+  NeuralVoiceConfig 
+} from '../../services/voice/neuralVoiceCloneService';
 
 interface VoiceCloneStudioModalProps {
   isOpen: boolean;
@@ -72,6 +78,11 @@ export const VoiceCloneStudioModal: React.FC<VoiceCloneStudioModalProps> = ({
   const [detectedFrequency, setDetectedFrequency] = useState<number | null>(null);
   const [recordedAudioUrl, setRecordedAudioUrl] = useState<string | null>(profile.sampleAudioUrl || null);
   const [isPlayingRecordedSample, setIsPlayingRecordedSample] = useState(false);
+
+  // Neural Voice Clone State
+  const [neuralConfig, setNeuralConfig] = useState<NeuralVoiceConfig>(getNeuralVoiceConfig());
+  const [isCloningNeural, setIsCloningNeural] = useState(false);
+  const [neuralCloneMsg, setNeuralCloneMsg] = useState<string | null>(null);
 
   // Preview / Test State
   const [isPlayingPreview, setIsPlayingPreview] = useState(false);
@@ -306,6 +317,43 @@ export const VoiceCloneStudioModal: React.FC<VoiceCloneStudioModalProps> = ({
       }
     );
     stopPreviewRef.current = stopper;
+  };
+
+  const handleCreateNeuralVoiceClone = async () => {
+    if (!neuralConfig.elevenlabsApiKey) {
+      setNeuralCloneMsg('⚠️ Please enter your ElevenLabs API Key.');
+      return;
+    }
+    if (!recordedAudioUrl) {
+      setNeuralCloneMsg('⚠️ Please record a voice sample in Tab 1 first.');
+      return;
+    }
+
+    setIsCloningNeural(true);
+    setNeuralCloneMsg('🧬 Generating instant neural voice clone from your microphone sample...');
+
+    try {
+      const voiceId = await createElevenLabsVoiceClone(
+        neuralConfig.elevenlabsApiKey,
+        profile.displayName || 'My Voice Clone',
+        recordedAudioUrl
+      );
+      const updatedCfg: NeuralVoiceConfig = {
+        ...neuralConfig,
+        provider: 'elevenlabs',
+        elevenlabsVoiceId: voiceId
+      };
+      setNeuralConfig(updatedCfg);
+      saveNeuralVoiceConfig(updatedCfg);
+      setProfile((prev) => ({ ...prev, voiceModelId: voiceId }));
+      setNeuralCloneMsg('✅ Voice Cloned Successfully! Future messages will speak in your exact cloned human voice.');
+      confetti({ particleCount: 70, spread: 80 });
+    } catch (err: any) {
+      console.warn('Neural voice cloning error:', err);
+      setNeuralCloneMsg(`⚠️ Voice clone error: ${err.message || 'Failed to clone'}`);
+    } finally {
+      setIsCloningNeural(false);
+    }
   };
 
   const handleSaveProfile = (e: React.FormEvent) => {
@@ -640,6 +688,67 @@ export const VoiceCloneStudioModal: React.FC<VoiceCloneStudioModalProps> = ({
                     onChange={(e) => setProfile((p) => ({ ...p, rate: parseFloat(e.target.value) }))}
                     className="w-full accent-indigo-500 bg-slate-900 rounded-lg h-2"
                   />
+                </div>
+              </div>
+
+              {/* Instant Neural AI Voice Cloning (100% Exact Voice Match) */}
+              <div className="p-4 rounded-2xl bg-gradient-to-br from-indigo-950/80 to-purple-950/80 border border-purple-500/40 shadow-xl space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-yellow-400" />
+                    <span className="font-extrabold text-xs text-white">
+                      100% Neural Voice Cloning (യഥാർത്ഥ ശബ്ദ ക്ലോണിംഗ്)
+                    </span>
+                  </div>
+                  <span className="text-[9px] font-extrabold px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                    High Fidelity
+                  </span>
+                </div>
+
+                <p className="text-[11px] text-purple-200/80 leading-relaxed">
+                  Connect ElevenLabs or Zero-Shot Neural Cloner to generate speech that sounds <strong>100% identical to your real microphone voice sample</strong>.
+                </p>
+
+                <div className="space-y-2">
+                  <input
+                    type="password"
+                    value={neuralConfig.elevenlabsApiKey || ''}
+                    onChange={(e) => {
+                      const updated = { ...neuralConfig, elevenlabsApiKey: e.target.value };
+                      setNeuralConfig(updated);
+                      saveNeuralVoiceConfig(updated);
+                    }}
+                    placeholder="Enter ElevenLabs API Key (e.g. xi-api-key)..."
+                    className="w-full p-2.5 rounded-xl bg-slate-900/90 border border-slate-800 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-purple-400 font-mono"
+                  />
+
+                  <button
+                    type="button"
+                    disabled={isCloningNeural || !recordedAudioUrl}
+                    onClick={handleCreateNeuralVoiceClone}
+                    className={`w-full py-2.5 rounded-xl text-xs font-extrabold flex items-center justify-center gap-2 transition-all ${
+                      isCloningNeural
+                        ? 'bg-purple-800 text-purple-200 cursor-wait'
+                        : recordedAudioUrl
+                        ? 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 text-white shadow-lg shadow-purple-600/30 active:scale-95'
+                        : 'bg-slate-900 text-slate-500 border border-slate-800 cursor-not-allowed'
+                    }`}
+                  >
+                    <Sparkles className="w-3.5 h-3.5" />
+                    <span>
+                      {isCloningNeural
+                        ? 'Cloning Your Exact Voice...'
+                        : recordedAudioUrl
+                        ? '🧬 Generate 100% Neural Voice Clone'
+                        : '⚠️ Record a voice sample in Tab 1 first'}
+                    </span>
+                  </button>
+
+                  {neuralCloneMsg && (
+                    <div className="p-2 rounded-lg bg-slate-900/90 border border-purple-500/30 text-[10px] text-purple-200 font-medium leading-relaxed">
+                      {neuralCloneMsg}
+                    </div>
+                  )}
                 </div>
               </div>
 

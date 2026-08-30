@@ -217,6 +217,32 @@ export function playSyntheticVoice(
 
   const isMalayalamOrManglish = detectedLanguage === 'ml' || detectedLanguage === 'manglish' || detectedLanguage === 'mixed';
 
+  // Strategy 0: Direct Neural Voice Clone (ElevenLabs / Zero-Shot)
+  const attemptNeuralClone = async (): Promise<boolean> => {
+    try {
+      const { getNeuralVoiceConfig, synthesizeWithElevenLabs } = await import('./neuralVoiceCloneService');
+      const cfg = getNeuralVoiceConfig();
+      if (cfg.provider === 'elevenlabs' && cfg.elevenlabsApiKey && (cfg.elevenlabsVoiceId || voiceProfile.voiceModelId)) {
+        const voiceId = cfg.elevenlabsVoiceId || voiceProfile.voiceModelId!;
+        const audioUrl = await synthesizeWithElevenLabs(normalizedSpeechText, cfg.elevenlabsApiKey, voiceId);
+        const audio = new Audio(audioUrl);
+        activeAudioElement = audio;
+        audio.playbackRate = options?.speedMultiplier || 1.0;
+        audio.onplay = () => { if (!isCancelled) options?.onStart?.(); };
+        audio.onended = () => { if (!isCancelled) options?.onEnd?.(); };
+        audio.onerror = () => {
+          activeAudioElement = null;
+          if (!isCancelled) attemptCloudRegionalStream();
+        };
+        await audio.play();
+        return true;
+      }
+    } catch (err) {
+      console.warn('Neural voice clone failed, falling back to regional stream:', err);
+    }
+    return false;
+  };
+
   // Strategy A: Regional Native Stream for Malayalam / Manglish
   const attemptCloudRegionalStream = (): boolean => {
     if (!isMalayalamOrManglish || normalizedSpeechText.length > 200) {
@@ -334,11 +360,15 @@ export function playSyntheticVoice(
     window.speechSynthesis.speak(utterance);
   };
 
-  // Launch primary synthesis pipeline
-  const cloudStarted = attemptCloudRegionalStream();
-  if (!cloudStarted) {
-    fallbackToBrowserSynthesis();
-  }
+  // Launch primary synthesis pipeline (Neural Clone -> Regional Cloud Stream -> Local TTS Fallback)
+  attemptNeuralClone().then((neuralSuccess) => {
+    if (!neuralSuccess && !isCancelled) {
+      const cloudStarted = attemptCloudRegionalStream();
+      if (!cloudStarted) {
+        fallbackToBrowserSynthesis();
+      }
+    }
+  });
 
   // Return cancel stopper
   return () => {
