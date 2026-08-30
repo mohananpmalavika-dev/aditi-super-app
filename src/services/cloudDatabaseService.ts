@@ -1592,6 +1592,50 @@ export function getLocalFriends(): string[] {
   }
 }
 
+const isUuid = (str?: string): boolean =>
+  Boolean(str && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str));
+
+export async function resolveSupabaseUserId(identifier?: string, nameHint?: string): Promise<string | null> {
+  if (!identifier) return null;
+  if (isUuid(identifier)) return identifier;
+  if (!supabase || isTestEnv) return null;
+
+  try {
+    // 1. Check by email
+    if (identifier.includes('@')) {
+      const { data } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('email', identifier.trim().toLowerCase())
+        .maybeSingle();
+      if (data?.id) return data.id;
+    }
+
+    // 2. Check by handle
+    const cleanHandle = identifier.startsWith('@') ? identifier : `@${identifier}`;
+    const { data: handleData } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('handle', cleanHandle)
+      .maybeSingle();
+    if (handleData?.id) return handleData.id;
+
+    // 3. Check by name or nameHint
+    const queryName = nameHint || identifier;
+    if (queryName && queryName !== 'user' && !queryName.startsWith('usr-') && !queryName.startsWith('chat-')) {
+      const { data: nameData } = await supabase
+        .from('profiles')
+        .select('id')
+        .ilike('name', queryName.trim())
+        .maybeSingle();
+      if (nameData?.id) return nameData.id;
+    }
+  } catch (err) {
+    console.warn('Error resolving Supabase user ID:', err);
+  }
+  return null;
+}
+
 export function isCloudFriend(friendId: string): boolean {
   const list = getLocalFriends();
   return list.includes(friendId);
@@ -1599,26 +1643,148 @@ export function isCloudFriend(friendId: string): boolean {
 
 export async function sendCloudFriendRequest(req: FriendRequest): Promise<void> {
   saveLocalFriendRequest(req);
-  if (supabase) {
-    const { data: authData } = await supabase.auth.getUser();
-    if (authData.user) {
-      await supabase.from('friendships').upsert({
-        user_id: authData.user.id,
-        friend_id: req.toUserId,
-        status: 'pending'
-      });
+
+  if (supabase && !isTestEnv) {
+    try {
+      const { data: authData } = await supabase.auth.getUser();
+      const currentUid = authData.user?.id;
+      if (currentUid) {
+        let targetUid = isUuid(req.toUserId) ? req.toUserId : null;
+        if (!targetUid) {
+          targetUid = await resolveSupabaseUserId(req.toUserId, req.toUserName);
+        }
+
+        if (targetUid && isUuid(targetUid)) {
+          const { error } = await supabase.from('friendships').upsert(
+            {
+              user_id: currentUid,
+              friend_id: targetUid,
+              status: 'pending'
+            },
+            { onConflict: 'user_id,friend_id' }
+          );
+          if (error) {
+            console.warn('Supabase friendship upsert warning:', error.message);
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('Failed to sync friend request to Supabase:', err);
     }
   }
+}
+
+export async function getCloudFriendRequests(currentUserId?: string): Promise<FriendRequest[]> {
+  const localRequests = getLocalFriendRequests();
+  const requestMap = new Map<string, FriendRequest>();
+  localRequests.forEach((r) => requestMap.set(r.id, r));
+
+  if (supabase && !isTestEnv) {
+    try {
+      const { data: authData } = await supabase.auth.getUser();
+      const uid = (currentUserId && isUuid(currentUserId)) ? currentUserId : authData.user?.id;
+
+      if (uid && isUuid(uid)) {
+        const { data: friendships, error } = await supabase
+          .from('friendships')
+          .select('id, user_id, friend_id, status, created_at')
+          .or(`user_id.eq.${uid},friend_id.eq.${uid}`);
+
+        if (!error && Array.isArray(friendships) && friendships.length > 0) {
+          const otherUids = new Set<string>();
+          friendships.forEach((f: any) => {
+            if (f.user_id && f.user_id !== uid) otherUids.add(f.user_id);
+            if (f.friend_id && f.friend_id !== uid) otherUids.add(f.friend_id);
+          });
+
+          const profilesMap = new Map<string, any>();
+          if (otherUids.size > 0) {
+            const { data: profiles } = await supabase
+              .from('profiles')
+              .select('id, name, handle, avatar_url, bio, email')
+              .in('id', Array.from(otherUids));
+
+            if (profiles && Array.isArray(profiles)) {
+              profiles.forEach((p: any) => profilesMap.set(p.id, p));
+            }
+          }
+
+          const currentName = authData.user?.user_metadata?.name || 'You';
+          const currentAvatar = authData.user?.user_metadata?.avatar || GUEST_USER.avatar;
+
+          for (const f of friendships) {
+            if (f.status === 'accepted') {
+              const otherId = f.user_id === uid ? f.friend_id : f.user_id;
+              if (otherId) {
+                const list = getLocalFriends();
+                if (!list.includes(otherId)) {
+                  list.push(otherId);
+                  localStorage.setItem(FRIENDS_STORAGE_KEY, JSON.stringify(list));
+                }
+              }
+              continue;
+            }
+
+            if (f.status === 'pending') {
+              const isIncoming = f.friend_id === uid;
+              const otherId = isIncoming ? f.user_id : f.friend_id;
+              const otherProfile = profilesMap.get(otherId);
+
+              const otherName = otherProfile?.name || otherProfile?.email?.split('@')[0] || (isIncoming ? 'Aditi User' : 'Contact');
+              const otherAvatar = otherProfile?.avatar_url || getSafeAvatarUrl(undefined, otherName);
+              const otherRole = otherProfile?.bio || (isIncoming ? 'Aditi Member' : 'Contact');
+
+              const reqObj: FriendRequest = {
+                id: f.id || `freq-${f.user_id}-${f.friend_id}`,
+                fromUserId: f.user_id,
+                fromUserName: isIncoming ? otherName : currentName,
+                fromUserAvatar: isIncoming ? otherAvatar : currentAvatar,
+                fromUserRole: isIncoming ? otherRole : 'Aditi Member',
+                toUserId: f.friend_id,
+                toUserName: isIncoming ? currentName : otherName,
+                status: 'pending',
+                timestamp: f.created_at ? new Date(f.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Just now',
+                createdAt: f.created_at ? new Date(f.created_at).getTime() : Date.now()
+              };
+
+              requestMap.set(`freq-${f.user_id}-${f.friend_id}`, reqObj);
+            }
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('Error fetching cloud friendships:', err);
+    }
+  }
+
+  const combined = Array.from(requestMap.values());
+  try {
+    localStorage.setItem(FRIEND_REQUESTS_STORAGE_KEY, JSON.stringify(combined));
+  } catch {}
+  return combined;
 }
 
 export async function acceptCloudFriendRequest(reqId: string, fromUserId: string, toUserId: string): Promise<void> {
   updateLocalFriendRequestStatus(reqId, 'accepted');
   await addCloudFriend(fromUserId);
   await addCloudFriend(toUserId);
-  if (supabase) {
-    await supabase.from('friendships')
-      .update({ status: 'accepted' })
-      .or(`and(user_id.eq.${fromUserId},friend_id.eq.${toUserId}),and(user_id.eq.${toUserId},friend_id.eq.${fromUserId})`);
+
+  if (supabase && !isTestEnv) {
+    try {
+      const fromUid = isUuid(fromUserId) ? fromUserId : await resolveSupabaseUserId(fromUserId);
+      const toUid = isUuid(toUserId) ? toUserId : await resolveSupabaseUserId(toUserId);
+
+      if (isUuid(reqId)) {
+        await supabase.from('friendships').update({ status: 'accepted' }).eq('id', reqId);
+      } else if (fromUid && toUid) {
+        await supabase
+          .from('friendships')
+          .update({ status: 'accepted' })
+          .or(`and(user_id.eq.${fromUid},friend_id.eq.${toUid}),and(user_id.eq.${toUid},friend_id.eq.${fromUid})`);
+      }
+    } catch (err) {
+      console.warn('Error accepting cloud friendship:', err);
+    }
   }
 }
 
@@ -1626,20 +1792,45 @@ export async function declineCloudFriendRequest(reqId: string, fromUserId?: stri
   updateLocalFriendRequestStatus(reqId, 'declined');
   if (fromUserId && toUserId) {
     removeLocalFriendRequest({ fromUserId, toUserId });
+  } else if (reqId) {
+    removeLocalFriendRequest({ id: reqId });
   }
-  if (supabase) {
-    await supabase.from('friendships')
-      .delete()
-      .or(`and(user_id.eq.${fromUserId},friend_id.eq.${toUserId}),and(user_id.eq.${toUserId},friend_id.eq.${fromUserId})`);
+
+  if (supabase && !isTestEnv) {
+    try {
+      if (isUuid(reqId)) {
+        await supabase.from('friendships').delete().eq('id', reqId);
+      } else if (fromUserId && toUserId) {
+        const fromUid = isUuid(fromUserId) ? fromUserId : await resolveSupabaseUserId(fromUserId);
+        const toUid = isUuid(toUserId) ? toUserId : await resolveSupabaseUserId(toUserId);
+        if (fromUid && toUid) {
+          await supabase
+            .from('friendships')
+            .delete()
+            .or(`and(user_id.eq.${fromUid},friend_id.eq.${toUid}),and(user_id.eq.${toUid},friend_id.eq.${fromUid})`);
+        }
+      }
+    } catch (err) {
+      console.warn('Error declining cloud friendship:', err);
+    }
   }
 }
 
 export async function cancelCloudFriendRequest(fromUserId: string, toUserId: string): Promise<void> {
   removeLocalFriendRequest({ fromUserId, toUserId });
-  if (supabase) {
-    await supabase.from('friendships')
-      .delete()
-      .match({ user_id: fromUserId, friend_id: toUserId, status: 'pending' });
+  if (supabase && !isTestEnv) {
+    try {
+      const fromUid = isUuid(fromUserId) ? fromUserId : await resolveSupabaseUserId(fromUserId);
+      const toUid = isUuid(toUserId) ? toUserId : await resolveSupabaseUserId(toUserId);
+      if (fromUid && toUid) {
+        await supabase
+          .from('friendships')
+          .delete()
+          .match({ user_id: fromUid, friend_id: toUid, status: 'pending' });
+      }
+    } catch (err) {
+      console.warn('Error cancelling cloud friendship:', err);
+    }
   }
 }
 
@@ -1654,14 +1845,23 @@ export async function addCloudFriend(friendId: string): Promise<void> {
     console.warn('Failed to save friend locally:', err);
   }
 
-  if (supabase) {
-    const { data: authData } = await supabase.auth.getUser();
-    if (authData.user) {
-      await supabase.from('friendships').upsert({
-        user_id: authData.user.id,
-        friend_id: friendId,
-        status: 'accepted'
-      });
+  if (supabase && !isTestEnv) {
+    try {
+      const { data: authData } = await supabase.auth.getUser();
+      const currentUid = authData.user?.id;
+      const targetUid = isUuid(friendId) ? friendId : await resolveSupabaseUserId(friendId);
+      if (currentUid && targetUid) {
+        await supabase.from('friendships').upsert(
+          {
+            user_id: currentUid,
+            friend_id: targetUid,
+            status: 'accepted'
+          },
+          { onConflict: 'user_id,friend_id' }
+        );
+      }
+    } catch (err) {
+      console.warn('Error adding cloud friend:', err);
     }
   }
 }
@@ -1675,12 +1875,19 @@ export async function removeCloudFriend(friendId: string): Promise<void> {
     console.warn('Failed to remove friend locally:', err);
   }
 
-  if (supabase) {
-    const { data: authData } = await supabase.auth.getUser();
-    if (authData.user) {
-      await supabase.from('friendships')
-        .delete()
-        .or(`and(user_id.eq.${authData.user.id},friend_id.eq.${friendId}),and(user_id.eq.${friendId},friend_id.eq.${authData.user.id})`);
+  if (supabase && !isTestEnv) {
+    try {
+      const { data: authData } = await supabase.auth.getUser();
+      const currentUid = authData.user?.id;
+      const targetUid = isUuid(friendId) ? friendId : await resolveSupabaseUserId(friendId);
+      if (currentUid && targetUid) {
+        await supabase
+          .from('friendships')
+          .delete()
+          .or(`and(user_id.eq.${currentUid},friend_id.eq.${targetUid}),and(user_id.eq.${targetUid},friend_id.eq.${currentUid})`);
+      }
+    } catch (err) {
+      console.warn('Error removing cloud friend:', err);
     }
   }
 }

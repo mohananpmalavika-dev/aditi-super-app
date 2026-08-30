@@ -135,6 +135,7 @@ export const LiveChatMessenger: React.FC = () => {
     deleteChatMessage,
     pinMessageToChat,
     unpinMessageFromChat,
+    registeredUsers,
     scheduledMessages,
     chatReminders,
     scheduleChatMessage,
@@ -419,7 +420,8 @@ export const LiveChatMessenger: React.FC = () => {
         (r) =>
           r.status === 'pending' &&
           (r.fromUserId === activeChat.id ||
-            r.fromUserName.toLowerCase() === activeChat.participantName.toLowerCase())
+            r.fromUserName.toLowerCase() === activeChat.participantName.toLowerCase() ||
+            (registeredUsers.find((u) => u.name.toLowerCase() === activeChat.participantName.toLowerCase())?.id === r.fromUserId))
       )
     : null;
 
@@ -428,7 +430,8 @@ export const LiveChatMessenger: React.FC = () => {
         (r) =>
           r.status === 'pending' &&
           (r.toUserId === activeChat.id ||
-            r.toUserName.toLowerCase() === activeChat.participantName.toLowerCase())
+            r.toUserName.toLowerCase() === activeChat.participantName.toLowerCase() ||
+            (registeredUsers.find((u) => u.name.toLowerCase() === activeChat.participantName.toLowerCase())?.id === r.toUserId))
       )
     : null;
 

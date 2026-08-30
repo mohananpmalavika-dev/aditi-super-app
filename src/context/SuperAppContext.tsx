@@ -49,6 +49,8 @@ import {
   updateCloudTaskStatus,
   updateCloudUserProfile,
   getLocalFriendRequests,
+  getCloudFriendRequests,
+  isCloudFriend,
   FRIEND_REQUESTS_STORAGE_KEY,
   sendCloudFriendRequest,
   acceptCloudFriendRequest,
@@ -232,6 +234,7 @@ interface SuperAppContextType {
   toggleFriendStatus: (chatId: string) => void;
   toggleBlockStatus: (chatId: string) => void;
   friendRequests: FriendRequest[];
+  refreshFriendRequests: () => Promise<FriendRequest[]>;
   sendFriendRequest: (targetUserIdOrChatId: string, targetName?: string, targetAvatar?: string, role?: string) => Promise<void>;
   acceptFriendRequest: (requestIdOrChatId: string) => Promise<void>;
   declineFriendRequest: (requestIdOrChatId: string) => Promise<void>;
@@ -360,6 +363,122 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       return [];
     }
   };
+
+  const refreshFriendRequests = async (): Promise<FriendRequest[]> => {
+    try {
+      const reqs = await getCloudFriendRequests(user.id);
+      setFriendRequests(reqs);
+      return reqs;
+    } catch (err) {
+      console.warn('Failed to fetch friend requests:', err);
+      return [];
+    }
+  };
+
+  // Real-time Supabase friendship event listener & background polling sync
+  useEffect(() => {
+    if (!supabase) return;
+    const client = supabase;
+
+    // Initial cloud fetch
+    refreshFriendRequests();
+
+    // Supabase Realtime channel subscription for friendships table
+    const friendshipChannel = client
+      .channel(`realtime_friendships_${user.id || 'current'}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'friendships'
+        },
+        async (payload: any) => {
+          const updated = await refreshFriendRequests();
+          if (
+            payload.eventType === 'INSERT' &&
+            payload.new?.friend_id === user.id &&
+            payload.new?.status === 'pending'
+          ) {
+            const senderName = updated.find((r) => r.fromUserId === payload.new?.user_id)?.fromUserName || 'Someone';
+            showToast(`📩 New friend request received from ${senderName}!`);
+          } else if (payload.eventType === 'UPDATE' && payload.new?.status === 'accepted') {
+            showToast('🎉 Friend request accepted! You are now connected.');
+          }
+        }
+      )
+      .subscribe();
+
+    // 10-second polling fallback
+    const intervalTimer = setInterval(() => {
+      refreshFriendRequests();
+    }, 10000);
+
+    return () => {
+      client.removeChannel(friendshipChannel);
+      clearInterval(intervalTimer);
+    };
+  }, [user.id]);
+
+  // Keep chat friendship statuses synchronized with friendRequests
+  useEffect(() => {
+    setChats((prevChats) =>
+      prevChats.map((c) => {
+        const incomingReq = friendRequests.find(
+          (r) =>
+            r.status === 'pending' &&
+            (r.fromUserId === c.id ||
+              r.fromUserName.toLowerCase() === c.participantName.toLowerCase())
+        );
+        const outgoingReq = friendRequests.find(
+          (r) =>
+            r.status === 'pending' &&
+            (r.toUserId === c.id ||
+              r.toUserName.toLowerCase() === c.participantName.toLowerCase())
+        );
+        const isUserFriend =
+          isCloudFriend(c.id) ||
+          friendRequests.some(
+            (r) =>
+              r.status === 'accepted' &&
+              (r.fromUserId === c.id ||
+                r.toUserId === c.id ||
+                r.fromUserName.toLowerCase() === c.participantName.toLowerCase() ||
+                r.toUserName.toLowerCase() === c.participantName.toLowerCase())
+          );
+
+        if (isUserFriend) {
+          if (c.isFriend && c.friendshipStatus === 'friends') return c;
+          return {
+            ...c,
+            isFriend: true,
+            friendRequestSent: false,
+            friendRequestReceived: false,
+            friendshipStatus: 'friends'
+          };
+        } else if (incomingReq) {
+          if (c.friendRequestReceived && c.friendshipStatus === 'request_received') return c;
+          return {
+            ...c,
+            isFriend: false,
+            friendRequestSent: false,
+            friendRequestReceived: true,
+            friendshipStatus: 'request_received'
+          };
+        } else if (outgoingReq) {
+          if (c.friendRequestSent && c.friendshipStatus === 'request_sent') return c;
+          return {
+            ...c,
+            isFriend: false,
+            friendRequestSent: true,
+            friendRequestReceived: false,
+            friendshipStatus: 'request_sent'
+          };
+        }
+        return c;
+      })
+    );
+  }, [friendRequests]);
 
   const [scheduledMessages, setScheduledMessages] = useState<ScheduledMessage[]>(() => {
     try {
@@ -1411,7 +1530,16 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const resolvedName = targetName || targetChat?.participantName || 'Contact';
     const resolvedAvatar = targetAvatar || targetChat?.participantAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300';
     const resolvedRole = role || targetChat?.roleOrContext || 'Aditi Contact';
-    const targetId = targetChat?.id || targetUserIdOrChatId;
+
+    // Resolve recipient user profile from registeredUsers
+    const matchedUser = registeredUsers.find(
+      (u) =>
+        u.id === targetUserIdOrChatId ||
+        (u.email && u.email.toLowerCase() === targetUserIdOrChatId.toLowerCase()) ||
+        (u.handle && u.handle.toLowerCase() === targetUserIdOrChatId.toLowerCase()) ||
+        (resolvedName && u.name.toLowerCase() === resolvedName.toLowerCase())
+    );
+    const targetId = matchedUser?.id || targetChat?.id || targetUserIdOrChatId;
 
     const newReqId = `freq-${Date.now()}`;
     const newRequest: FriendRequest = {
@@ -1432,6 +1560,7 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       newRequest
     ]);
     await sendCloudFriendRequest(newRequest);
+    await refreshFriendRequests();
 
     if (targetChat) {
       setChats((prev) =>
@@ -1501,6 +1630,7 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     } else {
       await addCloudFriend(fromId);
     }
+    await refreshFriendRequests();
 
     setChats((prev) =>
       prev.map((c) => {
@@ -1545,6 +1675,7 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     if (req) {
       await declineCloudFriendRequest(req.id, req.fromUserId, req.toUserId);
     }
+    await refreshFriendRequests();
 
     setChats((prev) =>
       prev.map((c) => {
@@ -1574,6 +1705,7 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     if (req) {
       await cancelCloudFriendRequest(req.fromUserId, req.toUserId);
     }
+    await refreshFriendRequests();
 
     setChats((prev) =>
       prev.map((c) => {
@@ -1613,6 +1745,7 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     setFriendRequests((prev) => prev.filter((r) => r.fromUserId !== chatId && r.toUserId !== chatId));
     await removeCloudFriend(chatId);
+    await refreshFriendRequests();
     showToast(`Removed ${name} from friends list.`);
   };
 
@@ -2142,6 +2275,7 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         toggleFriendStatus,
         toggleBlockStatus,
         friendRequests,
+        refreshFriendRequests,
         sendFriendRequest,
         acceptFriendRequest,
         declineFriendRequest,

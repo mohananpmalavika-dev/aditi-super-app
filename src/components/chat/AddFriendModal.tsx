@@ -156,6 +156,8 @@ export const AddFriendModal: React.FC<AddFriendModalProps> = ({
       r.status === 'pending' &&
       (r.toUserId === user.id ||
         r.toUserId === 'user' ||
+        (user.email && r.toUserId.toLowerCase() === user.email.toLowerCase()) ||
+        (user.handle && r.toUserId.toLowerCase() === user.handle.toLowerCase()) ||
         r.toUserName.toLowerCase() === user.name.toLowerCase())
   );
 
@@ -164,6 +166,8 @@ export const AddFriendModal: React.FC<AddFriendModalProps> = ({
       r.status === 'pending' &&
       (r.fromUserId === user.id ||
         r.fromUserId === 'user' ||
+        (user.email && r.fromUserId.toLowerCase() === user.email.toLowerCase()) ||
+        (user.handle && r.fromUserId.toLowerCase() === user.handle.toLowerCase()) ||
         r.fromUserName.toLowerCase() === user.name.toLowerCase())
   );
 
@@ -465,12 +469,18 @@ export const AddFriendModal: React.FC<AddFriendModalProps> = ({
                   const incomingReq = friendRequests.find(
                     (r) =>
                       r.status === 'pending' &&
-                      (r.fromUserId === u.id || r.fromUserName.toLowerCase() === u.name.toLowerCase())
+                      (r.fromUserId === u.id ||
+                        (u.email && r.fromUserId.toLowerCase() === u.email.toLowerCase()) ||
+                        (u.handle && r.fromUserId.toLowerCase() === u.handle.toLowerCase()) ||
+                        r.fromUserName.toLowerCase() === u.name.toLowerCase())
                   );
                   const outgoingReq = friendRequests.find(
                     (r) =>
                       r.status === 'pending' &&
-                      (r.toUserId === u.id || r.toUserName.toLowerCase() === u.name.toLowerCase())
+                      (r.toUserId === u.id ||
+                        (u.email && r.toUserId.toLowerCase() === u.email.toLowerCase()) ||
+                        (u.handle && r.toUserId.toLowerCase() === u.handle.toLowerCase()) ||
+                        r.toUserName.toLowerCase() === u.name.toLowerCase())
                   );
                   const isRequestSent = Boolean(outgoingReq || (existingChat && existingChat.friendRequestSent));
                   const isRequestReceived = Boolean(incomingReq || (existingChat && existingChat.friendRequestReceived));
