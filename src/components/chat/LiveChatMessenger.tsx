@@ -1133,6 +1133,17 @@ export const LiveChatMessenger: React.FC = () => {
                   <Video className="w-4 h-4" />
                 </button>
 
+                {/* AI Voice & Sound Settings Studio Button */}
+                <button
+                  type="button"
+                  onClick={() => setVoiceStudioOpen(true)}
+                  className="p-2 sm:p-2.5 rounded-xl bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 border border-purple-500/30 transition-all flex items-center gap-1.5"
+                  title="AI Voice & Sound Settings (ശബ്ദ ക്രമീകരണം)"
+                >
+                  <Volume2 className="w-4 h-4 text-purple-400" />
+                  <span className="text-[11px] font-bold hidden xl:inline">Sound / Voice</span>
+                </button>
+
                 {/* Desktop-Only Quick Buttons */}
                 <button
                   onClick={() => {
@@ -1171,6 +1182,19 @@ export const LiveChatMessenger: React.FC = () => {
                   {showHeaderMoreMenu && (
                     <div className="absolute right-0 top-12 bg-slate-900 border border-slate-800 rounded-2xl p-1.5 shadow-2xl z-50 w-60 space-y-0.5 animate-in fade-in zoom-in-95 max-h-[75vh] overflow-y-auto">
                       
+                      {/* AI Voice & Sound Studio */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setVoiceStudioOpen(true);
+                          setShowHeaderMoreMenu(false);
+                        }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-purple-300 hover:bg-purple-950/40 transition-colors text-left"
+                      >
+                        <Volume2 className="w-4 h-4 text-purple-400" />
+                        <span>AI Voice & Sound Studio (ശബ്ദം)</span>
+                      </button>
+
                       {/* Search */}
                       <button
                         type="button"

@@ -11,12 +11,16 @@ import {
   Camera, 
   Lock, 
   Smartphone, 
-  KeyRound 
+  KeyRound,
+  Volume2,
+  Sparkles,
+  Mic
 } from 'lucide-react';
 import { useSuperApp } from '../../context/SuperAppContext';
 import { useTheme, THEME_PRESETS } from '../../context/ThemeContext';
 import { exportBackupJSON, importBackupJSON } from '../../services/storageService';
 import { PhotoCaptureModal } from '../auth/PhotoCaptureModal';
+import { VoiceCloneStudioModal } from '../chat/VoiceCloneStudioModal';
 import { isDeviceLockEnabled, setDeviceLockEnabled, verifyDeviceLock } from '../../services/deviceLockService';
 import confetti from 'canvas-confetti';
 import { searchLocations, LocationSuggestion } from '../../services/locationService';
@@ -38,6 +42,7 @@ export const SettingsView: React.FC = () => {
   const [pob, setPob] = useState(user.placeOfBirth || 'Kollam, Kerala, India');
   const [gender, setGender] = useState(user.gender || 'Female');
   const [showCameraModal, setShowCameraModal] = useState(false);
+  const [showVoiceStudioModal, setShowVoiceStudioModal] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -527,9 +532,43 @@ export const SettingsView: React.FC = () => {
             </div>
           </div>
 
+          {/* Personal AI Voice & Sound Settings (ശബ്ദ ക്രമീകരണം) */}
+          <div className="p-4 sm:p-5 rounded-3xl bg-slate-900/80 border border-purple-500/30 shadow-xl space-y-3">
+            <div className="flex items-center justify-between">
+              <h4 className="font-extrabold text-xs text-white uppercase tracking-wider flex items-center gap-1.5">
+                <Volume2 className="w-4 h-4 text-purple-400" />
+                <span>AI Voice & Sound Studio (ശബ്ദ ക്രമീകരണം)</span>
+              </h4>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                Voice Clone
+              </span>
+            </div>
+
+            <p className="text-xs text-slate-400 leading-relaxed">
+              Configure your personal AI synthetic voice avatar (എന്റെ സ്വന്തം ശബ്ദം), adjust pitch, speed, and timbre, or record sample phrases for message playback.
+            </p>
+
+            <div className="pt-2">
+              <button
+                type="button"
+                onClick={() => setShowVoiceStudioModal(true)}
+                className="w-full py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 active:scale-95 text-white text-xs font-bold flex items-center justify-center gap-2 shadow-lg shadow-purple-600/30 transition-all"
+              >
+                <Mic className="w-4 h-4" />
+                <span>Open AI Voice & Sound Studio (ശബ്ദം സെറ്റ് ചെയ്യുക)</span>
+              </button>
+            </div>
+          </div>
+
         </div>
 
       </div>
+
+      {/* Voice Clone Studio Modal */}
+      <VoiceCloneStudioModal
+        isOpen={showVoiceStudioModal}
+        onClose={() => setShowVoiceStudioModal(false)}
+      />
 
       {/* Live Camera Photo Capture Modal */}
       <PhotoCaptureModal
