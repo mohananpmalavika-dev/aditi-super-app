@@ -20,6 +20,7 @@ export class WebRTCManager {
   private screenStream: MediaStream | null = null;
   private iceCandidateQueue: RTCIceCandidateInit[] = [];
   private isRemoteDescriptionSet = false;
+  private supportsWebRTC = typeof window !== 'undefined' && 'RTCPeerConnection' in window;
 
   public onRemoteStream?: (stream: MediaStream) => void;
   public onIceCandidate?: (candidate: RTCIceCandidate) => void;
@@ -29,7 +30,78 @@ export class WebRTCManager {
     this.initPeerConnection();
   }
 
+  private createSyntheticMediaStream(video: boolean, audio: boolean): MediaStream | null {
+    try {
+      const stream = new MediaStream();
+
+      if (video && typeof document !== 'undefined') {
+        const canvas = document.createElement('canvas');
+        canvas.width = 640;
+        canvas.height = 480;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          const render = () => {
+            ctx.fillStyle = '#0f172a';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+            gradient.addColorStop(0, '#4f46e5');
+            gradient.addColorStop(1, '#0ea5e9');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 34px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('Aditi Live', canvas.width / 2, canvas.height / 2);
+            ctx.font = '18px sans-serif';
+            ctx.fillText('Fallback camera stream', canvas.width / 2, canvas.height / 2 + 40);
+          };
+          render();
+          const captureStream = (canvas as any).captureStream?.(24);
+          if (captureStream) {
+            captureStream.getVideoTracks().forEach((track: MediaStreamTrack) => stream.addTrack(track));
+          }
+        }
+      }
+
+      if (audio && typeof window !== 'undefined') {
+        const AudioCtor = (window as any).AudioContext || (window as any).webkitAudioContext;
+        if (AudioCtor) {
+          const audioCtx = new AudioCtor();
+          const oscillator = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+          const destination = audioCtx.createMediaStreamDestination();
+          oscillator.type = 'sine';
+          oscillator.frequency.value = 440;
+          gain.gain.value = 0.015;
+          oscillator.connect(gain);
+          gain.connect(destination);
+          gain.connect(audioCtx.destination);
+          oscillator.start();
+          const audioTrack = destination.stream.getAudioTracks()[0];
+          if (audioTrack) {
+            stream.addTrack(audioTrack);
+          }
+          setTimeout(() => {
+            try {
+              oscillator.stop();
+              audioCtx.close().catch(() => {});
+            } catch {}
+          }, 120000);
+        }
+      }
+
+      return stream.getTracks().length > 0 ? stream : null;
+    } catch (err) {
+      console.warn('Synthetic media stream creation failed:', err);
+      return null;
+    }
+  }
+
   private initPeerConnection() {
+    if (!this.supportsWebRTC) {
+      return;
+    }
+
     try {
       this.peerConnection = new RTCPeerConnection({
         iceServers: ICE_SERVERS,
@@ -82,6 +154,17 @@ export class WebRTCManager {
   }
 
   public async startLocalMedia(video = true, audio = true): Promise<MediaStream | null> {
+    const hasMediaDevices = !!(typeof navigator !== 'undefined' && navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+
+    if (!hasMediaDevices) {
+      const fallbackStream = this.createSyntheticMediaStream(video, audio);
+      if (fallbackStream) {
+        this.localStream = fallbackStream;
+        this.attachStream(fallbackStream);
+      }
+      return fallbackStream;
+    }
+
     try {
       this.localStream = await navigator.mediaDevices.getUserMedia({
         video: video ? { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } } : false,
@@ -101,6 +184,12 @@ export class WebRTCManager {
         return this.localStream;
       } catch (fallbackErr) {
         console.warn('MediaDevices fallback failed:', fallbackErr);
+        const fallbackStream = this.createSyntheticMediaStream(video, audio);
+        if (fallbackStream) {
+          this.localStream = fallbackStream;
+          this.attachStream(fallbackStream);
+          return fallbackStream;
+        }
         return null;
       }
     }
@@ -175,6 +264,10 @@ export class WebRTCManager {
   }
 
   public async startScreenShare(): Promise<MediaStream | null> {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
+      return null;
+    }
+
     try {
       this.screenStream = await navigator.mediaDevices.getDisplayMedia({
         video: true,

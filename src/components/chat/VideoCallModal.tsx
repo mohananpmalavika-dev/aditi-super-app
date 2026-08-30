@@ -489,24 +489,28 @@ export const VideoCallModal: React.FC<VideoCallModalProps> = ({
     const startCallMedia = async () => {
       try {
         let stream: MediaStream | null = null;
-        try {
-          stream = await navigator.mediaDevices.getUserMedia({
-            video: isVideo ? { facingMode, width: { ideal: 1280 }, height: { ideal: 720 } } : false,
-            audio: true
-          });
-        } catch (e) {
+
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          stream = createLocalVirtualCameraStream(user.name);
+        } else {
           try {
             stream = await navigator.mediaDevices.getUserMedia({
-              video: Boolean(isVideo),
+              video: isVideo ? { facingMode, width: { ideal: 1280 }, height: { ideal: 720 } } : false,
               audio: true
             });
-          } catch (basicErr) {
-            if (isVideo) {
-              try {
-                stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
-              } catch (camErr) {
-                // If hardware camera is unavailable or blocked, use Virtual Camera Stream fallback
-                stream = createLocalVirtualCameraStream(user.name);
+          } catch (e) {
+            try {
+              stream = await navigator.mediaDevices.getUserMedia({
+                video: Boolean(isVideo),
+                audio: true
+              });
+            } catch (basicErr) {
+              if (isVideo) {
+                try {
+                  stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+                } catch (camErr) {
+                  stream = createLocalVirtualCameraStream(user.name);
+                }
               }
             }
           }
@@ -523,12 +527,11 @@ export const VideoCallModal: React.FC<VideoCallModalProps> = ({
 
           if (localVideoRef.current) {
             localVideoRef.current.srcObject = stream;
-            localVideoRef.current.muted = true; // Local audio muted to prevent self-echo
+            localVideoRef.current.muted = true;
             localVideoRef.current.play().catch(() => {});
           }
         }
 
-        // If caller, initiate SDP Offer
         if (isCaller) {
           const offer = await webrtc.createOffer();
           if (offer) {
@@ -548,6 +551,7 @@ export const VideoCallModal: React.FC<VideoCallModalProps> = ({
         if (virtualStream) {
           localStreamRef.current = virtualStream;
           setHasCameraStream(true);
+          webrtc.attachStream(virtualStream);
         }
       }
     };
@@ -608,6 +612,10 @@ export const VideoCallModal: React.FC<VideoCallModalProps> = ({
     }
 
     try {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error('Camera access is not supported in this browser');
+      }
+
       const newStream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: nextMode, width: { ideal: 1280 }, height: { ideal: 720 } },
         audio: !isAudioMuted
@@ -621,6 +629,15 @@ export const VideoCallModal: React.FC<VideoCallModalProps> = ({
       showToast(`🔄 Switched to ${nextMode === 'user' ? 'Front' : 'Back'} Camera`);
     } catch (e) {
       console.warn('Camera flip error:', e);
+      const fallback = createLocalVirtualCameraStream(user.name);
+      if (fallback) {
+        localStreamRef.current = fallback;
+        if (localVideoRef.current) {
+          localVideoRef.current.srcObject = fallback;
+          localVideoRef.current.play().catch(() => {});
+        }
+        webrtcManagerRef.current?.attachStream(fallback);
+      }
     }
   };
 
@@ -659,18 +676,40 @@ export const VideoCallModal: React.FC<VideoCallModalProps> = ({
       if (localStreamRef.current) {
         localStreamRef.current.getTracks().forEach((t) => t.stop());
       }
-      const camStream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode, width: { ideal: 1280 }, height: { ideal: 720 } },
-        audio: !isAudioMuted
-      });
-      localStreamRef.current = camStream;
-      if (localVideoRef.current) {
-        localVideoRef.current.srcObject = camStream;
-        localVideoRef.current.play().catch(() => {});
+
+      try {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          throw new Error('Screen share fallback is not supported in this browser');
+        }
+
+        const camStream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode, width: { ideal: 1280 }, height: { ideal: 720 } },
+          audio: !isAudioMuted
+        });
+        localStreamRef.current = camStream;
+        if (localVideoRef.current) {
+          localVideoRef.current.srcObject = camStream;
+          localVideoRef.current.play().catch(() => {});
+        }
+        webrtcManagerRef.current?.attachStream(camStream);
+      } catch (err) {
+        console.warn('Camera recovery after screen share failed:', err);
+        const fallback = createLocalVirtualCameraStream(user.name);
+        if (fallback) {
+          localStreamRef.current = fallback;
+          if (localVideoRef.current) {
+            localVideoRef.current.srcObject = fallback;
+            localVideoRef.current.play().catch(() => {});
+          }
+          webrtcManagerRef.current?.attachStream(fallback);
+        }
       }
-      webrtcManagerRef.current?.attachStream(camStream);
     } else {
       try {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
+          throw new Error('Screen share is not supported in this browser');
+        }
+
         const screenStream = await navigator.mediaDevices.getDisplayMedia({
           video: true,
           audio: true
@@ -688,16 +727,32 @@ export const VideoCallModal: React.FC<VideoCallModalProps> = ({
           screenStream.getVideoTracks()[0].onended = async () => {
             setIsScreenSharing(false);
             showToast('🖥️ Screen sharing ended.');
-            const camStream = await navigator.mediaDevices.getUserMedia({
-              video: { facingMode, width: { ideal: 1280 }, height: { ideal: 720 } },
-              audio: !isAudioMuted
-            });
-            localStreamRef.current = camStream;
-            if (localVideoRef.current) {
-              localVideoRef.current.srcObject = camStream;
-              localVideoRef.current.play().catch(() => {});
+            try {
+              if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                throw new Error('Media devices unavailable');
+              }
+              const camStream = await navigator.mediaDevices.getUserMedia({
+                video: { facingMode, width: { ideal: 1280 }, height: { ideal: 720 } },
+                audio: !isAudioMuted
+              });
+              localStreamRef.current = camStream;
+              if (localVideoRef.current) {
+                localVideoRef.current.srcObject = camStream;
+                localVideoRef.current.play().catch(() => {});
+              }
+              webrtcManagerRef.current?.attachStream(camStream);
+            } catch (e) {
+              console.warn('Reattach camera after screen share failed:', e);
+              const fallback = createLocalVirtualCameraStream(user.name);
+              if (fallback) {
+                localStreamRef.current = fallback;
+                if (localVideoRef.current) {
+                  localVideoRef.current.srcObject = fallback;
+                  localVideoRef.current.play().catch(() => {});
+                }
+                webrtcManagerRef.current?.attachStream(fallback);
+              }
             }
-            webrtcManagerRef.current?.attachStream(camStream);
           };
         }
       } catch (err) {
