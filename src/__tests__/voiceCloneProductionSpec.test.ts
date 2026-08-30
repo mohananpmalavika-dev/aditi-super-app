@@ -82,6 +82,13 @@ describe('Production Voice Clone & Synthesis Specification Tests', () => {
       expect(detectVoiceLanguage('Hello world')).toBe('en');
       expect(detectVoiceLanguage('ഞാൻ today evening വരാം')).toBe('mixed');
     });
+
+    it('transliterates Malayalam Unicode script to phonetic English for voice engines', async () => {
+      const { transliterateMalayalamToPhonetic } = await import('../services/voice/malayalamPhoneticTransliteration');
+      const phonetic = transliterateMalayalamToPhonetic('നമസ്കാരം ഞാൻ വരാം');
+      expect(phonetic).toContain('Namaskaaram');
+      expect(phonetic).toContain('Njaan');
+    });
   });
 
   describe('3. Voice Profile Lifecycle & Quality Validation (Sections 5, 6, 7, 8, 34)', () => {

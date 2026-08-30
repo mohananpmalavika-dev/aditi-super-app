@@ -372,6 +372,8 @@ export interface UserVoiceProfile {
   rate: number;  // 0.5 to 2.0 (default 1.0)
   timbre: 'warm' | 'deep' | 'crisp' | 'energetic' | 'calm';
   language: 'ml-IN' | 'en-IN' | 'hi-IN';
+  voiceGender?: 'female' | 'male' | 'neutral';
+  voiceModelId?: string;
   sampleAudioUrl?: string;
   talkingPhotoUrl?: string;
   enrolledDate?: string;
@@ -394,6 +396,8 @@ export interface VoiceProfile {
   pitch: number;
   rate: number;
   timbre: 'warm' | 'deep' | 'crisp' | 'energetic' | 'calm';
+  voiceGender?: 'female' | 'male' | 'neutral';
+  voiceModelId?: string;
   consentVersion: string;
   consentedAt: string;
   sampleDurationSec: number;
