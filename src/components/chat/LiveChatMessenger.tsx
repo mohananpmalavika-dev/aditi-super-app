@@ -96,6 +96,7 @@ import { WallpaperModal } from './WallpaperModal';
 import { LiveBackgroundCamera } from './LiveBackgroundCamera';
 import { VoiceCloneStudioModal } from './VoiceCloneStudioModal';
 import { TalkingPortraitModal } from './TalkingPortraitModal';
+import { SyntheticVoicePlayer } from './SyntheticVoicePlayer';
 import { playTextInSenderVoice } from '../../services/voiceCloneService';
 import { startVoiceRecognition, stopVoiceRecognition, SpeechLanguage, isSpeechRecognitionSupported } from '../../services/voiceToTextService';
 import { INDIAN_LANGUAGES, translateIndianLanguageToEnglish, IndianLanguageMeta } from '../../services/indianLanguageTranslationService';
@@ -1814,48 +1815,16 @@ export const LiveChatMessenger: React.FC = () => {
                             )}
                             <p className="whitespace-pre-wrap leading-relaxed">{msg.text}</p>
                             
-                            {/* AI Voice Avatar Player Button (Text to Voice) */}
-                            {!isUser && (
-                              <div className="pt-2 border-t border-slate-800/80 flex items-center gap-1.5 flex-wrap">
-                                <button
-                                  type="button"
-                                  onClick={() => handlePlayMessageInSenderVoice(msg)}
-                                  className={`px-2.5 py-1 rounded-xl text-[11px] font-bold flex items-center gap-1.5 transition-all shadow-sm ${
-                                    activePlayingVoiceMsgId === msg.id
-                                      ? 'bg-purple-600 text-white animate-pulse'
-                                      : 'bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 border border-purple-500/30'
-                                  }`}
-                                  title="Listen to this text message spoken aloud"
-                                >
-                                  {activePlayingVoiceMsgId === msg.id ? (
-                                    <>
-                                      <Pause className="w-3 h-3 text-white" />
-                                      <span>Speaking...</span>
-                                    </>
-                                  ) : (
-                                    <>
-                                      <Volume2 className="w-3 h-3 text-purple-400" />
-                                      <span>🔊 Text to Voice</span>
-                                    </>
-                                  )}
-                                </button>
-
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setTalkingPortraitModalData({
-                                      senderName: msg.senderName,
-                                      senderAvatar: msg.talkingPhotoUrl || activeChat.participantAvatar,
-                                      messageText: msg.text,
-                                      voiceProfile: msg.voiceProfile
-                                    });
-                                  }}
-                                  className="px-2.5 py-1 rounded-xl bg-indigo-600/20 hover:bg-indigo-600/30 border border-indigo-500/30 text-indigo-200 text-[11px] font-extrabold flex items-center gap-1 transition-all"
-                                >
-                                  <Sparkles className="w-3 h-3 text-yellow-400" />
-                                  <span>🗣️ Photo Lip-Sync</span>
-                                </button>
-                              </div>
+                            {/* Opt-In Synthetic AI Voice Playback Player (Production Spec) */}
+                            {!isDeleted && msg.text && msg.text.trim() && (
+                              <SyntheticVoicePlayer
+                                messageId={msg.id}
+                                senderName={msg.senderName}
+                                senderId={msg.senderId}
+                                text={msg.text}
+                                voiceProfile={msg.voiceProfile}
+                                isUserMessage={isUser}
+                              />
                             )}
                           </div>
                         )}

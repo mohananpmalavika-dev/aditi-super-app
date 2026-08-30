@@ -375,6 +375,52 @@ export interface UserVoiceProfile {
   sampleAudioUrl?: string;
   talkingPhotoUrl?: string;
   enrolledDate?: string;
+  profileVersion?: number;
+  consentVersion?: string;
+  consentedAt?: string;
+  status?: 'PENDING' | 'PROCESSING' | 'ACTIVE' | 'FAILED' | 'DISABLED' | 'DELETED';
+}
+
+export interface VoiceProfile {
+  id: string;
+  tenantId?: string;
+  userId: string;
+  displayName: string;
+  provider: 'local_web_audio' | 'cloud_neural' | 'custom';
+  status: 'PENDING' | 'PROCESSING' | 'ACTIVE' | 'FAILED' | 'DISABLED' | 'DELETED';
+  profileVersion: number;
+  isEnabled: boolean;
+  languageHints: string[];
+  pitch: number;
+  rate: number;
+  timbre: 'warm' | 'deep' | 'crisp' | 'energetic' | 'calm';
+  consentVersion: string;
+  consentedAt: string;
+  sampleDurationSec: number;
+  sampleAudioUrl?: string;
+  talkingPhotoUrl?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface VoiceSafetyCheckResult {
+  isAllowed: boolean;
+  reason?: 'SENSITIVE_CONTENT_BLOCKED' | 'FINANCIAL_WARNING' | 'PROFILE_DISABLED' | 'CONSENT_MISSING' | 'USER_BLOCKED' | 'SENDER_DISALLOWED';
+  warningMessage?: string;
+  sanitizedSnippet?: string;
+}
+
+export interface VoiceSynthesisCacheItem {
+  id: string;
+  messageId: string;
+  senderId: string;
+  voiceProfileVersion: number;
+  textHash: string;
+  language: string;
+  durationMs: number;
+  audioUrl?: string;
+  createdAt: number;
+  expiresAt: number;
 }
 
 export interface IncomingLiveCall {

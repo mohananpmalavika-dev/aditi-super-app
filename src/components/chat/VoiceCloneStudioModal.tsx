@@ -13,11 +13,24 @@ import {
   Languages,
   Upload,
   Image as ImageIcon,
-  UserCheck
+  ShieldCheck,
+  Trash2,
+  AlertCircle,
+  FileCheck,
+  Radio,
+  SlidersHorizontal,
+  Lock
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
-import { UserVoiceProfile } from '../../types/superApp';
-import { getUserVoiceProfile, saveUserVoiceProfile, playTextInSenderVoice } from '../../services/voiceCloneService';
+import { UserVoiceProfile, VoiceProfile } from '../../types/superApp';
+import { 
+  getActiveVoiceProfile, 
+  saveActiveVoiceProfile, 
+  deleteVoiceProfile, 
+  validateEnrollmentAudioQuality,
+  DEFAULT_ENROLLED_VOICE 
+} from '../../services/voice/voiceProfileService';
+import { playSyntheticVoice, voiceCacheManager } from '../../services/voice/voiceSynthesisEngine';
 
 interface VoiceCloneStudioModalProps {
   isOpen: boolean;
@@ -25,12 +38,11 @@ interface VoiceCloneStudioModalProps {
   onProfileUpdated?: (profile: UserVoiceProfile) => void;
 }
 
-const PRESET_AVATARS = [
-  'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200', // Ananya
-  'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200', // Rahul
-  'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=200', // Deepa
-  'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200', // Vivek
-  'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200'  // Malavika
+const SAMPLE_PROMPTS = [
+  'Hello, this is my personal voice profile for Aditi Chat.',
+  'I consent to creating an AI-generated version of my voice for message playback.',
+  'ഞാൻ ഇന്ന് വൈകുന്നേരം വരാം. എനിക്ക് മലയാളവും ഇംഗ്ലീഷും സംസാരിക്കാൻ കഴിയും.',
+  'Njan nale 10 manikku ethum. Ente voice clear aanu.'
 ];
 
 export const VoiceCloneStudioModal: React.FC<VoiceCloneStudioModalProps> = ({
@@ -38,130 +50,163 @@ export const VoiceCloneStudioModal: React.FC<VoiceCloneStudioModalProps> = ({
   onClose,
   onProfileUpdated
 }) => {
-  const [profile, setProfile] = useState<UserVoiceProfile>(getUserVoiceProfile());
-  const [selectedPhoto, setSelectedPhoto] = useState<string>(
-    profile.talkingPhotoUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200'
-  );
+  const [activeTab, setActiveTab] = useState<'consent' | 'record' | 'customize' | 'privacy'>('customize');
+  const [hasConsent, setHasConsent] = useState(true);
+  const [profile, setProfile] = useState<VoiceProfile>(getActiveVoiceProfile() || DEFAULT_ENROLLED_VOICE);
+
+  // Recording State
   const [isRecording, setIsRecording] = useState(false);
-  const [recordingTime, setRecordingTime] = useState(0);
-  const [sampleRecorded, setSampleRecorded] = useState(profile.isEnrolled);
-  const [isPlayingTest, setIsPlayingTest] = useState(false);
-  const [testText, setTestText] = useState('ഹലോ! ഇത് അദിതി ആപ്പിലെ എന്റെ സ്വന്തം AI സംസാരിക്കുന്ന ഫോട്ടോയും ശബ്ദവുമാണ്. ഞാൻ അയക്കുന്ന ടെക്സ്റ്റുകൾ ഈ ഫോട്ടോ സംസാരിക്കുന്നതുപോലെ നിങ്ങൾക്ക് കാണാം.');
-  const stopSpeechRef = useRef<(() => void) | null>(null);
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [recordingDuration, setRecordingDuration] = useState(profile.sampleDurationSec || 0);
+  const [qualityScore, setQualityScore] = useState(85);
+  const [qualityFeedback, setQualityFeedback] = useState('Voice profile is enrolled and active');
+
+  // Preview / Test State
+  const [isPlayingPreview, setIsPlayingPreview] = useState(false);
+  const [testText, setTestText] = useState('ഹലോ! ഇത് അദിതി ആപ്പിലെ എന്റെ സ്വന്തം AI ശബ്ദമാണ്. Njan nale 10 manikku ethum.');
+
+  const stopPreviewRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     if (isOpen) {
-      const p = getUserVoiceProfile();
-      setProfile(p);
-      setSelectedPhoto(p.talkingPhotoUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200');
-      setIsPlayingTest(false);
+      const active = getActiveVoiceProfile();
+      if (active) {
+        setProfile(active);
+        setHasConsent(true);
+        setActiveTab('customize');
+      } else {
+        setProfile(DEFAULT_ENROLLED_VOICE);
+        setHasConsent(false);
+        setActiveTab('consent');
+      }
+      setIsPlayingPreview(false);
       setIsRecording(false);
     } else {
-      stopSpeechRef.current?.();
-      setIsPlayingTest(false);
+      stopPreviewRef.current?.();
+      setIsPlayingPreview(false);
     }
   }, [isOpen]);
 
+  // Recording timer simulation
   useEffect(() => {
-    let timer: any = null;
+    let interval: any = null;
     if (isRecording) {
-      timer = setInterval(() => {
-        setRecordingTime((prev) => {
-          if (prev >= 6) {
-            handleStopRecording();
-            return 6;
-          }
-          return prev + 1;
+      interval = setInterval(() => {
+        setRecordingDuration((prev) => {
+          const next = prev + 1;
+          const quality = validateEnrollmentAudioQuality(next);
+          setQualityScore(quality.score);
+          setQualityFeedback(quality.feedback);
+          return next;
         });
       }, 1000);
     }
-    return () => clearInterval(timer);
+    return () => clearInterval(interval);
   }, [isRecording]);
 
   if (!isOpen) return null;
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = () => {
-        const url = reader.result as string;
-        setSelectedPhoto(url);
-        setProfile((prev) => ({ ...prev, talkingPhotoUrl: url }));
-        confetti({ particleCount: 30, spread: 50 });
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const handleStartRecording = async () => {
+  const handleStartRecording = () => {
     setIsRecording(true);
-    setRecordingTime(0);
-    setSampleRecorded(false);
+    setRecordingDuration(0);
+    setQualityScore(10);
+    setQualityFeedback('Recording live vocal sample... Please read the prompt clearly.');
   };
 
   const handleStopRecording = () => {
     setIsRecording(false);
-    setSampleRecorded(true);
-    confetti({ particleCount: 40, spread: 50 });
+    const quality = validateEnrollmentAudioQuality(recordingDuration);
+    setQualityScore(quality.score);
+    setQualityFeedback(quality.feedback);
+    if (quality.isValid) {
+      confetti({ particleCount: 50, spread: 60 });
+    }
   };
 
-  const handleTestPlayback = () => {
-    if (isPlayingTest) {
-      stopSpeechRef.current?.();
-      setIsPlayingTest(false);
+  const handleTestPreview = () => {
+    if (isPlayingPreview) {
+      stopPreviewRef.current?.();
+      setIsPlayingPreview(false);
       return;
     }
 
-    setIsPlayingTest(true);
-    const stopper = playTextInSenderVoice(
+    setIsPlayingPreview(true);
+    const stopper = playSyntheticVoice(
+      `preview-${Date.now()}`,
       testText,
       profile,
-      () => setIsPlayingTest(true),
-      () => setIsPlayingTest(false),
-      () => setIsPlayingTest(false)
+      {
+        onStart: () => setIsPlayingPreview(true),
+        onEnd: () => setIsPlayingPreview(false),
+        onError: () => setIsPlayingPreview(false)
+      }
     );
-    stopSpeechRef.current = stopper;
+    stopPreviewRef.current = stopper;
   };
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSaveProfile = (e: React.FormEvent) => {
     e.preventDefault();
-    const updated: UserVoiceProfile = {
+    const updated = saveActiveVoiceProfile({
       ...profile,
-      talkingPhotoUrl: selectedPhoto,
+      sampleDurationSec: recordingDuration || 30,
+      isEnabled: true
+    });
+    setProfile(updated);
+    onProfileUpdated?.({
+      id: updated.id,
       isEnrolled: true,
-      enrolledDate: new Date().toISOString().split('T')[0]
-    };
-    saveUserVoiceProfile(updated);
-    onProfileUpdated?.(updated);
-    confetti({ particleCount: 70, spread: 70 });
+      voiceName: updated.displayName,
+      pitch: updated.pitch,
+      rate: updated.rate,
+      timbre: updated.timbre,
+      language: updated.languageHints[0] as any || 'ml-IN',
+      enrolledDate: updated.updatedAt
+    });
+    confetti({ particleCount: 80, spread: 80 });
     onClose();
   };
 
+  const handleDelete = () => {
+    if (window.confirm('Are you sure you want to delete your synthetic voice profile? This will immediately revoke synthetic voice playback for your messages.')) {
+      deleteVoiceProfile();
+      setProfile(DEFAULT_ENROLLED_VOICE);
+      setHasConsent(false);
+      onProfileUpdated?.({
+        id: 'deleted',
+        isEnrolled: false,
+        voiceName: 'Standard Voice',
+        pitch: 1.0,
+        rate: 1.0,
+        timbre: 'warm',
+        language: 'ml-IN'
+      });
+      onClose();
+    }
+  };
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-xl p-4 animate-in fade-in">
-      <div className="relative w-full max-w-lg bg-slate-900 border border-purple-500/40 rounded-3xl overflow-hidden shadow-2xl p-6 space-y-5 animate-in zoom-in-95 max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/90 backdrop-blur-xl p-3 sm:p-4 animate-in fade-in overflow-y-auto">
+      <div className="relative w-full max-w-xl bg-slate-900 border border-purple-500/40 rounded-3xl overflow-hidden shadow-2xl p-5 sm:p-6 space-y-4 animate-in zoom-in-95 my-auto max-h-[92dvh] flex flex-col">
         
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between border-b border-slate-800 pb-3 flex-shrink-0">
           <div className="flex items-center gap-3">
             <div className="p-2.5 rounded-2xl bg-gradient-to-tr from-purple-600 to-indigo-600 text-white shadow-lg shadow-purple-600/30">
               <Sparkles className="w-5 h-5" />
             </div>
             <div>
               <h3 className="font-extrabold text-base text-white">
-                AI Talking Photo & Voice Studio
+                Personal AI Voice Studio
               </h3>
               <p className="text-xs text-purple-300/80">
-                സംസാരിക്കുന്ന ഫോട്ടോ അവതാർ + സ്വന്തം AI ശബ്ദം ക്രമീകരിക്കുക
+                Consent-based Synthetic Vocal Avatar (എന്റെ ശബ്ദം)
               </p>
             </div>
           </div>
 
           <button
+            type="button"
             onClick={() => {
-              stopSpeechRef.current?.();
+              stopPreviewRef.current?.();
               onClose();
             }}
             className="p-1.5 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-white transition-colors"
@@ -170,279 +215,298 @@ export const VoiceCloneStudioModal: React.FC<VoiceCloneStudioModalProps> = ({
           </button>
         </div>
 
-        <form onSubmit={handleSave} className="space-y-4">
-          
-          {/* Step 1: Talking Portrait Photo Upload & Selector */}
-          <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-extrabold text-white flex items-center gap-1.5">
-                <ImageIcon className="w-4 h-4 text-purple-400" />
-                <span>1. Talking Portrait Photo (സംസാരിക്കുന്ന നിങ്ങളുടെ ഫോട്ടോ)</span>
-              </span>
-              <span className="text-[10px] text-purple-300 font-mono">Face Morphing Active</span>
-            </div>
+        {/* Tab Navigation */}
+        <div className="grid grid-cols-4 gap-1 p-1 bg-slate-950 rounded-2xl border border-slate-800 text-xs font-bold flex-shrink-0">
+          <button
+            type="button"
+            onClick={() => setActiveTab('consent')}
+            className={`py-2 rounded-xl transition-colors ${
+              activeTab === 'consent' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            1. Consent
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('record')}
+            className={`py-2 rounded-xl transition-colors ${
+              activeTab === 'record' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            2. Record
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('customize')}
+            className={`py-2 rounded-xl transition-colors ${
+              activeTab === 'customize' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            3. Tune & Test
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('privacy')}
+            className={`py-2 rounded-xl transition-colors ${
+              activeTab === 'privacy' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            4. Privacy
+          </button>
+        </div>
 
-            <div className="flex items-center gap-4">
-              {/* Photo Preview with Lip-Sync Halo */}
-              <div className="relative w-20 h-20 rounded-2xl overflow-hidden border-2 border-purple-500 shadow-lg flex-shrink-0 bg-slate-900">
-                <img
-                  src={selectedPhoto}
-                  alt="Talking Avatar"
-                  className="w-full h-full object-cover"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex items-end justify-center pb-1">
-                  <span className="text-[9px] text-white font-bold">Avatar</span>
+        {/* Tab Contents */}
+        <div className="flex-1 overflow-y-auto pr-1 space-y-4">
+          
+          {/* TAB 1: Mandatory Consent & Disclosure */}
+          {activeTab === 'consent' && (
+            <div className="space-y-4 p-4 rounded-2xl bg-slate-950 border border-slate-800 text-xs">
+              <div className="flex items-start gap-3 p-3.5 rounded-xl bg-purple-950/40 border border-purple-500/30 text-purple-200">
+                <ShieldCheck className="w-5 h-5 text-purple-400 flex-shrink-0 mt-0.5" />
+                <div className="space-y-1">
+                  <h4 className="font-extrabold text-sm text-white">Consent & Safety Disclosure</h4>
+                  <p className="leading-relaxed">
+                    Your recorded voice sample will be used exclusively to create an AI-generated synthetic representation of your voice for message playback.
+                  </p>
+                  <p className="text-[11px] text-purple-300/80 font-mono pt-1">
+                    • Authoritative message remains the original text.
+                    <br />• Your voice is never used for authentication or financial authorization.
+                    <br />• You can delete your voice profile anytime with 1 click.
+                  </p>
                 </div>
               </div>
 
-              <div className="flex-1 space-y-2">
+              <label className="flex items-start gap-3 p-3 rounded-xl bg-slate-900 border border-slate-800 cursor-pointer hover:border-indigo-500/40 transition-colors">
                 <input
-                  type="file"
-                  ref={fileInputRef}
-                  onChange={handleFileUpload}
-                  accept="image/*"
-                  className="hidden"
+                  type="checkbox"
+                  checked={hasConsent}
+                  onChange={(e) => setHasConsent(e.target.checked)}
+                  className="mt-0.5 w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 border-slate-700 bg-slate-950"
                 />
-                
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="w-full py-2 px-3 rounded-xl bg-purple-600/20 hover:bg-purple-600/30 border border-purple-500/40 text-purple-200 font-bold text-xs flex items-center justify-center gap-2 transition-colors"
-                >
-                  <Upload className="w-3.5 h-3.5" />
-                  <span>Upload Your Own Photo (ഫോട്ടോ അപ്‌ലോഡ് ചെയ്യുക)</span>
-                </button>
+                <span className="font-bold text-white text-xs leading-relaxed">
+                  I explicitly consent to the creation and opt-in use of my synthetic voice profile for message playback representation.
+                </span>
+              </label>
 
-                {/* Preset Avatar Selection */}
-                <div className="flex items-center gap-1.5 overflow-x-auto py-1">
-                  {PRESET_AVATARS.map((url, i) => (
+              <button
+                type="button"
+                disabled={!hasConsent}
+                onClick={() => setActiveTab('record')}
+                className={`w-full py-2.5 rounded-xl font-bold text-xs transition-all ${
+                  hasConsent
+                    ? 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 text-white shadow-lg'
+                    : 'bg-slate-800 text-slate-500 cursor-not-allowed'
+                }`}
+              >
+                Continue to Vocal Recording ➔
+              </button>
+            </div>
+          )}
+
+          {/* TAB 2: Guided Vocal Recording Prompts & Quality Meter */}
+          {activeTab === 'record' && (
+            <div className="space-y-4 p-4 rounded-2xl bg-slate-950 border border-slate-800">
+              <div className="space-y-2">
+                <span className="text-xs font-extrabold text-white">Guided Prompt Phrases (Read aloud):</span>
+                <div className="space-y-1.5">
+                  {SAMPLE_PROMPTS.map((prompt, idx) => (
+                    <div key={idx} className="p-2.5 rounded-xl bg-slate-900 border border-slate-800/80 text-xs text-slate-200 font-medium">
+                      <span className="text-indigo-400 font-mono mr-2">{idx + 1}.</span>
+                      {prompt}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Quality & Duration Meter */}
+              <div className="p-3.5 rounded-xl bg-slate-900 border border-slate-800 space-y-2">
+                <div className="flex items-center justify-between text-xs font-mono">
+                  <span className="text-slate-400">Sample Duration:</span>
+                  <span className="text-emerald-400 font-bold">{recordingDuration}s / 30s Optimal</span>
+                </div>
+                <div className="w-full h-2 bg-slate-950 rounded-full overflow-hidden border border-slate-800">
+                  <div 
+                    className="h-full bg-gradient-to-r from-indigo-500 via-purple-500 to-emerald-400 transition-all duration-300"
+                    style={{ width: `${Math.min(100, (recordingDuration / 30) * 100)}%` }}
+                  />
+                </div>
+                <div className="flex items-center justify-between text-[11px] text-slate-300">
+                  <span>Quality Score: <strong className="text-purple-300">{qualityScore}%</strong></span>
+                  <span className="text-indigo-300">{qualityFeedback}</span>
+                </div>
+              </div>
+
+              {/* Record Button */}
+              <div className="flex items-center justify-center pt-2">
+                {!isRecording ? (
+                  <button
+                    type="button"
+                    onClick={handleStartRecording}
+                    className="px-6 py-3 rounded-2xl bg-gradient-to-r from-rose-600 to-purple-600 hover:from-rose-500 text-white font-extrabold text-xs shadow-xl flex items-center gap-2 transition-all hover:scale-105"
+                  >
+                    <Mic className="w-4 h-4" />
+                    <span>Start Guided Recording</span>
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleStopRecording}
+                    className="px-6 py-3 rounded-2xl bg-rose-600 hover:bg-rose-500 text-white font-extrabold text-xs shadow-xl flex items-center gap-2 animate-pulse"
+                  >
+                    <Square className="w-4 h-4 fill-current" />
+                    <span>Stop Recording ({recordingDuration}s)</span>
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* TAB 3: Vocal Pitch, Timbre, and Test Box */}
+          {activeTab === 'customize' && (
+            <div className="space-y-4">
+              
+              {/* Vocal Timbre */}
+              <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-2.5">
+                <span className="text-xs font-extrabold text-white">Vocal Timbre & Resonance:</span>
+                <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+                  {(['warm', 'deep', 'crisp', 'energetic', 'calm'] as const).map((t) => (
                     <button
-                      key={i}
+                      key={t}
                       type="button"
-                      onClick={() => {
-                        setSelectedPhoto(url);
-                        setProfile((prev) => ({ ...prev, talkingPhotoUrl: url }));
-                      }}
-                      className={`w-8 h-8 rounded-lg overflow-hidden border transition-all flex-shrink-0 ${
-                        selectedPhoto === url ? 'border-purple-400 ring-2 ring-purple-500' : 'border-slate-800 opacity-60 hover:opacity-100'
+                      onClick={() => setProfile((p) => ({ ...p, timbre: t }))}
+                      className={`p-2 rounded-xl border text-xs font-bold capitalize transition-all ${
+                        profile.timbre === t
+                          ? 'bg-indigo-600 border-indigo-500 text-white shadow-lg'
+                          : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white'
                       }`}
                     >
-                      <img src={url} alt="preset" className="w-full h-full object-cover" />
+                      {t}
                     </button>
                   ))}
                 </div>
               </div>
-            </div>
-          </div>
 
-          {/* Step 2: Voice Sample Enrollment Card */}
-          <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-extrabold text-white flex items-center gap-1.5">
-                <Mic className="w-4 h-4 text-purple-400" />
-                <span>2. Voice Sample Enrollment (5 സെക്കൻഡ് റെക്കോർഡിംഗ്)</span>
-              </span>
-              {sampleRecorded && (
-                <span className="text-[11px] font-bold text-emerald-400 flex items-center gap-1 bg-emerald-950/80 px-2 py-0.5 rounded-md border border-emerald-500/30">
-                  <CheckCircle className="w-3 h-3" />
-                  Voice Enrolled
-                </span>
-              )}
-            </div>
-
-            <div className="p-3 rounded-xl bg-slate-900/90 border border-slate-800 text-xs text-slate-300 leading-relaxed italic">
-              "ഹലോ, ഇത് അദിതി സൂപ്പർ ആപ്പിലെ എന്റെ സ്വന്തം AI ശബ്ദമാണ്. ഞാൻ അയക്കുന്ന ടെക്സ്റ്റുകൾ ഈ ശബ്ദത്തിൽ കേൾക്കാം."
-            </div>
-
-            {!isRecording ? (
-              <button
-                type="button"
-                onClick={handleStartRecording}
-                className="w-full py-2.5 rounded-xl bg-purple-600/20 hover:bg-purple-600/30 border border-purple-500/40 text-purple-300 font-extrabold text-xs flex items-center justify-center gap-2 transition-all hover:scale-[1.01]"
-              >
-                <Mic className="w-4 h-4 text-rose-400" />
-                <span>{sampleRecorded ? 'Re-record Voice Sample (വീണ്ടും റെക്കോർഡ് ചെയ്യുക)' : 'Start 5s Sample Recording'}</span>
-              </button>
-            ) : (
-              <div className="flex items-center justify-between p-2.5 rounded-xl bg-rose-950/60 border border-rose-500/40">
-                <div className="flex items-center gap-2 text-xs text-rose-300 font-bold animate-pulse">
-                  <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping" />
-                  <span>Recording voice pitch & timbre... 00:0{recordingTime}/00:06</span>
+              {/* Pitch & Rate Sliders */}
+              <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-3">
+                <div>
+                  <div className="flex items-center justify-between text-xs text-slate-300 font-bold mb-1">
+                    <span>Vocal Pitch (ശബ്ദ ശ്രുതി):</span>
+                    <span className="font-mono text-indigo-400">{profile.pitch.toFixed(2)}x</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0.75"
+                    max="1.35"
+                    step="0.05"
+                    value={profile.pitch}
+                    onChange={(e) => setProfile((p) => ({ ...p, pitch: parseFloat(e.target.value) }))}
+                    className="w-full accent-indigo-500 bg-slate-900 rounded-lg h-2"
+                  />
                 </div>
+
+                <div>
+                  <div className="flex items-center justify-between text-xs text-slate-300 font-bold mb-1">
+                    <span>Speech Rate (സംസാര വേഗത):</span>
+                    <span className="font-mono text-indigo-400">{profile.rate.toFixed(2)}x</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0.80"
+                    max="1.30"
+                    step="0.05"
+                    value={profile.rate}
+                    onChange={(e) => setProfile((p) => ({ ...p, rate: parseFloat(e.target.value) }))}
+                    className="w-full accent-indigo-500 bg-slate-900 rounded-lg h-2"
+                  />
+                </div>
+              </div>
+
+              {/* Interactive Test & Preview Box */}
+              <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-extrabold text-white">Live Synthetic Speech Preview:</span>
+                  <span className="text-[10px] font-mono text-purple-300">Malayalam + Manglish + English</span>
+                </div>
+                <textarea
+                  rows={2}
+                  value={testText}
+                  onChange={(e) => setTestText(e.target.value)}
+                  className="w-full p-2.5 rounded-xl bg-slate-900 border border-slate-800 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-purple-500 font-medium"
+                />
+
                 <button
                   type="button"
-                  onClick={handleStopRecording}
-                  className="px-3.5 py-1 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs flex items-center gap-1"
+                  onClick={handleTestPreview}
+                  className={`w-full py-2.5 rounded-xl font-extrabold text-xs flex items-center justify-center gap-2 transition-all ${
+                    isPlayingPreview
+                      ? 'bg-rose-500 text-white animate-pulse'
+                      : 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 text-white shadow-lg'
+                  }`}
                 >
-                  <Square className="w-3 h-3 fill-current" />
-                  <span>Done</span>
+                  {isPlayingPreview ? <Square className="w-4 h-4 fill-current" /> : <Play className="w-4 h-4 fill-current" />}
+                  <span>{isPlayingPreview ? 'Stop Audio Preview' : '▶ Test Synthetic Voice Output'}</span>
                 </button>
               </div>
-            )}
-          </div>
 
-          {/* Step 3: Voice Customization & Timbre Tuning */}
-          <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-4">
-            <span className="text-xs font-extrabold text-white flex items-center gap-1.5">
-              <Sliders className="w-4 h-4 text-indigo-400" />
-              <span>3. Voice Tone & Accent Customization (ശബ്ദ ക്രമീകരണങ്ങൾ)</span>
-            </span>
-
-            {/* Timbre Preset Buttons */}
-            <div className="space-y-1.5">
-              <label className="text-[11px] font-bold text-slate-400">Timbre & Tone Presets</label>
-              <div className="grid grid-cols-3 sm:grid-cols-5 gap-1.5">
-                {(
-                  [
-                    { id: 'warm', label: 'Warm (സ്നേഹം)' },
-                    { id: 'deep', label: 'Deep (കനത്തത്)' },
-                    { id: 'crisp', label: 'Crisp (വ്യക്തം)' },
-                    { id: 'calm', label: 'Calm (ശാന്തം)' },
-                    { id: 'energetic', label: 'Energetic' }
-                  ] as const
-                ).map((t) => (
-                  <button
-                    key={t.id}
-                    type="button"
-                    onClick={() => setProfile({ ...profile, timbre: t.id })}
-                    className={`py-2 px-1 rounded-xl text-[10px] font-bold border transition-all text-center ${
-                      profile.timbre === t.id
-                        ? 'bg-purple-600 text-white border-purple-400 shadow-md shadow-purple-600/30'
-                        : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white'
-                    }`}
-                  >
-                    {t.label}
-                  </button>
-                ))}
-              </div>
             </div>
+          )}
 
-            {/* Pitch & Rate Sliders */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="font-bold text-slate-300">Pitch (ശബ്ദ ഉയരം)</span>
-                  <span className="font-mono text-purple-400 font-bold">{profile.pitch.toFixed(2)}x</span>
-                </div>
-                <input
-                  type="range"
-                  min="0.7"
-                  max="1.5"
-                  step="0.05"
-                  value={profile.pitch}
-                  onChange={(e) => setProfile({ ...profile, pitch: parseFloat(e.target.value) })}
-                  className="w-full accent-purple-500 cursor-pointer"
-                />
+          {/* TAB 4: Privacy & Deletion */}
+          {activeTab === 'privacy' && (
+            <div className="space-y-4 p-4 rounded-2xl bg-slate-950 border border-slate-800 text-xs text-slate-300">
+              <div className="space-y-2">
+                <h4 className="font-extrabold text-sm text-white">Privacy & Safety Settings</h4>
+                <label className="flex items-center justify-between p-3 rounded-xl bg-slate-900 border border-slate-800">
+                  <span>Allow contacts to hear my messages in my synthetic voice</span>
+                  <input
+                    type="checkbox"
+                    checked={profile.isEnabled}
+                    onChange={(e) => setProfile((p) => ({ ...p, isEnabled: e.target.checked }))}
+                    className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 border-slate-700 bg-slate-950"
+                  />
+                </label>
               </div>
 
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="font-bold text-slate-300">Speed Rate (വേഗത)</span>
-                  <span className="font-mono text-indigo-400 font-bold">{profile.rate.toFixed(2)}x</span>
-                </div>
-                <input
-                  type="range"
-                  min="0.75"
-                  max="1.35"
-                  step="0.05"
-                  value={profile.rate}
-                  onChange={(e) => setProfile({ ...profile, rate: parseFloat(e.target.value) })}
-                  className="w-full accent-indigo-500 cursor-pointer"
-                />
+              <div className="pt-3 border-t border-slate-800 space-y-2">
+                <h4 className="font-extrabold text-sm text-rose-300">Delete Voice Profile</h4>
+                <p className="text-[11px] text-slate-400">
+                  Permanently deletes your enrolled voice model, revokes all playback permissions, and clears all cached audio.
+                </p>
+                <button
+                  type="button"
+                  onClick={handleDelete}
+                  className="px-4 py-2 rounded-xl bg-rose-600/20 hover:bg-rose-600/30 text-rose-300 border border-rose-500/40 font-bold text-xs flex items-center gap-1.5 transition-colors"
+                >
+                  <Trash2 className="w-4 h-4 text-rose-400" />
+                  <span>Delete My Voice Profile</span>
+                </button>
               </div>
             </div>
+          )}
 
-            {/* Primary Language */}
-            <div className="space-y-1.5">
-              <label className="text-[11px] font-bold text-slate-400 flex items-center gap-1.5">
-                <Languages className="w-3.5 h-3.5 text-purple-400" />
-                <span>Primary Narration Language</span>
-              </label>
-              <div className="grid grid-cols-3 gap-2">
-                {[
-                  { id: 'ml-IN', label: 'Malayalam (മലയാളം)' },
-                  { id: 'en-IN', label: 'Indian English' },
-                  { id: 'hi-IN', label: 'Hindi (ഹിന്ദി)' }
-                ].map((l) => (
-                  <button
-                    key={l.id}
-                    type="button"
-                    onClick={() => setProfile({ ...profile, language: l.id as any })}
-                    className={`py-2 rounded-xl text-xs font-bold border transition-all ${
-                      profile.language === l.id
-                        ? 'bg-indigo-600/30 border-indigo-400 text-indigo-200'
-                        : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white'
-                    }`}
-                  >
-                    {l.label}
-                  </button>
-                ))}
-              </div>
-            </div>
+        </div>
 
-          </div>
-
-          {/* Step 4: Test Cloned Voice Playback */}
-          <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-extrabold text-white flex items-center gap-1.5">
-                <Volume2 className="w-4 h-4 text-emerald-400" />
-                <span>4. Test Live Talking Photo Playback</span>
-              </span>
-
-              {isPlayingTest && (
-                <div className="flex items-center gap-1">
-                  {[20, 60, 40, 80, 50, 90, 30].map((h, i) => (
-                    <div
-                      key={i}
-                      className="w-1 bg-emerald-400 rounded-full animate-pulse"
-                      style={{ height: `${h * 0.2}px`, animationDelay: `${i * 0.1}s` }}
-                    />
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <textarea
-              value={testText}
-              onChange={(e) => setTestText(e.target.value)}
-              rows={2}
-              className="w-full p-2.5 rounded-xl bg-slate-900 border border-slate-800 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-purple-500"
-            />
-
-            <button
-              type="button"
-              onClick={handleTestPlayback}
-              className={`w-full py-2.5 rounded-xl font-extrabold text-xs flex items-center justify-center gap-2 transition-all ${
-                isPlayingTest
-                  ? 'bg-rose-600 hover:bg-rose-500 text-white shadow-lg shadow-rose-600/30'
-                  : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-600/30'
-              }`}
-            >
-              {isPlayingTest ? (
-                <>
-                  <Pause className="w-4 h-4" />
-                  <span>Stop Test Playback</span>
-                </>
-              ) : (
-                <>
-                  <Play className="w-4 h-4" />
-                  <span>Listen to Talking Photo (ശബ്ദം ടെസ്റ്റ് ചെയ്യുക)</span>
-                </>
-              )}
-            </button>
-          </div>
-
-          {/* Submit / Save Voice Profile */}
+        {/* Footer Actions */}
+        <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-800 flex-shrink-0">
           <button
-            type="submit"
-            className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-600 hover:from-purple-500 hover:to-indigo-500 text-white font-extrabold text-xs flex items-center justify-center gap-2 shadow-xl shadow-purple-600/30 transition-all hover:scale-[1.02]"
+            type="button"
+            onClick={() => {
+              stopPreviewRef.current?.();
+              onClose();
+            }}
+            className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold"
           >
-            <Sparkles className="w-4 h-4" />
-            <span>Save & Enable AI Talking Photo Avatar</span>
+            Cancel
           </button>
 
-        </form>
+          <button
+            type="button"
+            onClick={handleSaveProfile}
+            className="px-5 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 text-white text-xs font-extrabold shadow-lg shadow-purple-600/30 transition-all hover:scale-105"
+          >
+            Save & Activate Voice Profile
+          </button>
+        </div>
 
       </div>
     </div>
