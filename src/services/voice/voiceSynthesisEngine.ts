@@ -183,8 +183,11 @@ export function playSyntheticVoice(
     return () => {};
   }
 
-  // 2. Text normalization for speech
-  const { normalizedSpeechText, detectedLanguage, speechLanguageCode } = normalizeTextForSpeech(text);
+  // 2. Text normalization for speech with Kerala Slang & Prosody styling
+  const { normalizedSpeechText, detectedLanguage, speechLanguageCode } = normalizeTextForSpeech(
+    text,
+    voiceProfile.slangStyle || 'natural'
+  );
   if (!normalizedSpeechText) {
     options?.onEnd?.();
     return () => {};

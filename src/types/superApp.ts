@@ -373,6 +373,7 @@ export interface UserVoiceProfile {
   timbre: 'warm' | 'deep' | 'crisp' | 'energetic' | 'calm';
   language: 'ml-IN' | 'en-IN' | 'hi-IN';
   voiceGender?: 'female' | 'male' | 'neutral';
+  slangStyle?: 'natural' | 'malabar' | 'kochi' | 'travancore' | 'formal';
   voiceModelId?: string;
   sampleAudioUrl?: string;
   talkingPhotoUrl?: string;
@@ -397,6 +398,7 @@ export interface VoiceProfile {
   rate: number;
   timbre: 'warm' | 'deep' | 'crisp' | 'energetic' | 'calm';
   voiceGender?: 'female' | 'male' | 'neutral';
+  slangStyle?: 'natural' | 'malabar' | 'kochi' | 'travancore' | 'formal';
   voiceModelId?: string;
   consentVersion: string;
   consentedAt: string;

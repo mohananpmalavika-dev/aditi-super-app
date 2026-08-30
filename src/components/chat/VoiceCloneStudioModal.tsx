@@ -538,6 +538,37 @@ export const VoiceCloneStudioModal: React.FC<VoiceCloneStudioModalProps> = ({
                 </div>
               </div>
 
+              {/* Kerala Slang & Accent Style Selector */}
+              <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-extrabold text-white">Kerala Slang & Accent (സംസാര ശൈലി):</span>
+                  <span className="text-[10px] text-purple-300 font-mono">Authentic Accent</span>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {[
+                    { id: 'natural', label: '🌴 Natural (സ്വാഭാവികം)', desc: 'Standard fluent conversational tone' },
+                    { id: 'malabar', label: '🌊 Malabar (മലബാർ)', desc: 'ന്റെ ചങ്ങായീ, എന്തൊക്കെണ്ട് വിശേഷം!' },
+                    { id: 'kochi', label: '🏙️ Kochi / Youth (കൊച്ചി)', desc: 'മച്ചാനേ, സീനില്ല സെറ്റാണ്!' },
+                    { id: 'travancore', label: '🏰 Travancore (തെക്കൻ)', desc: 'ഞാൻ വരാം കേട്ടോ, സുഖമല്ലേ?' },
+                    { id: 'formal', label: '📻 Studio (സ്റ്റുഡിയോ)', desc: 'Clear articulate broadcast tone' }
+                  ].map((s) => (
+                    <button
+                      key={s.id}
+                      type="button"
+                      onClick={() => setProfile((p) => ({ ...p, slangStyle: s.id as any }))}
+                      className={`p-2.5 rounded-xl border text-left transition-all ${
+                        (profile.slangStyle || 'natural') === s.id
+                          ? 'bg-purple-600/30 border-purple-400 text-purple-200 shadow-md scale-[1.02]'
+                          : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      <div className="font-bold text-xs">{s.label}</div>
+                      <div className="text-[9px] text-slate-400 truncate mt-0.5">{s.desc}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               {/* Pitch & Rate Sliders */}
               <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-3">
                 <div>
@@ -564,7 +595,7 @@ export const VoiceCloneStudioModal: React.FC<VoiceCloneStudioModalProps> = ({
                 <div>
                   <div className="flex items-center justify-between text-xs text-slate-300 font-bold mb-1">
                     <span>Speech Rate (സംസാര വേഗത):</span>
-                    <span className="font-mono text-indigo-400">{profile.rate?.toFixed(2) || '1.00'}x</span>
+                    <span className="font-mono text-indigo-400">{profile.rate?.toFixed(2) || '0.95'}x</span>
                   </div>
                   <input
                     type="range"
