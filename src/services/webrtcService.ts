@@ -21,80 +21,17 @@ export class WebRTCManager {
   private iceCandidateQueue: RTCIceCandidateInit[] = [];
   private isRemoteDescriptionSet = false;
   private supportsWebRTC = typeof window !== 'undefined' && 'RTCPeerConnection' in window;
+  private connectionStartTime: number = 0;
+  private statsInterval: number | null = null;
 
   public onRemoteStream?: (stream: MediaStream) => void;
   public onIceCandidate?: (candidate: RTCIceCandidate) => void;
   public onConnectionStateChange?: (state: RTCPeerConnectionState) => void;
+  public onIceConnectionStateChange?: (state: RTCIceConnectionState) => void;
+  public onStats?: (stats: any) => void;
 
   constructor() {
     this.initPeerConnection();
-  }
-
-  private createSyntheticMediaStream(video: boolean, audio: boolean): MediaStream | null {
-    try {
-      const stream = new MediaStream();
-
-      if (video && typeof document !== 'undefined') {
-        const canvas = document.createElement('canvas');
-        canvas.width = 640;
-        canvas.height = 480;
-        const ctx = canvas.getContext('2d');
-        if (ctx) {
-          const render = () => {
-            ctx.fillStyle = '#0f172a';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
-            gradient.addColorStop(0, '#4f46e5');
-            gradient.addColorStop(1, '#0ea5e9');
-            ctx.fillStyle = gradient;
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            ctx.fillStyle = '#ffffff';
-            ctx.font = 'bold 34px sans-serif';
-            ctx.textAlign = 'center';
-            ctx.fillText('Aditi Live', canvas.width / 2, canvas.height / 2);
-            ctx.font = '18px sans-serif';
-            ctx.fillText('Fallback camera stream', canvas.width / 2, canvas.height / 2 + 40);
-          };
-          render();
-          const captureStream = (canvas as any).captureStream?.(24);
-          if (captureStream) {
-            captureStream.getVideoTracks().forEach((track: MediaStreamTrack) => stream.addTrack(track));
-          }
-        }
-      }
-
-      if (audio && typeof window !== 'undefined') {
-        const AudioCtor = (window as any).AudioContext || (window as any).webkitAudioContext;
-        if (AudioCtor) {
-          const audioCtx = new AudioCtor();
-          const oscillator = audioCtx.createOscillator();
-          const gain = audioCtx.createGain();
-          const destination = audioCtx.createMediaStreamDestination();
-          oscillator.type = 'sine';
-          oscillator.frequency.value = 440;
-          gain.gain.value = 0.015;
-          oscillator.connect(gain);
-          gain.connect(destination);
-          gain.connect(audioCtx.destination);
-          oscillator.start();
-          const audioTrack = destination.stream.getAudioTracks()[0];
-          if (audioTrack) {
-            stream.addTrack(audioTrack);
-          }
-          setTimeout(() => {
-            try {
-              oscillator.stop();
-              audioCtx.close().catch(() => {});
-            } catch {}
-          }, 120000);
-        }
-      }
-
-      return stream.getTracks().length > 0 ? stream : null;
-    } catch (err) {
-      console.warn('Synthetic media stream creation failed:', err);
-      return null;
-    }
   }
 
   private initPeerConnection() {
@@ -130,11 +67,83 @@ export class WebRTCManager {
       this.peerConnection.onconnectionstatechange = () => {
         if (this.peerConnection) {
           this.onConnectionStateChange?.(this.peerConnection.connectionState);
+          if (this.peerConnection.connectionState === 'connected') {
+            this.connectionStartTime = Date.now();
+            this.startStatsMonitoring();
+          }
+        }
+      };
+
+      this.peerConnection.oniceconnectionstatechange = () => {
+        if (this.peerConnection) {
+          this.onIceConnectionStateChange?.(this.peerConnection.iceConnectionState);
         }
       };
     } catch (err) {
       console.warn('WebRTC initialisation warning:', err);
     }
+  }
+
+  private startStatsMonitoring() {
+    if (this.statsInterval !== null || !this.peerConnection) return;
+    
+    this.statsInterval = window.setInterval(async () => {
+      if (!this.peerConnection) {
+        if (this.statsInterval !== null) {
+          clearInterval(this.statsInterval);
+          this.statsInterval = null;
+        }
+        return;
+      }
+      
+      try {
+        const stats = await this.peerConnection!.getStats();
+        const statsReport: any = {};
+        
+        stats.forEach((report) => {
+          if (report.type === 'inbound-rtp' && report.kind === 'audio') {
+            statsReport.audioIn = {
+              bytesReceived: report.bytesReceived,
+              packetsReceived: report.packetsReceived,
+              packetsLost: report.packetsLost,
+              jitter: report.jitter
+            };
+          } else if (report.type === 'inbound-rtp' && report.kind === 'video') {
+            statsReport.videoIn = {
+              bytesReceived: report.bytesReceived,
+              framesReceived: report.framesReceived,
+              framesDropped: report.framesDropped,
+              frameHeight: report.frameHeight,
+              frameWidth: report.frameWidth
+            };
+          } else if (report.type === 'outbound-rtp' && report.kind === 'audio') {
+            statsReport.audioOut = {
+              bytesSent: report.bytesSent,
+              packetsSent: report.packetsSent
+            };
+          } else if (report.type === 'outbound-rtp' && report.kind === 'video') {
+            statsReport.videoOut = {
+              bytesSent: report.bytesSent,
+              framesSent: report.framesSent,
+              frameHeight: report.frameHeight,
+              frameWidth: report.frameWidth
+            };
+          } else if (report.type === 'candidate-pair' && report.state === 'succeeded') {
+            statsReport.connectionStats = {
+              roundTripTime: report.currentRoundTripTime,
+              availableOutgoingBitrate: report.availableOutgoingBitrate,
+              availableIncomingBitrate: report.availableIncomingBitrate
+            };
+          }
+        });
+        
+        if (this.onStats) {
+          this.onStats(statsReport);
+        }
+      } catch (err) {
+        console.warn('Error collecting WebRTC stats:', err);
+      }
+    }, 1000);
   }
 
   public attachStream(stream: MediaStream) {
@@ -157,12 +166,8 @@ export class WebRTCManager {
     const hasMediaDevices = !!(typeof navigator !== 'undefined' && navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
 
     if (!hasMediaDevices) {
-      const fallbackStream = this.createSyntheticMediaStream(video, audio);
-      if (fallbackStream) {
-        this.localStream = fallbackStream;
-        this.attachStream(fallbackStream);
-      }
-      return fallbackStream;
+      console.warn('WebRTC startLocalMedia aborted: browser media APIs are unavailable.');
+      return null;
     }
 
     try {
@@ -184,12 +189,6 @@ export class WebRTCManager {
         return this.localStream;
       } catch (fallbackErr) {
         console.warn('MediaDevices fallback failed:', fallbackErr);
-        const fallbackStream = this.createSyntheticMediaStream(video, audio);
-        if (fallbackStream) {
-          this.localStream = fallbackStream;
-          this.attachStream(fallbackStream);
-          return fallbackStream;
-        }
         return null;
       }
     }
@@ -304,6 +303,11 @@ export class WebRTCManager {
   }
 
   public stopAllTracks() {
+    if (this.statsInterval !== null) {
+      clearInterval(this.statsInterval);
+      this.statsInterval = null;
+    }
+    
     if (this.localStream) {
       this.localStream.getTracks().forEach((track) => track.stop());
       this.localStream = null;
@@ -324,6 +328,7 @@ export class WebRTCManager {
     }
     this.iceCandidateQueue = [];
     this.isRemoteDescriptionSet = false;
+    this.connectionStartTime = 0;
   }
 
   public getLocalStream(): MediaStream | null {
@@ -332,5 +337,18 @@ export class WebRTCManager {
 
   public getRemoteStream(): MediaStream | null {
     return this.remoteStream;
+  }
+
+  public getConnectionState(): RTCPeerConnectionState | null {
+    return this.peerConnection?.connectionState ?? null;
+  }
+
+  public getIceConnectionState(): RTCIceConnectionState | null {
+    return this.peerConnection?.iceConnectionState ?? null;
+  }
+
+  public getConnectionDuration(): number {
+    if (this.connectionStartTime === 0) return 0;
+    return Math.floor((Date.now() - this.connectionStartTime) / 1000);
   }
 }
