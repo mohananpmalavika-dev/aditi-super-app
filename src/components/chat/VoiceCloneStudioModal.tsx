@@ -495,12 +495,46 @@ export const VoiceCloneStudioModal: React.FC<VoiceCloneStudioModalProps> = ({
                   <button
                     type="button"
                     onClick={handleTogglePlayRecordedSample}
-                    className="w-full sm:w-auto px-4 py-2.5 rounded-2xl bg-slate-900 hover:bg-slate-800 border border-purple-500/40 text-purple-300 font-bold text-xs flex items-center justify-center gap-2 transition-all"
+                    className="w-full sm:w-auto px-4 py-2.5 rounded-2xl bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/40 text-emerald-300 font-bold text-xs flex items-center justify-center gap-2 transition-all"
                   >
                     {isPlayingRecordedSample ? <Square className="w-3.5 h-3.5 fill-current" /> : <Play className="w-3.5 h-3.5 fill-current" />}
-                    <span>{isPlayingRecordedSample ? 'Pause Sample' : '▶ Listen to My Real Audio Sample'}</span>
+                    <span>{isPlayingRecordedSample ? 'Pause Sample' : '▶ Play My Exact Real Voice (എന്റെ ശബ്ദം)'}</span>
                   </button>
                 )}
+              </div>
+
+              {/* Recorded Audio Card if available */}
+              {recordedAudioUrl && (
+                <div className="p-3.5 rounded-xl bg-emerald-950/40 border border-emerald-500/30 space-y-2 animate-in fade-in">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-emerald-300 flex items-center gap-1.5">
+                      <CheckCircle className="w-4 h-4 text-emerald-400" />
+                      <span>Your Real Microphone Voice Sample (യഥാർത്ഥ ശബ്ദം)</span>
+                    </span>
+                    <span className="text-[10px] font-mono text-emerald-400">Captured • {recordingDuration}s</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleTogglePlayRecordedSample}
+                    className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/30 transition-all"
+                  >
+                    {isPlayingRecordedSample ? <Square className="w-4 h-4 fill-current" /> : <Play className="w-4 h-4 fill-current ml-0.5" />}
+                    <span>{isPlayingRecordedSample ? 'Pause Real Voice' : '▶ Listen to Your Exact Recorded Voice (നിങ്ങളുടെ യഥാർത്ഥ ശബ്ദം)'}</span>
+                  </button>
+                </div>
+              )}
+
+              {/* Information & Feature Clarity */}
+              <div className="p-3 rounded-xl bg-slate-900 border border-slate-800 text-[11px] text-slate-400 space-y-1">
+                <div className="font-bold text-slate-200 flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-yellow-400" />
+                  <span>ശബ്ദ സവിശേഷതകൾ (How it works):</span>
+                </div>
+                <p className="leading-relaxed">
+                  • <strong>വോയ്‌സ് മെസ്സേജുകൾ (Voice Notes)</strong>: ചാറ്റിൽ മൈക്ക് വഴി അയക്കുന്ന വോയ്‌സ് നോട്ടുകളിൽ നിങ്ങളുടെ 100% യഥാർത്ഥ ശബ്ദം നേരിട്ട് കേൾക്കാം.
+                  <br />
+                  • <strong>ടെക്സ്റ്റ് വായിക്കാനുള്ള AI ശബ്ദം (Synthetic Avatar)</strong>: നിങ്ങൾ ടൈപ്പ് ചെയ്യുന്ന സാധാരണ ടെക്സ്റ്റുകൾ നിങ്ങളുടെ ശബ്ദ ശ്രുതിക്ക് (Pitch & Timbre) അനുയോജ്യമായി AI വായിക്കുന്നു.
+                </p>
               </div>
             </div>
           )}
