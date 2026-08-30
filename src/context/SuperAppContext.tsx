@@ -48,6 +48,7 @@ import {
   updateCloudHabit,
   updateCloudTaskStatus,
   updateCloudUserProfile,
+  syncUserProfileToCloud,
   getLocalFriendRequests,
   getCloudFriendRequests,
   saveLocalFriendRequest,
@@ -386,7 +387,9 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     // 2. Real-time WebSocket & Cross-Tab Broadcast listener
     const unsubscribeSocial = subscribeToSocialEvents((event: SocialBroadcastEvent) => {
-      if (event.type === 'FRIEND_REQUEST_SENT') {
+      if (event.type === 'USER_REGISTERED') {
+        refreshRegisteredUsers();
+      } else if (event.type === 'FRIEND_REQUEST_SENT') {
         const req = event.request;
         const isForMe =
           (user.id && (req.toUserId === user.id || req.toUserId.includes(user.id))) ||
@@ -457,13 +460,13 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       }
     });
 
-    // 3. Supabase Realtime channel subscription for database table
+    // 3. Supabase Realtime channel subscription for database tables
     let friendshipChannel: any = null;
     if (supabase) {
       const client = supabase;
       try {
         friendshipChannel = client
-          .channel(`realtime_friendships_${user.id || 'current'}`)
+          .channel(`realtime_social_${user.id || 'current'}`)
           .on(
             'postgres_changes',
             {
@@ -485,15 +488,27 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
               }
             }
           )
+          .on(
+            'postgres_changes',
+            {
+              event: '*',
+              schema: 'public',
+              table: 'profiles'
+            },
+            async () => {
+              await refreshRegisteredUsers();
+            }
+          )
           .subscribe();
       } catch (err) {
         console.warn('Supabase realtime table subscribe warning:', err);
       }
     }
 
-    // 4. Fallback 4-second polling sync
+    // 4. Fallback 4-second polling sync for friends and registered users
     const intervalTimer = setInterval(() => {
       refreshFriendRequests();
+      refreshRegisteredUsers();
     }, 4000);
 
     return () => {
@@ -634,6 +649,8 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
               };
 
               setUser(verifiedUser);
+              syncUserProfileToCloud(verifiedUser);
+              refreshRegisteredUsers();
               const sessionUserObj: DeviceSessionUser = {
                 id: verifiedUser.id,
                 name: verifiedUser.name,

@@ -206,16 +206,49 @@ export const saveCustomContact = (contact: UserProfile): void => {
   localStorage.setItem(CUSTOM_CONTACTS_STORAGE_KEY, JSON.stringify(contacts));
 };
 
+export async function syncUserProfileToCloud(userProfile: UserProfile): Promise<void> {
+  if (!userProfile || !userProfile.email) return;
+
+  // 1. Broadcast event instantly to all devices & tabs
+  broadcastSocialEvent({ type: 'USER_REGISTERED', user: userProfile });
+
+  // 2. Persist to Supabase profiles
+  if (supabase && !isTestEnv) {
+    try {
+      const { data: authData } = await supabase.auth.getUser();
+      const uid = authData.user?.id || (isUuid(userProfile.id) ? userProfile.id : null);
+      if (uid) {
+        await supabase.from('profiles').upsert(
+          {
+            id: uid,
+            name: userProfile.name,
+            email: userProfile.email.trim().toLowerCase(),
+            handle: userProfile.handle,
+            avatar_url: userProfile.avatar,
+            bio: userProfile.bio,
+            location: userProfile.location,
+            zodiac_sign: userProfile.zodiacSign,
+            is_verified: true
+          },
+          { onConflict: 'id' }
+        );
+      }
+    } catch (err) {
+      console.warn('Failed to upsert profile to Supabase:', err);
+    }
+  }
+}
+
 export async function getCloudRegisteredUsers(): Promise<UserProfile[]> {
   const usersMap = new Map<string, UserProfile>();
 
   // 1. Fetch profiles from Supabase if configured
   if (supabase && !isTestEnv) {
     try {
-      const { data, error } = await Promise.race([
-        supabase.from('profiles').select('*').order('created_at', { ascending: false }),
-        new Promise<{ data: any; error: any }>((res) => setTimeout(() => res({ data: null, error: 'timeout' }), 1200))
-      ]);
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .order('created_at', { ascending: false });
 
       if (!error && data && Array.isArray(data)) {
         data.forEach((p: any) => {
@@ -451,6 +484,7 @@ export async function cloudRegisterUser(creds: RegisterCredentials): Promise<{ u
         };
         saveLocalAccount(normalizedEmail(creds.email), { password: creds.password, user: newUser });
         cloudState.user = newUser;
+        await syncUserProfileToCloud(newUser);
         return { user: newUser };
       }
     } catch (e: any) {
@@ -592,6 +626,7 @@ export async function cloudGoogleAuthUser(googleUserData?: {
     };
     saveLocalAccount(cleanEmail, { password: '', user: userProfile });
     cloudState.user = userProfile;
+    await syncUserProfileToCloud(userProfile);
     return { user: userProfile };
   }
 
@@ -1637,6 +1672,7 @@ export async function resolveSupabaseUserId(identifier?: string, nameHint?: stri
 }
 
 export type SocialBroadcastEvent =
+  | { type: 'USER_REGISTERED'; user: UserProfile }
   | { type: 'FRIEND_REQUEST_SENT'; request: FriendRequest }
   | { type: 'FRIEND_REQUEST_ACCEPTED'; requestId: string; fromUserId: string; toUserId: string; fromUserName?: string; toUserName?: string }
   | { type: 'FRIEND_REQUEST_DECLINED'; requestId?: string; fromUserId?: string; toUserId?: string }
