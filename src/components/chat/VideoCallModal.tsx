@@ -93,135 +93,6 @@ export const VideoCallModal: React.FC<VideoCallModalProps> = ({
   const remoteStreamRef = useRef<MediaStream | null>(null);
   const webrtcManagerRef = useRef<WebRTCManager | null>(null);
 
-  // Helper: Create ultra-reliable 1080p 60FPS video stream without cross-origin tainted canvas issues
-  const createSimulatedVideoStream = (name: string): MediaStream | null => {
-    try {
-      const canvas = document.createElement('canvas');
-      canvas.width = 1280;
-      canvas.height = 720;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return null;
-
-      const initials = (name || 'Contact')
-        .split(' ')
-        .map((n) => n[0])
-        .join('')
-        .slice(0, 2)
-        .toUpperCase();
-
-      let phase = 0;
-      const render = () => {
-        phase += 0.04;
-
-        // Deep futuristic gradient background
-        const bgGrad = ctx.createRadialGradient(
-          canvas.width / 2, canvas.height / 2, 50,
-          canvas.width / 2, canvas.height / 2, canvas.width * 0.7
-        );
-        bgGrad.addColorStop(0, '#1e1b4b');
-        bgGrad.addColorStop(0.5, '#0f172a');
-        bgGrad.addColorStop(1, '#020617');
-        ctx.fillStyle = bgGrad;
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-        // Animated soundwave resonance rings
-        for (let r = 1; r <= 3; r++) {
-          const radius = 120 + Math.sin(phase * 1.5 + r * 0.8) * 14 + r * 28;
-          ctx.beginPath();
-          ctx.arc(canvas.width / 2, canvas.height / 2 - 35, radius, 0, Math.PI * 2);
-          ctx.strokeStyle = `rgba(99, 102, 241, ${0.4 - r * 0.1})`;
-          ctx.lineWidth = 3;
-          ctx.stroke();
-        }
-
-        // Center Avatar Glowing Orb with Initials
-        const orbRadius = 100;
-        const orbY = canvas.height / 2 - 35 + Math.sin(phase * 0.8) * 6;
-
-        ctx.save();
-        ctx.beginPath();
-        ctx.arc(canvas.width / 2, orbY, orbRadius, 0, Math.PI * 2);
-        const orbGrad = ctx.createLinearGradient(
-          canvas.width / 2 - orbRadius, orbY - orbRadius,
-          canvas.width / 2 + orbRadius, orbY + orbRadius
-        );
-        orbGrad.addColorStop(0, '#4f46e5');
-        orbGrad.addColorStop(0.5, '#7c3aed');
-        orbGrad.addColorStop(1, '#06b6d4');
-        ctx.fillStyle = orbGrad;
-        ctx.shadowColor = '#6366f1';
-        ctx.shadowBlur = 30;
-        ctx.fill();
-
-        ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = 4;
-        ctx.stroke();
-
-        ctx.fillStyle = '#ffffff';
-        ctx.font = 'bold 64px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(initials, canvas.width / 2, orbY);
-        ctx.restore();
-
-        // 60FPS Audio Spectrum Equalizer
-        const barCount = 22;
-        const barWidth = 8;
-        const spacing = 10;
-        const totalWaveWidth = barCount * (barWidth + spacing);
-        const startX = (canvas.width - totalWaveWidth) / 2;
-        const waveY = orbY + orbRadius + 55;
-
-        for (let i = 0; i < barCount; i++) {
-          const barHeight = Math.abs(Math.sin(phase * 2.5 + i * 0.35)) * 44 + 8;
-          const x = startX + i * (barWidth + spacing);
-          const y = waveY - barHeight / 2;
-
-          const grad = ctx.createLinearGradient(0, y, 0, y + barHeight);
-          grad.addColorStop(0, '#38bdf8');
-          grad.addColorStop(0.5, '#818cf8');
-          grad.addColorStop(1, '#a855f7');
-          ctx.fillStyle = grad;
-          ctx.fillRect(x, y, barWidth, barHeight);
-        }
-
-        // Contact Name & Status
-        ctx.fillStyle = '#ffffff';
-        ctx.font = 'bold 32px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText(name, canvas.width / 2, waveY + 55);
-
-        ctx.fillStyle = '#34d399';
-        ctx.font = 'bold 16px monospace';
-        ctx.fillText('● 1080p 60FPS Ultra HD Stream Active', canvas.width / 2, waveY + 85);
-
-        requestAnimationFrame(render);
-      };
-
-      render();
-      const stream = (canvas as any).captureStream ? (canvas as any).captureStream(30) : null;
-      if (!stream) return null;
-
-      try {
-        const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
-        if (audioCtx.state === 'suspended') audioCtx.resume().catch(() => {});
-        const dst = audioCtx.createMediaStreamDestination();
-        const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
-        gain.gain.value = 0.01;
-        osc.connect(gain);
-        gain.connect(dst);
-        osc.start();
-        dst.stream.getAudioTracks().forEach((track: MediaStreamTrack) => stream.addTrack(track));
-      } catch (e) {}
-
-      return stream;
-    } catch (e) {
-      console.warn('Simulated video stream error:', e);
-      return null;
-    }
-  };
-
   // Helper: Create Local Virtual Camera Stream if camera access is blocked
   const createLocalVirtualCameraStream = (name: string): MediaStream | null => {
     try {
@@ -273,83 +144,6 @@ export const VideoCallModal: React.FC<VideoCallModalProps> = ({
     }
   };
 
-  const handleSimulateRemoteVideo = () => {
-    const stream = createSimulatedVideoStream(contactName);
-    if (stream) {
-      remoteStreamRef.current = stream;
-      setHasRemoteStream(true);
-      setIsConnecting(false);
-      if (remoteVideoRef.current) {
-        remoteVideoRef.current.srcObject = stream;
-        remoteVideoRef.current.play().catch(() => {});
-      }
-      showToast(`🟢 Connected live with ${contactName}!`);
-      playSound('call_connected');
-
-      // Speech greeting
-      try {
-        if ('speechSynthesis' in window) {
-          window.speechSynthesis.cancel();
-          const greetingText = `ഹലോ, ഞാൻ ${contactName.split(' ')[0]}. ലൈവ് വീഡിയോയിൽ കാണാൻ സാധിക്കുന്നുണ്ട്!`;
-          const utterance = new SpeechSynthesisUtterance(greetingText);
-          utterance.rate = 1.0;
-          utterance.onerror = () => {
-            const enUtterance = new SpeechSynthesisUtterance(`Hello, this is ${contactName}. I can see and hear you clearly!`);
-            window.speechSynthesis.speak(enUtterance);
-          };
-          window.speechSynthesis.speak(utterance);
-        }
-      } catch (e) {}
-    }
-  };
-
-  const handleSimulateRemoteAudio = () => {
-    try {
-      const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
-      if (audioCtx.state === 'suspended') {
-        audioCtx.resume().catch(() => {});
-      }
-      const osc = audioCtx.createOscillator();
-      const gain = audioCtx.createGain();
-      gain.gain.value = 0.02;
-      osc.frequency.value = 440;
-      osc.connect(gain);
-      const dst = audioCtx.createMediaStreamDestination();
-      gain.connect(dst);
-      gain.connect(audioCtx.destination);
-      osc.start();
-
-      setTimeout(() => {
-        try {
-          gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.2);
-          setTimeout(() => osc.stop(), 250);
-        } catch (e) {}
-      }, 500);
-
-      remoteStreamRef.current = dst.stream;
-    } catch (e) {}
-
-    setHasRemoteStream(true);
-    setIsConnecting(false);
-    showToast(`🟢 Connected with ${contactName}! HD Voice active.`);
-    playSound('call_connected');
-
-    // Speak a natural audio greeting so the user hears voice through their speakers
-    try {
-      if ('speechSynthesis' in window) {
-        window.speechSynthesis.cancel();
-        const greetingText = `ഹലോ, ഞാൻ ${contactName.split(' ')[0]}. സുഖമാണോ? ഞാൻ പറയുന്നത് കേൾക്കാമോ?`;
-        const utterance = new SpeechSynthesisUtterance(greetingText);
-        utterance.rate = 1.0;
-        utterance.onerror = () => {
-          const enUtterance = new SpeechSynthesisUtterance(`Hello! This is ${contactName}. I can hear you clearly!`);
-          window.speechSynthesis.speak(enUtterance);
-        };
-        window.speechSynthesis.speak(utterance);
-      }
-    } catch (e) {}
-  };
-
   // Synchronize stream references to video DOM elements across layout toggles & mounts
   useEffect(() => {
     if (!isOpen) return;
@@ -383,7 +177,7 @@ export const VideoCallModal: React.FC<VideoCallModalProps> = ({
     return () => clearInterval(timer);
   }, [isOpen]);
 
-  // 2. Call Ringing Sound Effect & Auto-Answer Engine
+  // 2. Call Ringing Tone while waiting for real peer connection
   useEffect(() => {
     if (!isOpen) {
       setMergedParticipants([]);
@@ -394,7 +188,6 @@ export const VideoCallModal: React.FC<VideoCallModalProps> = ({
       return;
     }
 
-    // Play ringing tone while waiting
     let ringAudioCtx: AudioContext | null = null;
     let ringInterval: any = null;
 
@@ -430,25 +223,11 @@ export const VideoCallModal: React.FC<VideoCallModalProps> = ({
       ringInterval = setInterval(playTone, 2500);
     } catch (e) {}
 
-    // Auto-answer after 2.5s for instant responsive calling experience
-    const autoConnectTimer = setTimeout(() => {
-      if (ringInterval) clearInterval(ringInterval);
-      if (ringAudioCtx && ringAudioCtx.state !== 'closed') {
-        ringAudioCtx.close().catch(() => {});
-      }
-      if (isVideo) {
-        handleSimulateRemoteVideo();
-      } else {
-        handleSimulateRemoteAudio();
-      }
-    }, 2500);
-
     return () => {
       if (ringInterval) clearInterval(ringInterval);
       if (ringAudioCtx && ringAudioCtx.state !== 'closed') {
         ringAudioCtx.close().catch(() => {});
       }
-      clearTimeout(autoConnectTimer);
     };
   }, [isOpen, isVideo, contactName, contactAvatar]);
 
@@ -488,36 +267,36 @@ export const VideoCallModal: React.FC<VideoCallModalProps> = ({
     // Acquire Local Camera & Microphone Stream
     const startCallMedia = async () => {
       try {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          setCameraError('This browser does not support live audio/video calls. Please use Chrome or Edge and allow camera/mic access.');
+          setIsConnecting(false);
+          return;
+        }
+
         let stream: MediaStream | null = null;
 
-        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-          stream = createLocalVirtualCameraStream(user.name);
-        } else {
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({
+            video: isVideo ? { facingMode, width: { ideal: 1280 }, height: { ideal: 720 } } : false,
+            audio: true
+          });
+        } catch (e) {
           try {
             stream = await navigator.mediaDevices.getUserMedia({
-              video: isVideo ? { facingMode, width: { ideal: 1280 }, height: { ideal: 720 } } : false,
+              video: Boolean(isVideo),
               audio: true
             });
-          } catch (e) {
-            try {
-              stream = await navigator.mediaDevices.getUserMedia({
-                video: Boolean(isVideo),
-                audio: true
-              });
-            } catch (basicErr) {
-              if (isVideo) {
-                try {
-                  stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
-                } catch (camErr) {
-                  stream = createLocalVirtualCameraStream(user.name);
-                }
+          } catch (basicErr) {
+            if (isVideo) {
+              try {
+                stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+              } catch (camErr) {
+                setCameraError('Camera or microphone permission was denied. Please allow access and retry the call.');
+                setIsConnecting(false);
+                return;
               }
             }
           }
-        }
-
-        if (!stream && isVideo) {
-          stream = createLocalVirtualCameraStream(user.name);
         }
 
         if (stream) {
@@ -547,16 +326,12 @@ export const VideoCallModal: React.FC<VideoCallModalProps> = ({
         }
       } catch (err: any) {
         console.warn('Local media acquisition note:', err);
-        const virtualStream = createLocalVirtualCameraStream(user.name);
-        if (virtualStream) {
-          localStreamRef.current = virtualStream;
-          setHasCameraStream(true);
-          webrtc.attachStream(virtualStream);
-        }
+        setCameraError(err?.message || 'Unable to start audio/video call. Please retry.');
+        setIsConnecting(false);
       }
     };
 
-    startCallMedia();
+    void startCallMedia();
 
     // Subscribe to incoming WebRTC Signaling events
     const unsubscribeSignaling = subscribeToSocialEvents(async (event: SocialBroadcastEvent) => {
@@ -1161,17 +936,6 @@ export const VideoCallModal: React.FC<VideoCallModalProps> = ({
                 )}
 
                 {/* Instant Connect Voice Button if waiting */}
-                {!hasRemoteStream && (
-                  <button
-                    type="button"
-                    onClick={handleSimulateRemoteAudio}
-                    className="mt-2 px-5 py-2.5 rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-indigo-600 hover:from-emerald-500 text-white text-xs font-black shadow-xl shadow-emerald-600/30 flex items-center gap-2 transition-all hover:scale-105"
-                  >
-                    <Phone className="w-4 h-4" />
-                    <span>Connect Voice Call Now (സംസാരിക്കുക)</span>
-                  </button>
-                )}
-
                 <div className="pt-2 text-[11px] text-slate-400 flex items-center gap-2">
                   <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
                   <span>256-bit Encrypted P2P HD Audio Stream</span>
