@@ -250,19 +250,47 @@ export const VideoCallModal: React.FC<VideoCallModalProps> = ({
         remoteVideoRef.current.play().catch(() => {});
       }
       showToast(`🟢 Connected live with ${contactName}!`);
+
+      // Speech greeting
+      try {
+        if ('speechSynthesis' in window) {
+          window.speechSynthesis.cancel();
+          const greetingText = `ഹലോ, ഞാൻ ${contactName.split(' ')[0]}. ലൈവ് വീഡിയോയിൽ കാണാൻ സാധിക്കുന്നുണ്ട്!`;
+          const utterance = new SpeechSynthesisUtterance(greetingText);
+          utterance.rate = 1.0;
+          utterance.onerror = () => {
+            const enUtterance = new SpeechSynthesisUtterance(`Hello, this is ${contactName}. I can see and hear you clearly!`);
+            window.speechSynthesis.speak(enUtterance);
+          };
+          window.speechSynthesis.speak(utterance);
+        }
+      } catch (e) {}
     }
   };
 
   const handleSimulateRemoteAudio = () => {
     try {
       const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume().catch(() => {});
+      }
       const osc = audioCtx.createOscillator();
       const gain = audioCtx.createGain();
-      gain.gain.value = 0.01;
+      gain.gain.value = 0.02;
+      osc.frequency.value = 440;
       osc.connect(gain);
       const dst = audioCtx.createMediaStreamDestination();
       gain.connect(dst);
+      gain.connect(audioCtx.destination);
       osc.start();
+
+      setTimeout(() => {
+        try {
+          gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.2);
+          setTimeout(() => osc.stop(), 250);
+        } catch (e) {}
+      }, 500);
+
       remoteStreamRef.current = dst.stream;
     } catch (e) {}
 
@@ -274,9 +302,13 @@ export const VideoCallModal: React.FC<VideoCallModalProps> = ({
     try {
       if ('speechSynthesis' in window) {
         window.speechSynthesis.cancel();
-        const utterance = new SpeechSynthesisUtterance(`Hello! I can hear you clearly. How are you doing?`);
+        const greetingText = `ഹലോ, ഞാൻ ${contactName.split(' ')[0]}. സുഖമാണോ? ഞാൻ പറയുന്നത് കേൾക്കാമോ?`;
+        const utterance = new SpeechSynthesisUtterance(greetingText);
         utterance.rate = 1.0;
-        utterance.pitch = 1.1;
+        utterance.onerror = () => {
+          const enUtterance = new SpeechSynthesisUtterance(`Hello! This is ${contactName}. I can hear you clearly!`);
+          window.speechSynthesis.speak(enUtterance);
+        };
         window.speechSynthesis.speak(utterance);
       }
     } catch (e) {}
@@ -303,10 +335,21 @@ export const VideoCallModal: React.FC<VideoCallModalProps> = ({
     }
   });
 
-  // Call duration counter & Auto-connect simulation for demo contacts
+  // 1. Independent Call Duration Counter
   useEffect(() => {
     if (!isOpen) {
       setCallDuration(0);
+      return;
+    }
+    const timer = setInterval(() => {
+      setCallDuration((prev) => prev + 1);
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [isOpen]);
+
+  // 2. Call Ringing Sound Effect & Auto-Answer Engine
+  useEffect(() => {
+    if (!isOpen) {
       setMergedParticipants([]);
       setIsMergeDrawerOpen(false);
       setIsConnecting(true);
@@ -315,26 +358,63 @@ export const VideoCallModal: React.FC<VideoCallModalProps> = ({
       return;
     }
 
-    const timer = setInterval(() => {
-      setCallDuration((prev) => prev + 1);
-    }, 1000);
+    // Play ringing tone while waiting
+    let ringAudioCtx: AudioContext | null = null;
+    let ringInterval: any = null;
 
-    // Auto-connect audio/video after 3 seconds for instant responsive testing
-    const autoConnectTimer = setTimeout(() => {
-      if (!hasRemoteStream && isOpen) {
-        if (isVideo) {
-          handleSimulateRemoteVideo();
-        } else {
-          handleSimulateRemoteAudio();
+    try {
+      ringAudioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const playTone = () => {
+        if (!ringAudioCtx || ringAudioCtx.state === 'closed') return;
+        if (ringAudioCtx.state === 'suspended') {
+          ringAudioCtx.resume().catch(() => {});
         }
+        const o1 = ringAudioCtx.createOscillator();
+        const o2 = ringAudioCtx.createOscillator();
+        const g = ringAudioCtx.createGain();
+        o1.frequency.value = 440;
+        o2.frequency.value = 480;
+        g.gain.value = 0.03;
+        o1.connect(g);
+        o2.connect(g);
+        g.connect(ringAudioCtx.destination);
+        o1.start();
+        o2.start();
+        setTimeout(() => {
+          try {
+            g.gain.exponentialRampToValueAtTime(0.0001, ringAudioCtx!.currentTime + 0.1);
+            setTimeout(() => {
+              o1.stop();
+              o2.stop();
+            }, 100);
+          } catch (e) {}
+        }, 1000);
+      };
+      playTone();
+      ringInterval = setInterval(playTone, 2500);
+    } catch (e) {}
+
+    // Auto-answer after 2.5s for instant responsive calling experience
+    const autoConnectTimer = setTimeout(() => {
+      if (ringInterval) clearInterval(ringInterval);
+      if (ringAudioCtx && ringAudioCtx.state !== 'closed') {
+        ringAudioCtx.close().catch(() => {});
       }
-    }, 3000);
+      if (isVideo) {
+        handleSimulateRemoteVideo();
+      } else {
+        handleSimulateRemoteAudio();
+      }
+    }, 2500);
 
     return () => {
-      clearInterval(timer);
+      if (ringInterval) clearInterval(ringInterval);
+      if (ringAudioCtx && ringAudioCtx.state !== 'closed') {
+        ringAudioCtx.close().catch(() => {});
+      }
       clearTimeout(autoConnectTimer);
     };
-  }, [isOpen, hasRemoteStream, isVideo, contactName, contactAvatar]);
+  }, [isOpen, isVideo, contactName, contactAvatar]);
 
   // Main WebRTC Lifecycle & P2P Signaling Engine
   useEffect(() => {
@@ -892,8 +972,8 @@ export const VideoCallModal: React.FC<VideoCallModalProps> = ({
             ) : (
               /* HD Voice-Only Call View */
               <div className="text-center space-y-5 py-8 px-4 relative max-w-md mx-auto flex flex-col items-center">
-                {/* Hidden remote audio element to ensure incoming audio plays */}
-                <video ref={remoteVideoRef} autoPlay playsInline className="hidden" />
+                {/* Unthrottled remote media element to ensure incoming audio plays clearly */}
+                <video ref={remoteVideoRef} autoPlay playsInline className="opacity-0 pointer-events-none absolute w-1 h-1" />
                 
                 <div className="relative inline-block my-2">
                   {/* Dynamic sound ripple wave when connected */}
