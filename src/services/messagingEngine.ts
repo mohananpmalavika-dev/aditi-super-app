@@ -330,7 +330,7 @@ export function filterConversationsByFolder(
     }
 
     // Folder match
-    if (folder === 'friends') return Boolean(c.isFriend || (c.conversationType === 'direct' && c.isFriend !== false));
+    if (folder === 'friends') return Boolean(c.isFriend);
     if (folder === 'unread') return c.unreadCount > 0;
     if (folder === 'personal') return c.conversationType === 'direct' || !c.conversationType;
     if (folder === 'groups') return c.conversationType === 'group' || c.conversationType === 'broadcast';

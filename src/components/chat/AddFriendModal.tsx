@@ -20,7 +20,7 @@ import {
   UserMinus
 } from 'lucide-react';
 import { useSuperApp } from '../../context/SuperAppContext';
-import { getCloudRegisteredUsers, saveCustomContact } from '../../services/cloudDatabaseService';
+import { getCloudRegisteredUsers, saveCustomContact, isCloudFriend } from '../../services/cloudDatabaseService';
 import { UserProfile } from '../../types/superApp';
 import confetti from 'canvas-confetti';
 
@@ -174,7 +174,16 @@ export const AddFriendModal: React.FC<AddFriendModalProps> = ({
   // Group into Confirmed Mutual Friends only
   const myAddedFriends = otherUsers.filter((u) => {
     const existing = getExistingChat(u);
-    return Boolean(existing && existing.isFriend);
+    const isFriendInRequests = friendRequests.some(
+      (r) =>
+        r.status === 'accepted' &&
+        (r.fromUserId === u.id ||
+          r.toUserId === u.id ||
+          r.fromUserName.toLowerCase() === u.name.toLowerCase() ||
+          r.toUserName.toLowerCase() === u.name.toLowerCase())
+    );
+    const isFriendLocal = isCloudFriend(u.id);
+    return Boolean((existing && existing.isFriend) || isFriendInRequests || isFriendLocal);
   });
 
   // Dynamic Search filter across name, handle, email, location, bio

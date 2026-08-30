@@ -445,20 +445,52 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
                 : r
             )
           );
-          setChats((prev) =>
-            prev.map((c) =>
-              c.id === event.toUserId ||
-              (event.toUserName && c.participantName.toLowerCase() === event.toUserName.toLowerCase())
-                ? {
-                    ...c,
-                    isFriend: true,
-                    friendRequestSent: false,
-                    friendRequestReceived: false,
-                    friendshipStatus: 'friends'
+          setChats((prev) => {
+            const existing = prev.find(
+              (c) =>
+                c.id === event.toUserId ||
+                (event.toUserName && c.participantName.toLowerCase() === event.toUserName.toLowerCase())
+            );
+            if (existing) {
+              return prev.map((c) =>
+                c.id === existing.id
+                  ? {
+                      ...c,
+                      isFriend: true,
+                      friendRequestSent: false,
+                      friendRequestReceived: false,
+                      friendshipStatus: 'friends'
+                    }
+                  : c
+              );
+            } else if (event.toUserName) {
+              const newChat: ChatConversation = {
+                id: event.toUserId || `chat-${Date.now()}`,
+                participantName: event.toUserName,
+                participantAvatar: getSafeAvatarUrl(undefined, event.toUserName),
+                roleOrContext: '💬 Friend',
+                lastMessage: 'You are now friends! Unlimited messaging unlocked.',
+                lastMessageTime: 'Just now',
+                unreadCount: 0,
+                isOnline: true,
+                conversationType: 'direct',
+                isFriend: true,
+                friendshipStatus: 'friends',
+                messages: [
+                  {
+                    id: `m-friend-${Date.now()}`,
+                    senderId: 'system',
+                    senderName: 'System',
+                    text: `🎉 You and ${event.toUserName} are now friends! Unlimited messaging unlocked.`,
+                    timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                    isUser: false
                   }
-                : c
-            )
-          );
+                ]
+              };
+              return [newChat, ...prev];
+            }
+            return prev;
+          });
           confetti({ particleCount: 90, spread: 80, origin: { y: 0.6 } });
           showToast(`🎉 ${event.toUserName || 'Contact'} accepted your friend request! You are now friends.`);
         }
