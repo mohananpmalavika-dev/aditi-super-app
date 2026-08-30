@@ -55,6 +55,7 @@ import {
   updateLocalFriendRequestStatus,
   isCloudFriend,
   subscribeToSocialEvents,
+  broadcastSocialEvent,
   SocialBroadcastEvent,
   FRIEND_REQUESTS_STORAGE_KEY,
   sendCloudFriendRequest,
@@ -101,6 +102,7 @@ import {
   ChatReminder,
   FriendRequest,
   FriendshipStatus,
+  IncomingLiveCall,
   JobVacancy,
   JobSource,
   JobSeekerProfile,
@@ -291,6 +293,14 @@ interface SuperAppContextType {
   clearIncomingScheduledCall: () => void;
   triggerScheduledCallNow: (sMsg: ScheduledMessage) => void;
   
+  // Real-Time WebRTC Live Calling
+  incomingLiveCall: IncomingLiveCall | null;
+  activeLiveCall: { contactName: string; contactAvatar: string; isVideo: boolean } | null;
+  acceptIncomingLiveCall: () => void;
+  declineIncomingLiveCall: () => void;
+  startLiveCallWith: (contactName: string, contactAvatar: string, isVideo: boolean) => void;
+  endLiveCall: () => void;
+  
   // Productivity
   tasks: TaskItem[];
   addTask: (task: Omit<TaskItem, 'id'>) => Promise<void>;
@@ -452,6 +462,112 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           confetti({ particleCount: 90, spread: 80, origin: { y: 0.6 } });
           showToast(`🎉 ${event.toUserName || 'Contact'} accepted your friend request! You are now friends.`);
         }
+      } else if (event.type === 'CHAT_MESSAGE_SENT') {
+        const msg = event.message;
+        const recipientId = event.recipientId || '';
+        const recipientName = event.recipientName || '';
+        const recipientEmail = event.recipientEmail || '';
+
+        const isForMe =
+          (user.id && (recipientId === user.id || recipientId === user.email || recipientId.includes(user.id))) ||
+          (user.email && recipientEmail && recipientEmail.toLowerCase() === user.email.toLowerCase()) ||
+          (user.email && recipientId && recipientId.toLowerCase() === user.email.toLowerCase()) ||
+          (user.name && recipientName && recipientName.toLowerCase() === user.name.toLowerCase()) ||
+          (user.handle && recipientId && recipientId.toLowerCase() === user.handle.toLowerCase());
+
+        const isFromOther = msg.senderId !== user.id && (!user.name || msg.senderName.toLowerCase() !== user.name.toLowerCase());
+
+        if (isForMe && isFromOther) {
+          const incomingMsg: ChatMessage = {
+            ...msg,
+            isUser: false
+          };
+
+          setChats((prevChats) => {
+            const senderName = msg.senderName;
+            const existingChat = prevChats.find(
+              (c) =>
+                c.id === event.chatId ||
+                c.participantName.toLowerCase() === senderName.toLowerCase() ||
+                (msg.senderId && c.id === msg.senderId)
+            );
+
+            if (existingChat) {
+              return prevChats.map((c) =>
+                c.id === existingChat.id
+                  ? {
+                      ...c,
+                      lastMessage: incomingMsg.text,
+                      lastMessageTime: 'Just now',
+                      unreadCount: (c.unreadCount || 0) + 1,
+                      messages: [...c.messages.filter((m) => m.id !== incomingMsg.id), incomingMsg]
+                    }
+                  : c
+              );
+            } else {
+              const newChat: ChatConversation = {
+                id: msg.senderId || `chat-${Date.now()}`,
+                participantName: senderName,
+                participantAvatar: getSafeAvatarUrl(undefined, senderName),
+                roleOrContext: '💬 Direct Chat',
+                lastMessage: incomingMsg.text,
+                lastMessageTime: 'Just now',
+                unreadCount: 1,
+                isOnline: true,
+                conversationType: 'direct',
+                isFriend: isCloudFriend(msg.senderId),
+                messages: [incomingMsg]
+              };
+              return [newChat, ...prevChats];
+            }
+          });
+
+          // Play message chime
+          try {
+            const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(587.33, ctx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.15);
+            gain.gain.setValueAtTime(0.12, ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.25);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start();
+            osc.stop(ctx.currentTime + 0.25);
+          } catch {}
+
+          showToast(`💬 ${msg.senderName}: "${msg.text ? msg.text.slice(0, 35) : 'New message received'}"`);
+        }
+      } else if (event.type === 'INCOMING_CALL_SIGNAL') {
+        const isForMe =
+          (user.id && (event.targetUserId === user.id || event.targetUserId === user.email || event.targetUserId.includes(user.id))) ||
+          (user.email && event.targetEmail && event.targetEmail.toLowerCase() === user.email.toLowerCase()) ||
+          (user.email && event.targetUserId && event.targetUserId.toLowerCase() === user.email.toLowerCase()) ||
+          (user.name && event.targetUserName && event.targetUserName.toLowerCase() === user.name.toLowerCase());
+
+        const isFromOther = event.callerId !== user.id && (!user.name || event.callerName.toLowerCase() !== user.name.toLowerCase());
+
+        if (isForMe && isFromOther) {
+          setIncomingLiveCall({
+            callId: event.callId,
+            callerId: event.callerId,
+            callerName: event.callerName,
+            callerAvatar: event.callerAvatar,
+            isVideo: event.isVideo
+          });
+        }
+      } else if (event.type === 'CALL_RESPONSE_SIGNAL') {
+        if (!event.accepted) {
+          showToast('📞 Call was declined.');
+          setActiveLiveCall(null);
+        } else {
+          showToast('📞 Call connected!');
+        }
+      } else if (event.type === 'CALL_ENDED_SIGNAL') {
+        setIncomingLiveCall(null);
+        setActiveLiveCall(null);
       } else if (event.type === 'FRIEND_REQUEST_DECLINED') {
         if (event.requestId) updateLocalFriendRequestStatus(event.requestId, 'declined');
         refreshFriendRequests();
@@ -607,6 +723,68 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     text?: string;
     chatId: string;
   } | null>(null);
+
+  const [incomingLiveCall, setIncomingLiveCall] = useState<IncomingLiveCall | null>(null);
+  const [activeLiveCall, setActiveLiveCall] = useState<{ contactName: string; contactAvatar: string; isVideo: boolean } | null>(null);
+
+  const acceptIncomingLiveCall = () => {
+    if (!incomingLiveCall) return;
+    const call = incomingLiveCall;
+    setIncomingLiveCall(null);
+    setActiveLiveCall({
+      contactName: call.callerName,
+      contactAvatar: call.callerAvatar,
+      isVideo: call.isVideo
+    });
+    broadcastSocialEvent({
+      type: 'CALL_RESPONSE_SIGNAL',
+      callId: call.callId,
+      responderId: user.id || 'user',
+      accepted: true
+    });
+    // Ensure chat exists and switch to it
+    startNewChatWith(call.callerName, call.callerAvatar, '💬 Direct Chat');
+  };
+
+  const declineIncomingLiveCall = () => {
+    if (!incomingLiveCall) return;
+    const call = incomingLiveCall;
+    setIncomingLiveCall(null);
+    broadcastSocialEvent({
+      type: 'CALL_RESPONSE_SIGNAL',
+      callId: call.callId,
+      responderId: user.id || 'user',
+      accepted: false
+    });
+    showToast('📞 Call declined');
+  };
+
+  const startLiveCallWith = (contactName: string, contactAvatar: string, isVideo: boolean) => {
+    setActiveLiveCall({ contactName, contactAvatar, isVideo });
+    const targetUser = registeredUsers.find((u) => u.name.toLowerCase() === contactName.toLowerCase());
+    broadcastSocialEvent({
+      type: 'INCOMING_CALL_SIGNAL',
+      callId: `call-${Date.now()}`,
+      callerId: user.id || 'user',
+      callerName: user.name,
+      callerAvatar: user.avatar,
+      targetUserId: targetUser?.id || targetUser?.email || contactName,
+      targetUserName: contactName,
+      targetEmail: targetUser?.email,
+      isVideo
+    });
+    showToast(`📞 Calling ${contactName}...`);
+  };
+
+  const endLiveCall = () => {
+    setActiveLiveCall(null);
+    setIncomingLiveCall(null);
+    broadcastSocialEvent({
+      type: 'CALL_ENDED_SIGNAL',
+      callId: `call-ended-${Date.now()}`
+    });
+    showToast('📞 Call ended');
+  };
 
   useEffect(() => {
     localStorage.setItem('omnilife_scheduled_messages', JSON.stringify(scheduledMessages));
@@ -1461,6 +1639,20 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           : c
       )
     );
+
+    const targetChat = chats.find((c) => c.id === chatId);
+    const recipientName = targetChat?.participantName;
+    const recipientEmail = registeredUsers.find((u) => u.name.toLowerCase() === recipientName?.toLowerCase())?.email;
+
+    // Broadcast message over real-time WebSockets & local broadcast channel to recipient
+    broadcastSocialEvent({
+      type: 'CHAT_MESSAGE_SENT',
+      chatId,
+      message: userMsg,
+      recipientId: chatId,
+      recipientName,
+      recipientEmail
+    });
 
     // Persist to server backend
     await sendCloudMessage(chatId, userMsg.text, {
@@ -2408,6 +2600,12 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         incomingScheduledCall,
         clearIncomingScheduledCall,
         triggerScheduledCallNow,
+        incomingLiveCall,
+        activeLiveCall,
+        acceptIncomingLiveCall,
+        declineIncomingLiveCall,
+        startLiveCallWith,
+        endLiveCall,
         tasks,
         addTask,
         toggleTaskStatus,

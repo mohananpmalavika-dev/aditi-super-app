@@ -377,6 +377,14 @@ export interface UserVoiceProfile {
   enrolledDate?: string;
 }
 
+export interface IncomingLiveCall {
+  callId: string;
+  callerId: string;
+  callerName: string;
+  callerAvatar: string;
+  isVideo: boolean;
+}
+
 export interface ScheduledMessage {
   id: string;
   chatId: string;

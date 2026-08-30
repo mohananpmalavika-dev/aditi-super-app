@@ -24,9 +24,21 @@ import { TasksAndCalendar } from './components/productivity/TasksAndCalendar';
 import { UtilitiesView } from './components/utilities/UtilitiesView';
 import { SettingsView } from './components/settings/SettingsView';
 import { DeviceLockScreen } from './components/auth/DeviceLockScreen';
+import { IncomingLiveCallModal } from './components/chat/IncomingLiveCallModal';
 
 const SuperAppContent: React.FC = () => {
-  const { activeMiniApp, isAuthenticated, isDeviceLocked, sessionUser, unlockDevice, logout } = useSuperApp();
+  const {
+    activeMiniApp,
+    setActiveMiniApp,
+    isAuthenticated,
+    isDeviceLocked,
+    sessionUser,
+    unlockDevice,
+    logout,
+    incomingLiveCall,
+    acceptIncomingLiveCall,
+    declineIncomingLiveCall
+  } = useSuperApp();
   const [isLauncherOpen, setIsLauncherOpen] = useState(false);
 
   // If user closed app without logging out, prompt real Device Screen Lock
@@ -110,6 +122,21 @@ const SuperAppContent: React.FC = () => {
 
       {/* OmniBrain Autonomous Agent Sidecar Drawer */}
       <OmniBrainDrawer />
+
+      {/* Global Incoming Live Call Ringing Modal (When outside chat view) */}
+      {!isChatView && incomingLiveCall && (
+        <IncomingLiveCallModal
+          isOpen={!!incomingLiveCall}
+          callerName={incomingLiveCall.callerName}
+          callerAvatar={incomingLiveCall.callerAvatar}
+          isVideo={incomingLiveCall.isVideo}
+          onAccept={() => {
+            acceptIncomingLiveCall();
+            setActiveMiniApp('chat');
+          }}
+          onDecline={declineIncomingLiveCall}
+        />
+      )}
 
       {/* Floating System Toast */}
       <ToastContainer />

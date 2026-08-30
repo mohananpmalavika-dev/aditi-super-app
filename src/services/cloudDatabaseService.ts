@@ -1676,7 +1676,36 @@ export type SocialBroadcastEvent =
   | { type: 'FRIEND_REQUEST_SENT'; request: FriendRequest }
   | { type: 'FRIEND_REQUEST_ACCEPTED'; requestId: string; fromUserId: string; toUserId: string; fromUserName?: string; toUserName?: string }
   | { type: 'FRIEND_REQUEST_DECLINED'; requestId?: string; fromUserId?: string; toUserId?: string }
-  | { type: 'FRIEND_REQUEST_CANCELLED'; fromUserId: string; toUserId: string };
+  | { type: 'FRIEND_REQUEST_CANCELLED'; fromUserId: string; toUserId: string }
+  | {
+      type: 'CHAT_MESSAGE_SENT';
+      chatId: string;
+      message: ChatMessage;
+      recipientId?: string;
+      recipientName?: string;
+      recipientEmail?: string;
+    }
+  | {
+      type: 'INCOMING_CALL_SIGNAL';
+      callId: string;
+      callerId: string;
+      callerName: string;
+      callerAvatar: string;
+      targetUserId: string;
+      targetUserName?: string;
+      targetEmail?: string;
+      isVideo: boolean;
+    }
+  | {
+      type: 'CALL_RESPONSE_SIGNAL';
+      callId: string;
+      responderId: string;
+      accepted: boolean;
+    }
+  | {
+      type: 'CALL_ENDED_SIGNAL';
+      callId: string;
+    };
 
 // HTML5 BroadcastChannel for instant local cross-tab sync
 let localSocialBroadcastChannel: BroadcastChannel | null = null;

@@ -66,6 +66,7 @@ import { useSuperApp } from '../../context/SuperAppContext';
 import { ChatConversation, ChatMessage, ChatPoll } from '../../types/superApp';
 import { AudioRecorder } from './AudioRecorder';
 import { VideoCallModal } from './VideoCallModal';
+import { IncomingLiveCallModal } from './IncomingLiveCallModal';
 import { FloatingCallWidget } from './FloatingCallWidget';
 import { SnapCameraModal } from './SnapCameraModal';
 import { LocationShareModal } from './LocationShareModal';
@@ -146,6 +147,12 @@ export const LiveChatMessenger: React.FC = () => {
     incomingScheduledCall,
     clearIncomingScheduledCall,
     triggerScheduledCallNow,
+    incomingLiveCall,
+    activeLiveCall,
+    acceptIncomingLiveCall,
+    declineIncomingLiveCall,
+    startLiveCallWith,
+    endLiveCall,
     user,
     showToast
   } = useSuperApp();
@@ -593,9 +600,11 @@ export const LiveChatMessenger: React.FC = () => {
 
   // Start Voice/Video Call
   const handleStartCall = (video: boolean) => {
+    if (!activeChat) return;
     setIsVideoCall(video);
     setCallModalOpen(true);
     setFloatingCallActive(false);
+    startLiveCallWith(activeChat.participantName, activeChat.participantAvatar, video);
   };
 
   // Minimize Call to PiP
@@ -2615,17 +2624,29 @@ export const LiveChatMessenger: React.FC = () => {
       {/* INTEGRATED ADITICHAT MODALS & ADVANCED SERVICES */}
       {/* ========================================================================= */}
       
+      {/* Real-time Incoming Live Call Ringing Modal */}
+      {incomingLiveCall && (
+        <IncomingLiveCallModal
+          isOpen={!!incomingLiveCall}
+          callerName={incomingLiveCall.callerName}
+          callerAvatar={incomingLiveCall.callerAvatar}
+          isVideo={incomingLiveCall.isVideo}
+          onAccept={acceptIncomingLiveCall}
+          onDecline={declineIncomingLiveCall}
+        />
+      )}
+
       {/* WebRTC Video Call Modal with Dual Merge & Native PiP */}
       <VideoCallModal
-        isOpen={callModalOpen}
-        contactName={activeChat?.participantName || 'Aditi Contact'}
-        contactAvatar={activeChat?.participantAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300'}
-        isVideo={isVideoCall}
+        isOpen={callModalOpen || !!activeLiveCall}
+        contactName={activeLiveCall?.contactName || activeChat?.participantName || 'Aditi Contact'}
+        contactAvatar={activeLiveCall?.contactAvatar || activeChat?.participantAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300'}
+        isVideo={activeLiveCall ? activeLiveCall.isVideo : isVideoCall}
         onClose={() => {
           setCallModalOpen(false);
+          endLiveCall();
           setFloatingCallActive(false);
           setCallDuration(0);
-          showToast('📞 Call ended');
         }}
         onMinimize={handleMinimizeCall}
       />
