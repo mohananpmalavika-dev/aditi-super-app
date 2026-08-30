@@ -177,7 +177,7 @@ export const VideoCallModal: React.FC<VideoCallModalProps> = ({
     return () => clearInterval(timer);
   }, [isOpen]);
 
-  // 2. Call Ringing Sound Effect & Auto-Answer Engine
+  // 2. Call Ringing Tone while waiting for real peer connection
   useEffect(() => {
     if (!isOpen) {
       setMergedParticipants([]);
@@ -188,7 +188,6 @@ export const VideoCallModal: React.FC<VideoCallModalProps> = ({
       return;
     }
 
-    // Play ringing tone while waiting
     let ringAudioCtx: AudioContext | null = null;
     let ringInterval: any = null;
 
@@ -268,36 +267,36 @@ export const VideoCallModal: React.FC<VideoCallModalProps> = ({
     // Acquire Local Camera & Microphone Stream
     const startCallMedia = async () => {
       try {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          setCameraError('This browser does not support live audio/video calls. Please use Chrome or Edge and allow camera/mic access.');
+          setIsConnecting(false);
+          return;
+        }
+
         let stream: MediaStream | null = null;
 
-        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-          stream = createLocalVirtualCameraStream(user.name);
-        } else {
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({
+            video: isVideo ? { facingMode, width: { ideal: 1280 }, height: { ideal: 720 } } : false,
+            audio: true
+          });
+        } catch (e) {
           try {
             stream = await navigator.mediaDevices.getUserMedia({
-              video: isVideo ? { facingMode, width: { ideal: 1280 }, height: { ideal: 720 } } : false,
+              video: Boolean(isVideo),
               audio: true
             });
-          } catch (e) {
-            try {
-              stream = await navigator.mediaDevices.getUserMedia({
-                video: Boolean(isVideo),
-                audio: true
-              });
-            } catch (basicErr) {
-              if (isVideo) {
-                try {
-                  stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
-                } catch (camErr) {
-                  stream = createLocalVirtualCameraStream(user.name);
-                }
+          } catch (basicErr) {
+            if (isVideo) {
+              try {
+                stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+              } catch (camErr) {
+                setCameraError('Camera or microphone permission was denied. Please allow access and retry the call.');
+                setIsConnecting(false);
+                return;
               }
             }
           }
-        }
-
-        if (!stream && isVideo) {
-          stream = createLocalVirtualCameraStream(user.name);
         }
 
         if (stream) {
@@ -327,16 +326,12 @@ export const VideoCallModal: React.FC<VideoCallModalProps> = ({
         }
       } catch (err: any) {
         console.warn('Local media acquisition note:', err);
-        const virtualStream = createLocalVirtualCameraStream(user.name);
-        if (virtualStream) {
-          localStreamRef.current = virtualStream;
-          setHasCameraStream(true);
-          webrtc.attachStream(virtualStream);
-        }
+        setCameraError(err?.message || 'Unable to start audio/video call. Please retry.');
+        setIsConnecting(false);
       }
     };
 
-    startCallMedia();
+    void startCallMedia();
 
     // Subscribe to incoming WebRTC Signaling events
     const unsubscribeSignaling = subscribeToSocialEvents(async (event: SocialBroadcastEvent) => {
