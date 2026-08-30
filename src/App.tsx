@@ -102,16 +102,16 @@ const SuperAppContent: React.FC = () => {
   const isChatView = activeMiniApp === 'chat';
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans antialiased overflow-x-hidden">
+    <div className={`w-full bg-slate-950 text-slate-100 flex flex-col font-sans antialiased ${isChatView ? 'h-[100dvh] h-screen overflow-hidden' : 'min-h-screen overflow-x-hidden'}`}>
       {/* Sticky Top Header */}
       <TopHeader onOpenLauncher={() => setIsLauncherOpen(true)} />
 
       {/* Main Mini-App Viewport with Safe Bottom Padding */}
       <main
-        className={`w-full mx-auto ${
+        className={`w-full mx-auto flex-1 min-h-0 flex flex-col ${
           isChatView
-            ? 'flex-1 max-w-7xl h-[calc(100dvh-3.75rem-4.5rem)] p-1.5 sm:p-2 md:p-3 pb-0 flex flex-col overflow-hidden'
-            : 'flex-1 max-w-7xl p-3 sm:p-5 lg:p-7 pb-28 sm:pb-32'
+            ? 'max-w-7xl p-1 sm:p-2 md:p-3 pb-[4.75rem] sm:pb-[5rem] overflow-hidden'
+            : 'max-w-7xl p-3 sm:p-5 lg:p-7 pb-28 sm:pb-32 overflow-y-auto'
         }`}
       >
         {renderActiveView()}

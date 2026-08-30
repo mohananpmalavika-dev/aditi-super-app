@@ -27,6 +27,7 @@ import {
 import { WebRTCManager } from '../../services/webrtcService';
 import { useSuperApp } from '../../context/SuperAppContext';
 import { broadcastSocialEvent, subscribeToSocialEvents, SocialBroadcastEvent } from '../../services/cloudDatabaseService';
+import { playSound } from '../../utils/soundEffects';
 import confetti from 'canvas-confetti';
 
 interface VideoCallModalProps {
@@ -283,6 +284,7 @@ export const VideoCallModal: React.FC<VideoCallModalProps> = ({
         remoteVideoRef.current.play().catch(() => {});
       }
       showToast(`🟢 Connected live with ${contactName}!`);
+      playSound('call_connected');
 
       // Speech greeting
       try {
@@ -330,6 +332,7 @@ export const VideoCallModal: React.FC<VideoCallModalProps> = ({
     setHasRemoteStream(true);
     setIsConnecting(false);
     showToast(`🟢 Connected with ${contactName}! HD Voice active.`);
+    playSound('call_connected');
 
     // Speak a natural audio greeting so the user hears voice through their speakers
     try {
@@ -468,6 +471,7 @@ export const VideoCallModal: React.FC<VideoCallModalProps> = ({
         remoteVideoRef.current.play().catch((e) => console.warn('Remote video playback note:', e));
       }
       showToast(`🟢 Connected with ${contactName}! Audio & Video live.`);
+      playSound('call_connected');
     };
 
     // Forward ICE candidate to remote peer via Signaling Bus
@@ -1290,6 +1294,7 @@ export const VideoCallModal: React.FC<VideoCallModalProps> = ({
           <button
             type="button"
             onClick={() => {
+              playSound('call_end');
               if (localStreamRef.current) {
                 localStreamRef.current.getTracks().forEach((track) => track.stop());
                 localStreamRef.current = null;

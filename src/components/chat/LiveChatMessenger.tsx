@@ -88,6 +88,7 @@ import { ChatSearchModal } from './ChatSearchModal';
 import { AiChatAssistantModal } from './AiChatAssistantModal';
 import { filterConversationsByFolder } from '../../services/messagingEngine';
 import { ChatFolderType } from '../../types/superApp';
+import { playSound } from '../../utils/soundEffects';
 import { StickerGifPickerModal } from './StickerGifPickerModal';
 import { VideoNoteModal } from './VideoNoteModal';
 import { ForwardModal } from './ForwardModal';
@@ -502,6 +503,7 @@ export const LiveChatMessenger: React.FC = () => {
     }
 
     sendChatMessage(activeChat.id, fullMsg, { expiresDuration: secretTimer });
+    playSound('send');
     setInputText('');
     setReplyingMessage(null);
     setShowEmojiPicker(false);
@@ -520,6 +522,7 @@ export const LiveChatMessenger: React.FC = () => {
     if (!activeChat) return;
     const voiceMsg = `🎙️ Voice Note (${audioData.duration}s)`;
     sendChatMessage(activeChat.id, voiceMsg, { expiresDuration: secretTimer, mediaType: 'audio' });
+    playSound('send');
     setIsRecordingAudio(false);
     showToast('🎙️ Voice memo delivered via MediaRecorder!');
   };
@@ -529,6 +532,7 @@ export const LiveChatMessenger: React.FC = () => {
     if (!activeChat) return;
     const snapMsg = `🔥 Ephemeral Snap (${duration}s self-destruct timer)`;
     sendChatMessage(activeChat.id, snapMsg, { expiresDuration: duration || secretTimer, mediaUrl: snapUrl, mediaType: 'image' });
+    playSound('snap');
     confetti({ particleCount: 50, spread: 60 });
     showToast('🔥 Ephemeral snap sent!');
   };
@@ -576,6 +580,7 @@ export const LiveChatMessenger: React.FC = () => {
     if (!file || !activeChat) return;
     const fileMsg = `📁 Shared Document: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
     sendChatMessage(activeChat.id, fileMsg, { expiresDuration: secretTimer, mediaType: 'file' });
+    playSound('send');
     showToast(`📎 File "${file.name}" sent to ${activeChat.participantName}!`);
   };
 
@@ -605,6 +610,7 @@ export const LiveChatMessenger: React.FC = () => {
     setIsVideoCall(video);
     setCallModalOpen(true);
     setFloatingCallActive(false);
+    playSound('ringtone');
     startLiveCallWith(activeChat.participantName, activeChat.participantAvatar, video);
   };
 
@@ -1046,7 +1052,7 @@ export const LiveChatMessenger: React.FC = () => {
             />
 
             {/* Top Active Chat Header */}
-            <div className="px-3 sm:px-4 py-2.5 bg-slate-950/95 border-b border-slate-800 backdrop-blur-xl flex items-center justify-between z-20 gap-2">
+            <div className="px-3 sm:px-4 py-2.5 bg-slate-950/95 border-b border-slate-800 backdrop-blur-xl flex items-center justify-between z-20 gap-2 flex-shrink-0">
               <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
                 
                 {/* Mobile Back Button */}
@@ -1567,7 +1573,7 @@ export const LiveChatMessenger: React.FC = () => {
         )}
 
         {/* Message Stream */}
-        <div className="flex-1 overflow-y-auto p-3.5 sm:p-5 space-y-3.5">
+        <div className="flex-1 min-h-0 overflow-y-auto p-3.5 sm:p-5 space-y-3.5">
           {activeChat.messages.map((msg) => {
             const isUser = msg.isUser;
             const isAudio = msg.text.startsWith('🎙️') || msg.mediaType === 'audio';
