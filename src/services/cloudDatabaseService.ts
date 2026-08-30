@@ -1636,6 +1636,91 @@ export async function resolveSupabaseUserId(identifier?: string, nameHint?: stri
   return null;
 }
 
+export type SocialBroadcastEvent =
+  | { type: 'FRIEND_REQUEST_SENT'; request: FriendRequest }
+  | { type: 'FRIEND_REQUEST_ACCEPTED'; requestId: string; fromUserId: string; toUserId: string; fromUserName?: string; toUserName?: string }
+  | { type: 'FRIEND_REQUEST_DECLINED'; requestId?: string; fromUserId?: string; toUserId?: string }
+  | { type: 'FRIEND_REQUEST_CANCELLED'; fromUserId: string; toUserId: string };
+
+// HTML5 BroadcastChannel for instant local cross-tab sync
+let localSocialBroadcastChannel: BroadcastChannel | null = null;
+try {
+  if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+    localSocialBroadcastChannel = new BroadcastChannel('aditi_social_realtime_bus');
+  }
+} catch {}
+
+// Supabase Realtime Broadcast Channel
+let supabaseSocialChannel: any = null;
+function getSupabaseSocialChannel() {
+  if (!supabase || isTestEnv) return null;
+  if (!supabaseSocialChannel) {
+    try {
+      supabaseSocialChannel = supabase.channel('aditi_global_social_v2', {
+        config: { broadcast: { ack: true } }
+      });
+      supabaseSocialChannel.subscribe();
+    } catch (err) {
+      console.warn('Failed to initialize Supabase social realtime channel:', err);
+    }
+  }
+  return supabaseSocialChannel;
+}
+
+export function broadcastSocialEvent(event: SocialBroadcastEvent): void {
+  // 1. HTML5 Broadcast to local tabs
+  try {
+    if (localSocialBroadcastChannel) {
+      localSocialBroadcastChannel.postMessage(event);
+    }
+  } catch (err) {
+    console.warn('Local broadcast error:', err);
+  }
+
+  // 2. Supabase Realtime Broadcast to all connected clients worldwide
+  try {
+    const ch = getSupabaseSocialChannel();
+    if (ch) {
+      ch.send({
+        type: 'broadcast',
+        event: 'social_event',
+        payload: event
+      });
+    }
+  } catch (err) {
+    console.warn('Supabase broadcast error:', err);
+  }
+}
+
+export function subscribeToSocialEvents(onEvent: (event: SocialBroadcastEvent) => void): () => void {
+  // 1. Local broadcast listener
+  const localHandler = (e: MessageEvent) => {
+    if (e.data && e.data.type) {
+      onEvent(e.data);
+    }
+  };
+  if (localSocialBroadcastChannel) {
+    localSocialBroadcastChannel.addEventListener('message', localHandler);
+  }
+
+  // 2. Supabase Realtime Broadcast listener
+  const ch = getSupabaseSocialChannel();
+  let subListener: any = null;
+  if (ch) {
+    subListener = ch.on('broadcast', { event: 'social_event' }, (payload: any) => {
+      if (payload?.payload?.type) {
+        onEvent(payload.payload);
+      }
+    });
+  }
+
+  return () => {
+    if (localSocialBroadcastChannel) {
+      localSocialBroadcastChannel.removeEventListener('message', localHandler);
+    }
+  };
+}
+
 export function isCloudFriend(friendId: string): boolean {
   const list = getLocalFriends();
   return list.includes(friendId);
@@ -1643,29 +1728,28 @@ export function isCloudFriend(friendId: string): boolean {
 
 export async function sendCloudFriendRequest(req: FriendRequest): Promise<void> {
   saveLocalFriendRequest(req);
+  broadcastSocialEvent({ type: 'FRIEND_REQUEST_SENT', request: req });
 
   if (supabase && !isTestEnv) {
     try {
       const { data: authData } = await supabase.auth.getUser();
       const currentUid = authData.user?.id;
-      if (currentUid) {
-        let targetUid = isUuid(req.toUserId) ? req.toUserId : null;
-        if (!targetUid) {
-          targetUid = await resolveSupabaseUserId(req.toUserId, req.toUserName);
-        }
+      let targetUid = isUuid(req.toUserId) ? req.toUserId : null;
+      if (!targetUid) {
+        targetUid = await resolveSupabaseUserId(req.toUserId, req.toUserName);
+      }
 
-        if (targetUid && isUuid(targetUid)) {
-          const { error } = await supabase.from('friendships').upsert(
-            {
-              user_id: currentUid,
-              friend_id: targetUid,
-              status: 'pending'
-            },
-            { onConflict: 'user_id,friend_id' }
-          );
-          if (error) {
-            console.warn('Supabase friendship upsert warning:', error.message);
-          }
+      if (currentUid && targetUid && isUuid(targetUid)) {
+        const { error } = await supabase.from('friendships').upsert(
+          {
+            user_id: currentUid,
+            friend_id: targetUid,
+            status: 'pending'
+          },
+          { onConflict: 'user_id,friend_id' }
+        );
+        if (error) {
+          console.warn('Supabase friendship upsert warning:', error.message);
         }
       }
     } catch (err) {
@@ -1764,10 +1848,19 @@ export async function getCloudFriendRequests(currentUserId?: string): Promise<Fr
   return combined;
 }
 
-export async function acceptCloudFriendRequest(reqId: string, fromUserId: string, toUserId: string): Promise<void> {
+export async function acceptCloudFriendRequest(reqId: string, fromUserId: string, toUserId: string, fromUserName?: string, toUserName?: string): Promise<void> {
   updateLocalFriendRequestStatus(reqId, 'accepted');
   await addCloudFriend(fromUserId);
   await addCloudFriend(toUserId);
+
+  broadcastSocialEvent({
+    type: 'FRIEND_REQUEST_ACCEPTED',
+    requestId: reqId,
+    fromUserId,
+    toUserId,
+    fromUserName,
+    toUserName
+  });
 
   if (supabase && !isTestEnv) {
     try {
@@ -1796,6 +1889,15 @@ export async function declineCloudFriendRequest(reqId: string, fromUserId?: stri
     removeLocalFriendRequest({ id: reqId });
   }
 
+  if (fromUserId && toUserId) {
+    broadcastSocialEvent({
+      type: 'FRIEND_REQUEST_DECLINED',
+      requestId: reqId,
+      fromUserId,
+      toUserId
+    });
+  }
+
   if (supabase && !isTestEnv) {
     try {
       if (isUuid(reqId)) {
@@ -1818,6 +1920,12 @@ export async function declineCloudFriendRequest(reqId: string, fromUserId?: stri
 
 export async function cancelCloudFriendRequest(fromUserId: string, toUserId: string): Promise<void> {
   removeLocalFriendRequest({ fromUserId, toUserId });
+  broadcastSocialEvent({
+    type: 'FRIEND_REQUEST_CANCELLED',
+    fromUserId,
+    toUserId
+  });
+
   if (supabase && !isTestEnv) {
     try {
       const fromUid = isUuid(fromUserId) ? fromUserId : await resolveSupabaseUserId(fromUserId);

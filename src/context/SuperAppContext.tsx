@@ -50,7 +50,11 @@ import {
   updateCloudUserProfile,
   getLocalFriendRequests,
   getCloudFriendRequests,
+  saveLocalFriendRequest,
+  updateLocalFriendRequestStatus,
   isCloudFriend,
+  subscribeToSocialEvents,
+  SocialBroadcastEvent,
   FRIEND_REQUESTS_STORAGE_KEY,
   sendCloudFriendRequest,
   acceptCloudFriendRequest,
@@ -375,50 +379,131 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
   };
 
-  // Real-time Supabase friendship event listener & background polling sync
+  // Multi-layer Real-time Social Event listener (WebSocket Broadcast + Supabase Channel + Polling)
   useEffect(() => {
-    if (!supabase) return;
-    const client = supabase;
-
-    // Initial cloud fetch
+    // 1. Initial cloud fetch
     refreshFriendRequests();
 
-    // Supabase Realtime channel subscription for friendships table
-    const friendshipChannel = client
-      .channel(`realtime_friendships_${user.id || 'current'}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'friendships'
-        },
-        async (payload: any) => {
-          const updated = await refreshFriendRequests();
-          if (
-            payload.eventType === 'INSERT' &&
-            payload.new?.friend_id === user.id &&
-            payload.new?.status === 'pending'
-          ) {
-            const senderName = updated.find((r) => r.fromUserId === payload.new?.user_id)?.fromUserName || 'Someone';
-            showToast(`📩 New friend request received from ${senderName}!`);
-          } else if (payload.eventType === 'UPDATE' && payload.new?.status === 'accepted') {
-            showToast('🎉 Friend request accepted! You are now connected.');
-          }
-        }
-      )
-      .subscribe();
+    // 2. Real-time WebSocket & Cross-Tab Broadcast listener
+    const unsubscribeSocial = subscribeToSocialEvents((event: SocialBroadcastEvent) => {
+      if (event.type === 'FRIEND_REQUEST_SENT') {
+        const req = event.request;
+        const isForMe =
+          (user.id && (req.toUserId === user.id || req.toUserId.includes(user.id))) ||
+          (user.email && req.toUserId.toLowerCase() === user.email.toLowerCase()) ||
+          (user.handle && req.toUserId.toLowerCase() === user.handle.toLowerCase()) ||
+          (user.name && req.toUserName.toLowerCase() === user.name.toLowerCase());
 
-    // 10-second polling fallback
+        if (isForMe) {
+          saveLocalFriendRequest(req);
+          setFriendRequests((prev) => {
+            const filtered = prev.filter(
+              (r) => r.id !== req.id && !(r.fromUserId === req.fromUserId && r.toUserId === req.toUserId)
+            );
+            return [...filtered, req];
+          });
+          showToast(`📩 New friend request received from ${req.fromUserName}!`);
+          setChats((prev) =>
+            prev.map((c) =>
+              c.id === req.fromUserId || c.participantName.toLowerCase() === req.fromUserName.toLowerCase()
+                ? {
+                    ...c,
+                    friendRequestReceived: true,
+                    friendshipStatus: 'request_received'
+                  }
+                : c
+            )
+          );
+        }
+      } else if (event.type === 'FRIEND_REQUEST_ACCEPTED') {
+        const isSender =
+          (user.id && (event.fromUserId === user.id || event.fromUserId.includes(user.id))) ||
+          (user.name && event.fromUserName && event.fromUserName.toLowerCase() === user.name.toLowerCase());
+
+        if (isSender) {
+          if (event.requestId) updateLocalFriendRequestStatus(event.requestId, 'accepted');
+          addCloudFriend(event.toUserId);
+          setFriendRequests((prev) =>
+            prev.map((r) =>
+              r.id === event.requestId ||
+              r.toUserId === event.toUserId ||
+              (event.toUserName && r.toUserName.toLowerCase() === event.toUserName.toLowerCase())
+                ? { ...r, status: 'accepted' }
+                : r
+            )
+          );
+          setChats((prev) =>
+            prev.map((c) =>
+              c.id === event.toUserId ||
+              (event.toUserName && c.participantName.toLowerCase() === event.toUserName.toLowerCase())
+                ? {
+                    ...c,
+                    isFriend: true,
+                    friendRequestSent: false,
+                    friendRequestReceived: false,
+                    friendshipStatus: 'friends'
+                  }
+                : c
+            )
+          );
+          confetti({ particleCount: 90, spread: 80, origin: { y: 0.6 } });
+          showToast(`🎉 ${event.toUserName || 'Contact'} accepted your friend request! You are now friends.`);
+        }
+      } else if (event.type === 'FRIEND_REQUEST_DECLINED') {
+        if (event.requestId) updateLocalFriendRequestStatus(event.requestId, 'declined');
+        refreshFriendRequests();
+      } else if (event.type === 'FRIEND_REQUEST_CANCELLED') {
+        refreshFriendRequests();
+      }
+    });
+
+    // 3. Supabase Realtime channel subscription for database table
+    let friendshipChannel: any = null;
+    if (supabase) {
+      const client = supabase;
+      try {
+        friendshipChannel = client
+          .channel(`realtime_friendships_${user.id || 'current'}`)
+          .on(
+            'postgres_changes',
+            {
+              event: '*',
+              schema: 'public',
+              table: 'friendships'
+            },
+            async (payload: any) => {
+              const updated = await refreshFriendRequests();
+              if (
+                payload.eventType === 'INSERT' &&
+                payload.new?.friend_id === user.id &&
+                payload.new?.status === 'pending'
+              ) {
+                const senderName = updated.find((r) => r.fromUserId === payload.new?.user_id)?.fromUserName || 'Someone';
+                showToast(`📩 New friend request received from ${senderName}!`);
+              } else if (payload.eventType === 'UPDATE' && payload.new?.status === 'accepted') {
+                showToast('🎉 Friend request accepted! You are now connected.');
+              }
+            }
+          )
+          .subscribe();
+      } catch (err) {
+        console.warn('Supabase realtime table subscribe warning:', err);
+      }
+    }
+
+    // 4. Fallback 4-second polling sync
     const intervalTimer = setInterval(() => {
       refreshFriendRequests();
-    }, 10000);
+    }, 4000);
 
     return () => {
-      client.removeChannel(friendshipChannel);
+      unsubscribeSocial();
+      if (friendshipChannel && supabase) {
+        supabase.removeChannel(friendshipChannel);
+      }
       clearInterval(intervalTimer);
     };
-  }, [user.id]);
+  }, [user.id, user.email, user.name]);
 
   // Keep chat friendship statuses synchronized with friendRequests
   useEffect(() => {
@@ -1626,7 +1711,7 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     );
 
     if (req) {
-      await acceptCloudFriendRequest(req.id, fromId, toId);
+      await acceptCloudFriendRequest(req.id, fromId, toId, fromName, user.name);
     } else {
       await addCloudFriend(fromId);
     }
