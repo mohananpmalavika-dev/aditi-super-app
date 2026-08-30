@@ -25,6 +25,7 @@ import { UtilitiesView } from './components/utilities/UtilitiesView';
 import { SettingsView } from './components/settings/SettingsView';
 import { DeviceLockScreen } from './components/auth/DeviceLockScreen';
 import { IncomingLiveCallModal } from './components/chat/IncomingLiveCallModal';
+import { VideoCallModal } from './components/chat/VideoCallModal';
 
 const SuperAppContent: React.FC = () => {
   const {
@@ -37,7 +38,9 @@ const SuperAppContent: React.FC = () => {
     logout,
     incomingLiveCall,
     acceptIncomingLiveCall,
-    declineIncomingLiveCall
+    declineIncomingLiveCall,
+    activeLiveCall,
+    endLiveCall
   } = useSuperApp();
   const [isLauncherOpen, setIsLauncherOpen] = useState(false);
 
@@ -141,6 +144,21 @@ const SuperAppContent: React.FC = () => {
             setActiveMiniApp('chat');
           }}
           onDecline={declineIncomingLiveCall}
+        />
+      )}
+
+      {/* Global Live Video Call Modal (When call is active outside chat view) */}
+      {!isChatView && activeLiveCall && (
+        <VideoCallModal
+          isOpen={!!activeLiveCall}
+          contactName={activeLiveCall.contactName}
+          contactAvatar={activeLiveCall.contactAvatar}
+          isVideo={activeLiveCall.isVideo}
+          callId={activeLiveCall.callId}
+          isCaller={activeLiveCall.isCaller}
+          targetUserId={activeLiveCall.targetUserId}
+          onClose={endLiveCall}
+          onMinimize={() => setActiveMiniApp('chat')}
         />
       )}
 
