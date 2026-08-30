@@ -300,68 +300,77 @@ export const MediaStudioView: React.FC = () => {
   };
 
   // Canvas-based Living Motion Animation Effect
+  const cachedMotionImgRef = useRef<HTMLImageElement | null>(null);
+  const [isMotionImgLoaded, setIsMotionImgLoaded] = useState(false);
+
+  const currentMotionSrc = motionVideoResult?.resultUrl || motionPhotoUrl || editedPhotoResult?.resultUrl || uploadedPhotoUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=800';
+
+  useEffect(() => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      cachedMotionImgRef.current = img;
+      setIsMotionImgLoaded(true);
+    };
+    img.src = currentMotionSrc;
+  }, [currentMotionSrc]);
+
   useEffect(() => {
     let animId: number;
     let phase = 0;
 
     const renderMotionFrame = () => {
-      if (motionCanvasRef.current && isMotionPlaying) {
+      if (motionCanvasRef.current && isMotionPlaying && cachedMotionImgRef.current) {
         const canvas = motionCanvasRef.current;
         const ctx = canvas.getContext('2d');
-        if (ctx) {
+        const imgElement = cachedMotionImgRef.current;
+        if (ctx && imgElement) {
           phase += 0.03 * motionPlaybackSpeed;
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-          const imgElement = new Image();
-          imgElement.crossOrigin = 'anonymous';
-          imgElement.src = motionVideoResult?.resultUrl || motionPhotoUrl || editedPhotoResult?.resultUrl || uploadedPhotoUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=800';
+          let scale = 1.0;
+          let dx = 0;
+          let dy = 0;
 
-          imgElement.onload = () => {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+          if (motionType.includes('Living Portrait')) {
+            scale = 1.02 + Math.sin(phase) * 0.025;
+            dy = Math.sin(phase * 0.8) * 3;
+          } else if (motionType.includes('3D Parallax Zoom')) {
+            scale = 1.0 + ((phase % 6) / 6) * 0.15;
+            dx = Math.sin(phase * 0.5) * 8;
+          } else if (motionType.includes('Drone Fly-Through')) {
+            scale = 1.0 + Math.sin(phase * 0.6) * 0.12;
+            dx = Math.cos(phase * 0.4) * 12;
+            dy = Math.sin(phase * 0.3) * 6;
+          } else if (motionType.includes('Orbital 360 Pan')) {
+            dx = Math.sin(phase) * 16;
+            dy = Math.cos(phase * 0.5) * 6;
+          } else if (motionType.includes('Ethereal Slow Motion')) {
+            scale = 1.01 + Math.sin(phase * 0.4) * 0.015;
+            dy = Math.cos(phase * 0.4) * 4;
+          }
 
-            let scale = 1.0;
-            let dx = 0;
-            let dy = 0;
+          ctx.save();
+          ctx.translate(canvas.width / 2, canvas.height / 2);
+          ctx.scale(scale, scale);
+          ctx.translate(-canvas.width / 2 + dx, -canvas.height / 2 + dy);
+          ctx.drawImage(imgElement, 0, 0, canvas.width, canvas.height);
 
-            if (motionType.includes('Living Portrait')) {
-              scale = 1.02 + Math.sin(phase) * 0.025;
-              dy = Math.sin(phase * 0.8) * 3;
-            } else if (motionType.includes('3D Parallax Zoom')) {
-              scale = 1.0 + ((phase % 6) / 6) * 0.15;
-              dx = Math.sin(phase * 0.5) * 8;
-            } else if (motionType.includes('Drone Fly-Through')) {
-              scale = 1.0 + Math.sin(phase * 0.6) * 0.12;
-              dx = Math.cos(phase * 0.4) * 12;
-              dy = Math.sin(phase * 0.3) * 6;
-            } else if (motionType.includes('Orbital 360 Pan')) {
-              dx = Math.sin(phase) * 16;
-              dy = Math.cos(phase * 0.5) * 6;
-            } else if (motionType.includes('Ethereal Slow Motion')) {
-              scale = 1.01 + Math.sin(phase * 0.4) * 0.015;
-              dy = Math.cos(phase * 0.4) * 4;
-            }
+          // Light flare / chromatic shimmer
+          const gradient = ctx.createRadialGradient(
+            canvas.width * (0.3 + Math.sin(phase * 0.4) * 0.2),
+            canvas.height * 0.2,
+            20,
+            canvas.width * 0.5,
+            canvas.height * 0.5,
+            canvas.width * 0.8
+          );
+          gradient.addColorStop(0, 'rgba(255, 220, 150, 0.15)');
+          gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+          ctx.fillStyle = gradient;
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            ctx.save();
-            ctx.translate(canvas.width / 2, canvas.height / 2);
-            ctx.scale(scale, scale);
-            ctx.translate(-canvas.width / 2 + dx, -canvas.height / 2 + dy);
-            ctx.drawImage(imgElement, 0, 0, canvas.width, canvas.height);
-
-            // Light flare / chromatic shimmer
-            const gradient = ctx.createRadialGradient(
-              canvas.width * (0.3 + Math.sin(phase * 0.4) * 0.2),
-              canvas.height * 0.2,
-              20,
-              canvas.width * 0.5,
-              canvas.height * 0.5,
-              canvas.width * 0.8
-            );
-            gradient.addColorStop(0, 'rgba(255, 220, 150, 0.15)');
-            gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
-            ctx.fillStyle = gradient;
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-            ctx.restore();
-          };
+          ctx.restore();
         }
       }
       animId = requestAnimationFrame(renderMotionFrame);
@@ -369,7 +378,7 @@ export const MediaStudioView: React.FC = () => {
 
     animId = requestAnimationFrame(renderMotionFrame);
     return () => cancelAnimationFrame(animId);
-  }, [isMotionPlaying, motionVideoResult, motionPhotoUrl, editedPhotoResult, uploadedPhotoUrl, motionType, motionPlaybackSpeed]);
+  }, [isMotionPlaying, isMotionImgLoaded, motionType, motionPlaybackSpeed]);
 
   /* ========================================================================= */
   /* 3. TEXT-TO-IMAGE GENERATOR STATE */
