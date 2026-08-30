@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { WebRTCManager } from '../services/webrtcService';
+import CallManager from '../services/webrtcCallService';
 
 describe('WebRTC media support', () => {
   it('returns null instead of crashing when browser media APIs are unavailable', async () => {
-    const manager = new WebRTCManager();
+    const manager = new CallManager();
     const originalMediaDevices = navigator.mediaDevices;
 
     Object.defineProperty(navigator, 'mediaDevices', {
