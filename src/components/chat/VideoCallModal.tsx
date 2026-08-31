@@ -32,7 +32,7 @@ export const VideoCallModal: React.FC<VideoCallModalProps> = ({
 
   const callId = propCallId || `call-${Date.now()}`;
   const isCaller = propIsCaller !== undefined ? propIsCaller : true;
-  const targetUserId = propTargetUserId || contactName;
+  const targetUserId = propTargetUserId || user.id || user.email || contactName;
 
   // State
   const [isAudioMuted, setIsAudioMuted] = useState(false);
@@ -58,8 +58,27 @@ export const VideoCallModal: React.FC<VideoCallModalProps> = ({
         callManagerRef.current = manager;
 
         // Setup callbacks
+        manager.onStateChange = (state) => {
+          if (state.localStream && localVideoRef.current) {
+            localVideoRef.current.srcObject = state.localStream;
+            localVideoRef.current.muted = true;
+            localVideoRef.current.play().catch(() => {});
+          }
+
+          if (state.remoteStream && remoteVideoRef.current) {
+            remoteVideoRef.current.srcObject = state.remoteStream;
+            remoteVideoRef.current.muted = false;
+            remoteVideoRef.current.play().catch(() => {});
+          }
+        };
+
         manager.onRemoteStream = (stream) => {
           console.log('Remote stream received');
+          if (remoteVideoRef.current) {
+            remoteVideoRef.current.srcObject = stream;
+            remoteVideoRef.current.muted = false;
+            remoteVideoRef.current.play().catch(() => {});
+          }
           setIsConnecting(false);
           showToast(`🟢 Connected with ${contactName}!`);
           playSound('call_connected');

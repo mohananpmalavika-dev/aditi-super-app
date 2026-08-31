@@ -809,9 +809,14 @@ export const SuperAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   const startLiveCallWith = (contactName: string, contactAvatar: string, isVideo: boolean) => {
-    const targetUser = registeredUsers.find((u) => u.name.toLowerCase() === contactName.toLowerCase());
+    const targetUser = registeredUsers.find(
+      (u) =>
+        u.name.toLowerCase() === contactName.toLowerCase() ||
+        (u.email && u.email.toLowerCase() === contactName.toLowerCase()) ||
+        (u.handle && u.handle.toLowerCase() === contactName.toLowerCase())
+    );
     const callId = `call-${Date.now()}`;
-    const targetUserId = targetUser?.id || targetUser?.email || contactName;
+    const targetUserId = targetUser?.id || targetUser?.email || targetUser?.handle || contactName;
 
     setActiveLiveCall({
       callId,
